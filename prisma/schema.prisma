@@ -1,0 +1,159 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:../dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id               String            @id @default(uuid())
+  email            String            @unique
+  passwordHash     String
+  name             String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  accounts         Account[]
+  categories       Category[]
+  transactions     Transaction[]
+  investments      Investment[]
+  goals            Goal[]
+  snapshots        MonthlySnapshot[]
+  budgets          Budget[]
+  taxReservations  TaxReservation[]
+  assetAllocations AssetAllocation[]
+  settings         Settings?
+}
+
+model Account {
+  id                   String        @id @default(uuid())
+  userId               String
+  user                 User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name                 String
+  type                 String        // Bank, Trade Republic, Coverflex 1, Coverflex 2, Cash, Crypto Wallet, Broker
+  balance              Float
+  currency             String        @default("EUR")
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+  transactions         Transaction[] @relation("AccountTransactions")
+  transferTransactions Transaction[] @relation("TransferDestination")
+}
+
+model Category {
+  id           String        @id @default(uuid())
+  userId       String
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  type         String        // Income, Expense
+  color        String?       // Hex color or Tailwind class name
+  transactions Transaction[]
+  budgets      Budget[]
+
+  @@unique([userId, name])
+}
+
+model Transaction {
+  id                   String     @id @default(uuid())
+  userId               String
+  user                 User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date                 DateTime
+  description          String
+  type                 String     // Income, Expense, Transfer, Investment, Interest, Tax
+  amount               Float
+  categoryId           String?
+  category             Category?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  accountId            String?
+  account              Account?   @relation("AccountTransactions", fields: [accountId], references: [id], onDelete: Cascade)
+  destinationAccountId String?
+  destinationAccount   Account?   @relation("TransferDestination", fields: [destinationAccountId], references: [id], onDelete: SetNull)
+  tags                 String     // Comma separated tags
+  notes                String?
+  createdAt            DateTime   @default(now())
+  updatedAt            DateTime   @updatedAt
+}
+
+model Investment {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  type         String   // Trade Republic Cash, Stocks, Bitcoin, Ethereum, Other Crypto
+  symbol       String?
+  quantity     Float    @default(0)
+  costBasis    Float    // Total cost basis in EUR
+  marketValue  Float    // Total market value in EUR
+  profit       Float    // marketValue - costBasis
+  allocation   Float    // percentage (computed or stored)
+  updatedAt    DateTime @updatedAt
+}
+
+model Goal {
+  id                  String   @id @default(uuid())
+  userId              String
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name                String   // Emergency Fund, House, IRS, Custom
+  type                String   // EMERGENCY_FUND, HOUSE, IRS, CUSTOM
+  targetAmount        Float
+  currentAmount       Float
+  progress            Float    // currentAmount / targetAmount * 100
+  estimatedCompletion String?  // e.g. "Dec 2026", "Completed"
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model MonthlySnapshot {
+  id               String   @id @default(uuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  year             Int
+  month            Int
+  netWorth         Float
+  liquidAssets     Float
+  investmentsValue Float
+  savingsRate      Float
+  createdAt        DateTime @default(now())
+}
+
+model Budget {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  amount     Float
+  year       Int
+  month      Int
+}
+
+model TaxReservation {
+  id                    String   @id @default(uuid())
+  userId                String
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  year                  Int
+  estimatedTaxLiability Float
+  taxWithheld           Float
+  notes                 String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+model AssetAllocation {
+  id                String   @id @default(uuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assetType         String   // Trade Republic Cash, Stocks, Bitcoin, Ethereum, Other Crypto, Bank Cash
+  targetPercentage  Float
+  currentPercentage Float
+  updatedAt         DateTime @updatedAt
+}
+
+model Settings {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  theme     String   @default("Dark") // Dark, Light, System
+  currency  String   @default("EUR")
+  language  String   @default("English")
+  updatedAt DateTime @updatedAt
+}
