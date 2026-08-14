@@ -34,6 +34,7 @@ describe('Transactions Actions', () => {
       };
 
       mockDb.transaction.create.mockResolvedValue(mockTx);
+      mockDb.account.findUnique.mockResolvedValue({ id: 'acc-1', userId: 'test-user-id', externalMappings: [] });
       mockDb.account.update.mockResolvedValue({ id: 'acc-1', balance: 900 });
 
       const result = await createTransaction({
@@ -78,6 +79,7 @@ describe('Transactions Actions', () => {
 
       mockDb.transaction.findUnique.mockResolvedValue(oldTx);
       mockDb.transaction.update.mockResolvedValue(updatedTx);
+      mockDb.account.findUnique.mockResolvedValue({ id: 'acc-1', userId: 'test-user-id', externalMappings: [] });
 
       await updateTransaction({
         id: 'tx-1',
@@ -112,8 +114,10 @@ describe('Transactions Actions', () => {
       };
 
       mockDb.transaction.findUnique.mockResolvedValue(mockTx);
+      mockDb.account.findUnique.mockResolvedValue({ id: 'acc-1', userId: 'test-user-id', externalMappings: [] });
 
-      await deleteTransaction({ id: 'tx-1' });
+      const res = await deleteTransaction({ id: 'tx-1' });
+      console.log("Delete Tx Res:", res);
 
       // Income was 200, deleting it should decrement 200
       expect(mockDb.account.update).toHaveBeenCalledWith({

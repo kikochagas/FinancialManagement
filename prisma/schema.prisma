@@ -1,6 +1,6 @@
 datasource db {
   provider = "sqlite"
-  url      = "file:../dev.db"
+  url      = env("DATABASE_URL")
 }
 
 generator client {
@@ -8,36 +8,39 @@ generator client {
 }
 
 model User {
-  id               String            @id @default(uuid())
-  email            String            @unique
-  passwordHash     String
-  name             String?
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  accounts         Account[]
-  categories       Category[]
-  transactions     Transaction[]
-  investments      Investment[]
-  goals            Goal[]
-  snapshots        MonthlySnapshot[]
-  budgets          Budget[]
-  taxReservations  TaxReservation[]
-  assetAllocations AssetAllocation[]
-  settings         Settings?
+  id                      String                   @id @default(uuid())
+  email                   String                   @unique
+  passwordHash            String
+  name                    String?
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  accounts                Account[]
+  categories              Category[]
+  transactions            Transaction[]
+  investments             Investment[]
+  goals                   Goal[]
+  snapshots               MonthlySnapshot[]
+  budgets                 Budget[]
+  taxReservations         TaxReservation[]
+  assetAllocations        AssetAllocation[]
+  settings                Settings?
+  bankAuthorizationStates BankAuthorizationState[]
+  bankConnections         BankConnection[]
 }
 
 model Account {
-  id                   String        @id @default(uuid())
+  id                   String                   @id @default(uuid())
   userId               String
-  user                 User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                 User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
   name                 String
-  type                 String        // Bank, Trade Republic, Coverflex 1, Coverflex 2, Cash, Crypto Wallet, Broker
+  type                 String // Bank, Trade Republic, Coverflex 1, Coverflex 2, Cash, Crypto Wallet, Broker
   balance              Float
-  currency             String        @default("EUR")
-  createdAt            DateTime      @default(now())
-  updatedAt            DateTime      @updatedAt
-  transactions         Transaction[] @relation("AccountTransactions")
-  transferTransactions Transaction[] @relation("TransferDestination")
+  currency             String                   @default("EUR")
+  createdAt            DateTime                 @default(now())
+  updatedAt            DateTime                 @updatedAt
+  transactions         Transaction[]            @relation("AccountTransactions")
+  transferTransactions Transaction[]            @relation("TransferDestination")
+  externalMappings     ExternalAccountMapping[]
 }
 
 model Category {
@@ -45,8 +48,8 @@ model Category {
   userId       String
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   name         String
-  type         String        // Income, Expense
-  color        String?       // Hex color or Tailwind class name
+  type         String // Income, Expense
+  color        String? // Hex color or Tailwind class name
   transactions Transaction[]
   budgets      Budget[]
 
@@ -54,50 +57,51 @@ model Category {
 }
 
 model Transaction {
-  id                   String     @id @default(uuid())
+  id                   String                      @id @default(uuid())
   userId               String
-  user                 User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                 User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
   date                 DateTime
   description          String
-  type                 String     // Income, Expense, Transfer, Investment, Interest, Tax
+  type                 String // Income, Expense, Transfer, Investment, Interest, Tax
   amount               Float
   categoryId           String?
-  category             Category?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  category             Category?                   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   accountId            String?
-  account              Account?   @relation("AccountTransactions", fields: [accountId], references: [id], onDelete: Cascade)
+  account              Account?                    @relation("AccountTransactions", fields: [accountId], references: [id], onDelete: Cascade)
   destinationAccountId String?
-  destinationAccount   Account?   @relation("TransferDestination", fields: [destinationAccountId], references: [id], onDelete: SetNull)
-  tags                 String     // Comma separated tags
+  destinationAccount   Account?                    @relation("TransferDestination", fields: [destinationAccountId], references: [id], onDelete: SetNull)
+  tags                 String // Comma separated tags
   notes                String?
-  createdAt            DateTime   @default(now())
-  updatedAt            DateTime   @updatedAt
+  createdAt            DateTime                    @default(now())
+  updatedAt            DateTime                    @updatedAt
+  externalMapping      ExternalTransactionMapping?
 }
 
 model Investment {
-  id           String   @id @default(uuid())
-  userId       String
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name         String
-  type         String   // Trade Republic Cash, Stocks, Bitcoin, Ethereum, Other Crypto
-  symbol       String?
-  quantity     Float    @default(0)
-  costBasis    Float    // Total cost basis in EUR
-  marketValue  Float    // Total market value in EUR
-  profit       Float    // marketValue - costBasis
-  allocation   Float    // percentage (computed or stored)
-  updatedAt    DateTime @updatedAt
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  type        String // Trade Republic Cash, Stocks, Bitcoin, Ethereum, Other Crypto
+  symbol      String?
+  quantity    Float    @default(0)
+  costBasis   Float // Total cost basis in EUR
+  marketValue Float // Total market value in EUR
+  profit      Float // marketValue - costBasis
+  allocation  Float // percentage (computed or stored)
+  updatedAt   DateTime @updatedAt
 }
 
 model Goal {
   id                  String   @id @default(uuid())
   userId              String
   user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name                String   // Emergency Fund, House, IRS, Custom
-  type                String   // EMERGENCY_FUND, HOUSE, IRS, CUSTOM
+  name                String // Emergency Fund, House, IRS, Custom
+  type                String // EMERGENCY_FUND, HOUSE, IRS, CUSTOM
   targetAmount        Float
   currentAmount       Float
-  progress            Float    // currentAmount / targetAmount * 100
-  estimatedCompletion String?  // e.g. "Dec 2026", "Completed"
+  progress            Float // currentAmount / targetAmount * 100
+  estimatedCompletion String? // e.g. "Dec 2026", "Completed"
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 }
@@ -142,7 +146,7 @@ model AssetAllocation {
   id                String   @id @default(uuid())
   userId            String
   user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  assetType         String   // Trade Republic Cash, Stocks, Bitcoin, Ethereum, Other Crypto, Bank Cash
+  assetType         String // Trade Republic Cash, Stocks, Bitcoin, Ethereum, Other Crypto, Bank Cash
   targetPercentage  Float
   currentPercentage Float
   updatedAt         DateTime @updatedAt
@@ -156,4 +160,91 @@ model Settings {
   currency  String   @default("EUR")
   language  String   @default("English")
   updatedAt DateTime @updatedAt
+}
+
+model BankAuthorizationState {
+  id                 String    @id @default(uuid())
+  userId             String
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stateStr           String    @unique // Cryptographically secure random string sent to provider
+  institutionName    String
+  institutionCountry String
+  expiresAt          DateTime
+  usedAt             DateTime?
+  createdAt          DateTime  @default(now())
+}
+
+model BankConnection {
+  id                 String    @id @default(uuid())
+  userId             String
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider           String // e.g., "ENABLE_BANKING"
+  providerSessionId  String?   @unique // Returned by POST /sessions
+  institutionName    String // Enable Banking identifies ASPSPs by name + country
+  institutionCountry String // e.g., "PT"
+  status             String // CONNECTED, REVOKED, EXPIRED
+  validUntil         DateTime?
+  lastSyncedAt       DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  mappings           ExternalAccountMapping[]
+  pendingAccounts    PendingExternalAccount[]
+}
+
+model PendingExternalAccount {
+  id                 String         @id @default(uuid())
+  bankConnectionId   String
+  bankConnection     BankConnection @relation(fields: [bankConnectionId], references: [id], onDelete: Cascade)
+  
+  providerAccountUid String
+  identificationHash String
+  displayName        String
+  currency           String
+  cashAccountType    String?
+  maskedIdentifier   String?
+  
+  expiresAt          DateTime
+  createdAt          DateTime       @default(now())
+
+  @@unique([bankConnectionId, identificationHash])
+}
+
+model ExternalAccountMapping {
+  id               String         @id @default(uuid())
+  bankConnectionId String
+  bankConnection   BankConnection @relation(fields: [bankConnectionId], references: [id], onDelete: Cascade)
+  accountId        String
+  account          Account        @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  providerAccountUid String // Session-specific account ID
+  identificationHash String // Stable identifier (e.g. hashed IBAN) across re-authorisations
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  transactionImportFrom   DateTime? // If null, request max available history. If set, only fetch from this date.
+  lastBalanceSyncedAt     DateTime? // Tracking balance sync independently of generic connection status
+  lastTransactionSyncedAt DateTime? // Tracking last transaction sync
+
+  transactionMappings ExternalTransactionMapping[]
+
+  @@unique([bankConnectionId, identificationHash])
+}
+
+model ExternalTransactionMapping {
+  id                       String                 @id @default(uuid())
+  externalAccountMappingId String
+  externalAccountMapping   ExternalAccountMapping @relation(fields: [externalAccountMappingId], references: [id], onDelete: Cascade)
+
+  transactionId String      @unique
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  dedupKey              String // entry_reference OR deterministic fallback (NOT transaction_id)
+  entryReference        String?
+  providerTransactionId String?
+  
+  createdAt             DateTime @default(now())
+
+  @@unique([externalAccountMappingId, dedupKey])
 }

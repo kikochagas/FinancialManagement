@@ -7,9 +7,13 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
+    globalSetup: ['./vitest.global-setup.ts'],
     setupFiles: ['./setupTests.ts'],
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
+    env: {
+      DATABASE_URL: 'file:../test.db'
+    }
   },
 })

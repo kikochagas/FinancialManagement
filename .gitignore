@@ -34,3 +34,6 @@ dev.db-journal
 
 # vercel
 .vercel
+
+# open banking secrets
+/secrets

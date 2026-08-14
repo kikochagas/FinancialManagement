@@ -1,14 +1,15 @@
 "use client";
 
 import React, { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
-import { createAccount, updateAccount, deleteAccount } from "./actions";
+import { createAccount, updateAccount, deleteAccount, syncBankAccount, disconnectBank } from "./actions";
 import { formatCurrency, cn } from "@/lib/utils";
-import { Landmark, Wallet, Plus, Trash2, Edit2, Coins, ArrowRightLeft, CreditCard } from "lucide-react";
+import { Landmark, Wallet, Plus, Trash2, Edit2, Coins, ArrowRightLeft, CreditCard, RefreshCw } from "lucide-react";
 
 interface Account {
   id: string;
@@ -25,6 +26,12 @@ interface Account {
     category: string;
     color: string;
   }>;
+  isLinked: boolean;
+  institutionName?: string | null;
+  connectionStatus?: string | null;
+  validUntil?: string | null;
+  lastBalanceSyncedAt?: string | null;
+  lastTransactionSyncedAt?: string | null;
 }
 
 interface AccountsClientProps {
@@ -34,10 +41,12 @@ interface AccountsClientProps {
 }
 
 export function AccountsClient({ data }: AccountsClientProps) {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   // Modals state
-  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isAddOptionsOpen, setIsAddOptionsOpen] = useState(false);
+  const [isAddManualOpen, setIsAddManualOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
 
@@ -65,7 +74,7 @@ export function AccountsClient({ data }: AccountsClientProps) {
         balance: Number(newAcc.balance) || 0,
       });
       if (res?.data?.success) {
-        setIsAddOpen(false);
+        setIsAddManualOpen(false);
         setNewAcc({ name: "", type: "Bank", balance: "" });
       }
     });
@@ -105,6 +114,69 @@ export function AccountsClient({ data }: AccountsClientProps) {
     }
   };
 
+  const [syncingAccountId, setSyncingAccountId] = useState<string | null>(null);
+  const [errorToast, setErrorToast] = useState<string | null>(null);
+  const [successToast, setSuccessToast] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    // Handle URL error parameters
+    const params = new URLSearchParams(window.location.search);
+    const errorParam = params.get("error");
+    if (errorParam) {
+      if (errorParam === "authorization_failed") {
+        setErrorToast("Bank connection was cancelled or could not be authorized.");
+      } else if (errorParam === "session_creation_failed") {
+        setErrorToast("We could not complete the bank connection. Please try again.");
+      } else {
+        setErrorToast("An unexpected error occurred during bank connection.");
+      }
+      // Remove query param
+      router.replace("/accounts");
+    }
+  }, [router]);
+
+  const handleSyncBank = (id: string) => {
+    if (syncingAccountId) return;
+    setSyncingAccountId(id);
+    setSuccessToast(null);
+    setErrorToast(null);
+
+    startTransition(async () => {
+      try {
+        const res = await syncBankAccount({ accountId: id });
+        setSyncingAccountId(null);
+        if (res?.data && "reauthRequired" in res.data && res.data.reauthRequired) {
+          setErrorToast(`Your bank connection needs to be renewed (${(res.data as any).institutionName}).`);
+        } else if (res?.serverError) {
+          setErrorToast(`Sync failed: ${res.serverError}`);
+        } else if (res?.data && "success" in res.data && res.data.success) {
+          const imported = (res.data as any).imported || 0;
+          if (imported > 0) {
+            setSuccessToast(`Bank synced. Balance updated and ${imported} new transactions imported.`);
+          } else {
+            setSuccessToast("Everything is already up to date.");
+          }
+        }
+      } catch (err) {
+        setSyncingAccountId(null);
+        setErrorToast("Sync failed.");
+      }
+    });
+  };
+
+  const handleDisconnectTrigger = (acc: Account) => {
+    if (confirm(`Disconnect ${acc.institutionName || "bank"}?\n\nAutomatic bank synchronization will stop.\nYour existing account and imported transaction history will be kept.`)) {
+      startTransition(async () => {
+        const res = await disconnectBank({ accountId: acc.id });
+        if (res?.data?.success) {
+          setSuccessToast(`Disconnected from ${res.data.institutionName}.`);
+        } else if (res?.serverError) {
+          setErrorToast(`Failed to disconnect: ${res.serverError}`);
+        }
+      });
+    }
+  };
+
   const getAccountIcon = (type: string) => {
     switch (type) {
       case "Bank":
@@ -139,19 +211,73 @@ export function AccountsClient({ data }: AccountsClientProps) {
 
   return (
     <div className="space-y-6">
+      {errorToast && (
+        <div className="bg-destructive/10 text-destructive text-sm font-semibold p-4 rounded-md border border-destructive/20 flex justify-between">
+          <span>{errorToast}</span>
+          <button onClick={() => setErrorToast(null)}>✕</button>
+        </div>
+      )}
+      {successToast && (
+        <div className="bg-emerald-500/10 text-emerald-500 text-sm font-semibold p-4 rounded-md border border-emerald-500/20 flex justify-between">
+          <span>{successToast}</span>
+          <button onClick={() => setSuccessToast(null)}>✕</button>
+        </div>
+      )}
+
       {/* Header section */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <p className="text-xs text-muted-foreground font-medium">Create and oversee your financial entities, wallets, and benefits cards.</p>
         </div>
 
-        <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+        <Dialog open={isAddOptionsOpen} onOpenChange={setIsAddOptionsOpen}>
           <DialogTrigger asChild>
             <Button size="sm" className="flex items-center gap-2">
               <Plus className="h-4 w-4" />
-              New Account
+              Add account
             </Button>
           </DialogTrigger>
+          <DialogContent className="border-border bg-background sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Add Account</DialogTitle>
+              <DialogDescription>Choose how you want to add your account.</DialogDescription>
+            </DialogHeader>
+            <div className="grid grid-cols-1 gap-4 py-4">
+              <div 
+                className="p-4 border rounded-lg hover:bg-muted/50 cursor-pointer flex gap-4 items-center transition-colors"
+                onClick={() => {
+                  setIsAddOptionsOpen(false);
+                  setIsAddManualOpen(true);
+                }}
+              >
+                <div className="h-10 w-10 bg-primary/10 text-primary rounded-full flex items-center justify-center">
+                  <Edit2 className="h-5 w-5" />
+                </div>
+                <div>
+                  <h4 className="font-semibold text-sm">Create manually</h4>
+                  <p className="text-xs text-muted-foreground mt-1">Add cash, broker, investment or other manually managed account.</p>
+                </div>
+              </div>
+              
+              <div 
+                className="p-4 border rounded-lg hover:bg-muted/50 cursor-pointer flex gap-4 items-center transition-colors"
+                onClick={() => {
+                  window.location.assign("/accounts/connect");
+                }}
+              >
+                <div className="h-10 w-10 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center">
+                  <Landmark className="h-5 w-5" />
+                </div>
+                <div>
+                  <h4 className="font-semibold text-sm">Connect bank</h4>
+                  <p className="text-xs text-muted-foreground mt-1">Securely connect a supported Portuguese bank.</p>
+                </div>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={isAddManualOpen} onOpenChange={setIsAddManualOpen}>
           <DialogContent className="border-border bg-background">
             <form onSubmit={handleCreate}>
               <DialogHeader>
@@ -225,10 +351,40 @@ export function AccountsClient({ data }: AccountsClientProps) {
               <div>
                 <CardHeader className="flex flex-row items-start justify-between pb-3">
                   <div className="space-y-1">
-                    <CardTitle className="text-sm font-semibold text-foreground">{acc.name}</CardTitle>
-                    <span className={cn("inline-block text-[9px] px-2 py-0.5 rounded-full border uppercase font-bold", getAccountBadgeColor(acc.type))}>
-                      {acc.type}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <CardTitle className="text-sm font-semibold text-foreground">{acc.name}</CardTitle>
+                      {(() => {
+                        if (acc.isLinked) {
+                           const isExpired = acc.validUntil && new Date(acc.validUntil) <= new Date();
+                           const needsReconnect = isExpired || acc.connectionStatus === "EXPIRED" || acc.connectionStatus === "REVOKED";
+                           
+                           if (needsReconnect) {
+                             return (
+                               <span className="inline-block text-[9px] px-2 py-0.5 rounded-full border bg-destructive/10 border-destructive/20 text-destructive uppercase font-bold">
+                                 Reconnect Required
+                               </span>
+                             );
+                           } else {
+                             return (
+                               <span className="inline-block text-[9px] px-2 py-0.5 rounded-full border bg-emerald-500/10 border-emerald-500/20 text-emerald-500 uppercase font-bold">
+                                 Bank Connected
+                               </span>
+                             );
+                           }
+                        }
+                        return null;
+                      })()}
+                    </div>
+                    <div className="flex gap-2 items-center">
+                      <span className={cn("inline-block text-[9px] px-2 py-0.5 rounded-full border uppercase font-bold", getAccountBadgeColor(acc.type))}>
+                        {acc.type}
+                      </span>
+                      {acc.isLinked && acc.institutionName && (
+                        <span className="text-[10px] text-muted-foreground">
+                          {acc.institutionName}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted border border-border text-muted-foreground">
                     <Icon className="h-5 w-5 text-muted-foreground" />
@@ -237,7 +393,12 @@ export function AccountsClient({ data }: AccountsClientProps) {
 
                 <CardContent className="space-y-4">
                   <div>
-                    <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Current Balance</span>
+                    <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider flex items-center justify-between">
+                      Current Balance
+                      {acc.isLinked && acc.lastBalanceSyncedAt && (
+                        <span className="text-[9px] lowercase font-normal opacity-80">Synced {new Date(acc.lastBalanceSyncedAt).toLocaleDateString()}</span>
+                      )}
+                    </span>
                     <div className="text-2xl font-extrabold text-foreground tracking-tight mt-0.5">
                       {formatCurrency(acc.balance, acc.currency)}
                     </div>
@@ -270,13 +431,57 @@ export function AccountsClient({ data }: AccountsClientProps) {
               </div>
 
               {/* Card Actions */}
-              <div className="p-4 border-t border-border bg-muted/20 flex items-center justify-end gap-2">
+              <div className="p-4 border-t border-border bg-muted/20 flex items-center justify-end gap-2 flex-wrap">
+                {(() => {
+                   if (!acc.isLinked) return null;
+                   const isExpired = acc.validUntil && new Date(acc.validUntil) <= new Date();
+                   const needsReconnect = isExpired || acc.connectionStatus === "EXPIRED" || acc.connectionStatus === "REVOKED";
+
+                   if (needsReconnect) {
+                     return (
+                       <Button variant="outline" size="sm" className="h-7 px-2.5 text-xs text-muted-foreground hover:text-foreground" onClick={() => window.location.assign(`/accounts/connect?institution=${encodeURIComponent(acc.institutionName || "")}`)}>
+                         Reconnect bank
+                       </Button>
+                     );
+                   } else {
+                     return (
+                       <Button variant="outline" size="sm" className="h-7 px-2.5 text-xs text-muted-foreground hover:text-foreground" onClick={() => handleSyncBank(acc.id)} disabled={syncingAccountId === acc.id}>
+                         <RefreshCw className={cn("h-3.5 w-3.5 mr-1", syncingAccountId === acc.id && "animate-spin")} /> Sync bank
+                       </Button>
+                     );
+                   }
+                })()}
+                
                 <Button variant="outline" size="sm" className="h-7 px-2.5 text-xs text-muted-foreground hover:text-foreground" onClick={() => handleEditTrigger(acc)}>
                   <Edit2 className="h-3.5 w-3.5 mr-1" /> Edit
                 </Button>
-                <Button variant="ghost" size="sm" className="h-7 px-2.5 text-xs text-muted-foreground hover:text-destructive" onClick={() => handleDeleteTrigger(acc.id)}>
-                  <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
-                </Button>
+                
+                {(() => {
+                   if (!acc.isLinked) {
+                     return (
+                       <Button variant="ghost" size="sm" className="h-7 px-2.5 text-xs text-muted-foreground hover:text-destructive" onClick={() => handleDeleteTrigger(acc.id)}>
+                         <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
+                       </Button>
+                     );
+                   }
+                   
+                   const isExpired = acc.validUntil && new Date(acc.validUntil) <= new Date();
+                   const needsReconnect = isExpired || acc.connectionStatus === "EXPIRED" || acc.connectionStatus === "REVOKED";
+                   
+                   if (!needsReconnect) {
+                     return (
+                       <Button variant="ghost" size="sm" className="h-7 px-2.5 text-xs text-muted-foreground hover:text-destructive" onClick={() => handleDisconnectTrigger(acc)} disabled={isPending || syncingAccountId === acc.id}>
+                         Disconnect
+                       </Button>
+                     );
+                   }
+                   
+                   return (
+                     <Button variant="ghost" size="sm" className="h-7 px-2.5 text-xs text-muted-foreground hover:text-destructive" onClick={() => handleDeleteTrigger(acc.id)}>
+                       <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
+                     </Button>
+                   );
+                })()}
               </div>
             </Card>
           );
@@ -293,6 +498,15 @@ export function AccountsClient({ data }: AccountsClientProps) {
             </DialogHeader>
 
             <div className="space-y-4 py-4">
+              {selectedAccount?.isLinked && (
+                <div className="bg-muted/50 p-3 rounded-md text-sm text-muted-foreground border border-border flex items-start gap-2">
+                  <Landmark className="h-4 w-4 mt-0.5 text-emerald-500" />
+                  <div>
+                    <span className="font-semibold text-foreground block">Balance is synchronized from your bank.</span>
+                    Type, currency, and balance cannot be manually changed.
+                  </div>
+                </div>
+              )}
               <div className="space-y-1.5">
                 <label className="text-[11px] font-semibold text-muted-foreground uppercase">Account Name</label>
                 <Input
@@ -306,7 +520,7 @@ export function AccountsClient({ data }: AccountsClientProps) {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-semibold text-muted-foreground uppercase">Account Type</label>
-                  <Select value={editAcc.type} onValueChange={(val) => setEditAcc({ ...editAcc, type: val })}>
+                  <Select value={editAcc.type} onValueChange={(val) => setEditAcc({ ...editAcc, type: val })} disabled={selectedAccount?.isLinked}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -330,6 +544,7 @@ export function AccountsClient({ data }: AccountsClientProps) {
                     value={editAcc.balance}
                     onChange={(e) => setEditAcc({ ...editAcc, balance: e.target.value })}
                     required
+                    disabled={selectedAccount?.isLinked}
                   />
                 </div>
               </div>

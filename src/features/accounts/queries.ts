@@ -15,6 +15,11 @@ export async function getAccountsData() {
           category: true,
         },
       },
+      externalMappings: {
+        include: {
+          bankConnection: true
+        }
+      },
     },
   });
 
@@ -34,6 +39,51 @@ export async function getAccountsData() {
         category: t.category?.name || "Uncategorized",
         color: t.category?.color || "#94a3b8",
       })),
+      isLinked: a.externalMappings.length > 0,
+      institutionName: a.externalMappings.length > 0 ? a.externalMappings[0].bankConnection.institutionName : null,
+      connectionStatus: a.externalMappings.length > 0 ? a.externalMappings[0].bankConnection.status : null,
+      validUntil: a.externalMappings.length > 0 ? a.externalMappings[0].bankConnection.validUntil?.toISOString() || null : null,
+      lastBalanceSyncedAt: a.externalMappings.length > 0 ? a.externalMappings[0].lastBalanceSyncedAt?.toISOString() || null : null,
+      lastTransactionSyncedAt: a.externalMappings.length > 0 ? a.externalMappings[0].lastTransactionSyncedAt?.toISOString() || null : null,
     })),
+  };
+}
+
+export async function getPendingAccountsForConnection(connectionId: string) {
+  const userId = await getUserId();
+  if (!userId) throw new Error("Unauthorized");
+
+  const connection = await db.bankConnection.findUnique({
+    where: { id: connectionId },
+    include: {
+      pendingAccounts: {
+        where: {
+          expiresAt: { gt: new Date() }
+        }
+      }
+    }
+  });
+
+  if (!connection || connection.userId !== userId) {
+    throw new Error("Unauthorized");
+  }
+
+  // Also grab all existing accounts to let the user link
+  const existingAccounts = await db.account.findMany({
+    where: { userId },
+    select: { id: true, name: true, currency: true, type: true }
+  });
+
+  // Fetch existing mappings to know if a pending account is already mapped
+  const existingMappings = await db.externalAccountMapping.findMany({
+    where: { bankConnectionId: connectionId },
+    include: { account: true }
+  });
+
+  return {
+    connection,
+    pendingAccounts: connection.pendingAccounts,
+    existingAccounts,
+    existingMappings
   };
 }
