@@ -19,8 +19,11 @@ Your financial cockpit. Features a series of dynamic cards that automatically ad
 ### 🏦 Accounts & Transactions
 Manage all your daily financial movements seamlessly.
 - **Multi-Account Tracking:** Support for standard Bank accounts, Trade Republic, Coverflex, Cash, Crypto Wallets, and Brokers.
+- **Open Banking Integration:** Securely connect your real-world bank accounts using the Enable Banking API (supporting European ASPSPs).
+- **Automated Synchronization:** Automatically fetches initial balances and transaction histories upon linking, with one-click manual syncing thereafter.
 - **Transactions:** Log Income, Expenses, Transfers, Investments, Interests, and Taxes.
 - **Categorization & Tagging:** Keep things organized with customizable categories and searchable tags.
+- **Full Control:** Easily disconnect or permanently delete bank-connected accounts and all associated data at any time.
 
 ### 📈 Investments Portfolio
 Track your wealth building vehicles.
@@ -96,3 +99,4 @@ Name the sheet: `Snapshots` (or similar)
 - Prisma (SQLite)
 - TailwindCSS & Lucide-React
 - Recharts (Data Visualization)
+- Vitest (Isolated test environment with separate SQLite database)
