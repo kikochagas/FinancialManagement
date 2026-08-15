@@ -1,0 +1,65 @@
+export const AccountType = {
+  BANK: "Bank",
+  TRADE_REPUBLIC: "Trade Republic",
+  COVERFLEX: "Coverflex",
+  CASH: "Cash",
+  CRYPTO_WALLET: "Crypto Wallet",
+  BROKER: "Broker",
+  CREDIT_CARD: "Credit Card"
+} as const;
+
+export const TransactionType = {
+  INCOME: "Income",
+  EXPENSE: "Expense",
+  TRANSFER: "Transfer",
+  INVESTMENT: "Investment",
+  INTEREST: "Interest",
+  TAX: "Tax"
+} as const;
+
+export const CategoryType = {
+  INCOME: "Income",
+  EXPENSE: "Expense"
+} as const;
+
+export const InvestmentType = {
+  TRADE_REPUBLIC_CASH: "Trade Republic Cash",
+  STOCKS: "Stocks",
+  BITCOIN: "Bitcoin",
+  ETHEREUM: "Ethereum",
+  OTHER_CRYPTO: "Other Crypto"
+} as const;
+
+export const GoalType = {
+  EMERGENCY_FUND: "EMERGENCY_FUND",
+  HOUSE: "HOUSE",
+  IRS: "IRS",
+  CUSTOM: "CUSTOM"
+} as const;
+
+export const BankConnectionStatus = {
+  CONNECTED: "CONNECTED",
+  EXPIRED: "EXPIRED",
+  REVOKED: "REVOKED",
+} as const;
+
+export const OpenBankingCashAccountType = {
+  CURRENT: "CACC",
+  SAVINGS: "SVGS",
+  CARD: "CARD"
+} as const;
+
+export const LinkAction = {
+  CREATE: "CREATE",
+  LINK: "LINK",
+  IGNORE: "IGNORE"
+} as const;
+
+export type TAccountType = typeof AccountType[keyof typeof AccountType];
+export type TTransactionType = typeof TransactionType[keyof typeof TransactionType];
+export type TCategoryType = typeof CategoryType[keyof typeof CategoryType];
+export type TInvestmentType = typeof InvestmentType[keyof typeof InvestmentType];
+export type TGoalType = typeof GoalType[keyof typeof GoalType];
+export type TBankConnectionStatus = typeof BankConnectionStatus[keyof typeof BankConnectionStatus];
+export type TOpenBankingCashAccountType = typeof OpenBankingCashAccountType[keyof typeof OpenBankingCashAccountType];
+export type TLinkAction = typeof LinkAction[keyof typeof LinkAction];

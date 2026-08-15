@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
-import { createAccount, updateAccount, deleteAccount, syncBankAccount, disconnectBank } from "./actions";
+import { Landmark, CreditCard, Wallet, Coins, Plus, Building, MoreVertical, Link2, RefreshCw, Unlink, Trash2, ShieldCheck, HelpCircle, Edit2, ArrowRightLeft } from "lucide-react";
 import { formatCurrency, cn } from "@/lib/utils";
-import { Landmark, Wallet, Plus, Trash2, Edit2, Coins, ArrowRightLeft, CreditCard, RefreshCw } from "lucide-react";
+import { AccountType } from "@/lib/constants";
+import { createAccount, updateAccount, deleteAccount, syncBankAccount, disconnectBank } from "./actions";
 
 interface Account {
   id: string;
@@ -179,14 +180,15 @@ export function AccountsClient({ data }: AccountsClientProps) {
 
   const getAccountIcon = (type: string) => {
     switch (type) {
-      case "Bank":
+      case AccountType.BANK:
         return Landmark;
-      case "Trade Republic":
+      case AccountType.TRADE_REPUBLIC:
         return Wallet;
       case "Coverflex 1":
       case "Coverflex 2":
+      case AccountType.COVERFLEX:
         return CreditCard;
-      case "Crypto Wallet":
+      case AccountType.CRYPTO_WALLET:
         return Coins;
       default:
         return Wallet;
@@ -195,14 +197,15 @@ export function AccountsClient({ data }: AccountsClientProps) {
 
   const getAccountBadgeColor = (type: string) => {
     switch (type) {
-      case "Bank":
+      case AccountType.BANK:
         return "bg-blue-500/10 border-blue-500/20 text-blue-400";
-      case "Trade Republic":
+      case AccountType.TRADE_REPUBLIC:
         return "bg-violet-500/10 border-violet-500/20 text-violet-400";
       case "Coverflex 1":
       case "Coverflex 2":
+      case AccountType.COVERFLEX:
         return "bg-pink-500/10 border-pink-500/20 text-pink-400";
-      case "Crypto Wallet":
+      case AccountType.CRYPTO_WALLET:
         return "bg-yellow-500/10 border-yellow-500/20 text-yellow-400";
       default:
         return "bg-neutral-800 border-neutral-700 text-neutral-400";

@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { authActionClient } from "@/lib/safe-action";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
+import { TransactionType } from "@/lib/constants";
 
 // Helper function to update account balance
 async function adjustBalances(
@@ -22,13 +23,13 @@ async function adjustBalances(
   if (tx.accountId) {
     const acc = await txDb.account.findUnique({ where: { id: tx.accountId }, include: { externalMappings: true } });
     if (acc && (!acc.externalMappings || acc.externalMappings.length === 0)) {
-      if (tx.type === "Income" || tx.type === "Interest") {
+      if (tx.type === TransactionType.INCOME || tx.type === TransactionType.INTEREST) {
         // Increase account balance
         await txDb.account.update({
           where: { id: tx.accountId },
           data: { balance: { increment: amount } },
         });
-      } else if (tx.type === "Expense" || tx.type === "Tax" || tx.type === "Investment" || tx.type === "Transfer") {
+      } else if (tx.type === TransactionType.EXPENSE || tx.type === TransactionType.TAX || tx.type === TransactionType.INVESTMENT || tx.type === TransactionType.TRANSFER) {
         // Decrease account balance
         await txDb.account.update({
           where: { id: tx.accountId },
@@ -95,7 +96,7 @@ export const createTransaction = authActionClient
         if (acc.externalMappings.length > 0) throw new Error("Bank-connected account transactions are managed by bank synchronization.");
       }
 
-      if (parsedInput.type === "Transfer" && parsedInput.destinationAccountId) {
+      if (parsedInput.type === TransactionType.TRANSFER && parsedInput.destinationAccountId) {
         const dacc = await txDb.account.findUnique({ where: { id: parsedInput.destinationAccountId }, include: { externalMappings: true } });
         if (!dacc || dacc.userId !== userId) throw new Error("Invalid or unauthorized destination account");
         if (dacc.externalMappings.length > 0) throw new Error("Bank-connected account transactions are managed by bank synchronization.");

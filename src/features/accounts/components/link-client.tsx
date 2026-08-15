@@ -9,6 +9,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { linkAccounts, syncBankAccount } from "../actions";
+import { LinkAction, TLinkAction } from "@/lib/constants";
 
 interface SafePendingAccount {
   id: string;
@@ -34,10 +35,8 @@ interface LinkAccountsClientProps {
   existingAccounts: ExistingAccount[];
 }
 
-type LinkAction = "CREATE" | "LINK" | "IGNORE";
-
 interface AccountSelectionState {
-  action: LinkAction;
+  action: TLinkAction;
   name: string; // Used if CREATE
   existingAccountId: string; // Used if LINK
   importHistory: boolean;
@@ -54,7 +53,7 @@ export function LinkAccountsClient({ connectionId, institutionName, pendingAccou
     const initialState: Record<string, AccountSelectionState> = {};
     pendingAccounts.forEach(acc => {
       initialState[acc.id] = {
-        action: acc.isAlreadyLinked ? "IGNORE" : "CREATE",
+        action: acc.isAlreadyLinked ? LinkAction.IGNORE : LinkAction.CREATE,
         name: acc.displayName,
         existingAccountId: "",
         importHistory: false, // Default: OFF
@@ -150,7 +149,7 @@ export function LinkAccountsClient({ connectionId, institutionName, pendingAccou
       <div className="space-y-4">
         {pendingAccounts.map((acc) => {
           const state = selections[acc.id];
-          const isSelected = state.action !== "IGNORE";
+          const isSelected = state.action !== LinkAction.IGNORE;
           
           return (
             <Card key={acc.id} className={`border-border transition-colors ${isSelected ? 'bg-card' : 'bg-muted/30 opacity-75'}`}>
@@ -172,7 +171,7 @@ export function LinkAccountsClient({ connectionId, institutionName, pendingAccou
                       <Checkbox 
                         id={`connect-${acc.id}`}
                         checked={isSelected}
-                        onCheckedChange={(checked: boolean) => handleSelectionChange(acc.id, "action", checked ? "CREATE" : "IGNORE")}
+                        onCheckedChange={(checked: boolean) => handleSelectionChange(acc.id, "action", checked ? LinkAction.CREATE : LinkAction.IGNORE)}
                       />
                       <Label htmlFor={`connect-${acc.id}`} className="text-sm font-medium cursor-pointer">
                         Connect this account
@@ -186,11 +185,11 @@ export function LinkAccountsClient({ connectionId, institutionName, pendingAccou
                 <CardContent className="pt-4 space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Create New Option */}
-                    <div className={`p-4 rounded-lg border ${state.action === "CREATE" ? 'border-primary bg-primary/5' : 'border-border bg-background'} flex gap-3 cursor-pointer`}
-                         onClick={() => handleSelectionChange(acc.id, "action", "CREATE")}>
+                    <div className={`p-4 rounded-lg border ${state.action === LinkAction.CREATE ? 'border-primary bg-primary/5' : 'border-border bg-background'} flex gap-3 cursor-pointer`}
+                         onClick={() => handleSelectionChange(acc.id, "action", LinkAction.CREATE)}>
                       <div className="pt-0.5">
-                        <div className={`h-4 w-4 rounded-full border flex items-center justify-center ${state.action === "CREATE" ? 'border-primary' : 'border-input'}`}>
-                          {state.action === "CREATE" && <div className="h-2 w-2 rounded-full bg-primary" />}
+                        <div className={`h-4 w-4 rounded-full border flex items-center justify-center ${state.action === LinkAction.CREATE ? 'border-primary' : 'border-input'}`}>
+                          {state.action === LinkAction.CREATE && <div className="h-2 w-2 rounded-full bg-primary" />}
                         </div>
                       </div>
                       <div className="flex-1 space-y-2">
@@ -199,7 +198,7 @@ export function LinkAccountsClient({ connectionId, institutionName, pendingAccou
                           value={state.name}
                           onChange={(e) => handleSelectionChange(acc.id, "name", e.target.value)}
                           placeholder="Account Name"
-                          disabled={state.action !== "CREATE"}
+                          disabled={state.action !== LinkAction.CREATE}
                           className="h-8 text-sm bg-background"
                           onClick={(e) => e.stopPropagation()}
                         />
@@ -207,17 +206,17 @@ export function LinkAccountsClient({ connectionId, institutionName, pendingAccou
                     </div>
 
                     {/* Link Existing Option */}
-                    <div className={`p-4 rounded-lg border ${state.action === "LINK" ? 'border-primary bg-primary/5' : 'border-border bg-background'} flex gap-3 cursor-pointer`}
-                         onClick={() => handleSelectionChange(acc.id, "action", "LINK")}>
+                    <div className={`p-4 rounded-lg border ${state.action === LinkAction.LINK ? 'border-primary bg-primary/5' : 'border-border bg-background'} flex gap-3 cursor-pointer`}
+                         onClick={() => handleSelectionChange(acc.id, "action", LinkAction.LINK)}>
                       <div className="pt-0.5">
-                        <div className={`h-4 w-4 rounded-full border flex items-center justify-center ${state.action === "LINK" ? 'border-primary' : 'border-input'}`}>
-                          {state.action === "LINK" && <div className="h-2 w-2 rounded-full bg-primary" />}
+                        <div className={`h-4 w-4 rounded-full border flex items-center justify-center ${state.action === LinkAction.LINK ? 'border-primary' : 'border-input'}`}>
+                          {state.action === LinkAction.LINK && <div className="h-2 w-2 rounded-full bg-primary" />}
                         </div>
                       </div>
                       <div className="flex-1 space-y-2">
                         <Label className="font-semibold text-sm cursor-pointer block">Link existing account</Label>
                         <Select 
-                          disabled={state.action !== "LINK"}
+                          disabled={state.action !== LinkAction.LINK}
                           value={state.existingAccountId}
                           onValueChange={(val) => handleSelectionChange(acc.id, "existingAccountId", val)}
                         >
@@ -248,14 +247,14 @@ export function LinkAccountsClient({ connectionId, institutionName, pendingAccou
                         id={`history-${acc.id}`} 
                         checked={state.importHistory}
                         onCheckedChange={(c: boolean) => handleSelectionChange(acc.id, "importHistory", !!c)}
-                        disabled={state.action === "CREATE"} // New accounts always sync full history (handled in backend by setting transactionImportFrom = null always? Wait, let's allow it to be toggled for both or force it for CREATE. The requirement says: NEW account: transactionImportFrom = null. We can just disable the checkbox and show it checked for NEW, or let backend force it.)
+                        disabled={state.action === LinkAction.CREATE} // New accounts always sync full history (handled in backend by setting transactionImportFrom = null always? Wait, let's allow it to be toggled for both or force it for CREATE. The requirement says: NEW account: transactionImportFrom = null. We can just disable the checkbox and show it checked for NEW, or let backend force it.)
                       />
                       <div className="space-y-1 leading-none">
                         <Label htmlFor={`history-${acc.id}`} className="text-[12px] font-medium leading-none cursor-pointer">
                           Import available historical bank transactions
                         </Label>
                         <p className="text-[11px] text-muted-foreground">
-                          {state.action === "CREATE" 
+                          {state.action === LinkAction.CREATE 
                             ? "New accounts will automatically fetch all available history." 
                             : "If checked, all available past transactions will be imported. Otherwise, only new transactions from today onwards will be synced to prevent duplicates."}
                         </p>

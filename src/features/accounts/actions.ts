@@ -6,10 +6,14 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { EnableBankingClient } from "@/lib/banking/enable-banking-client";
 import { internalSyncBalance, internalSyncTransactions } from "./services/sync";
+import { AccountType, OpenBankingCashAccountType, LinkAction } from "@/lib/constants";
+
+const accountTypeValues = Object.values(AccountType) as [string, ...string[]];
+const linkActionValues = Object.values(LinkAction) as [string, ...string[]];
 
 const createAccountSchema = z.object({
   name: z.string().min(1, "Name is required"),
-  type: z.string().min(1, "Account Type is required"), // Bank, Trade Republic, Coverflex 1, Coverflex 2, Cash, Crypto Wallet, Broker
+  type: z.enum(accountTypeValues, { required_error: "Account Type is required" }),
   balance: z.number().default(0),
   currency: z.string().default("EUR"),
 });
@@ -17,7 +21,7 @@ const createAccountSchema = z.object({
 const updateAccountSchema = z.object({
   id: z.string(),
   name: z.string().min(1).optional(),
-  type: z.string().optional(),
+  type: z.enum(accountTypeValues).optional(),
   balance: z.number().optional(),
   currency: z.string().optional(),
 });
@@ -90,7 +94,7 @@ const linkAccountsSchema = z.object({
   connectionId: z.string(),
   selections: z.array(z.object({
     pendingAccountId: z.string(),
-    action: z.enum(["CREATE", "LINK", "IGNORE"]),
+    action: z.enum(linkActionValues),
     // For CREATE
     name: z.string().optional(),
     // For LINK
@@ -119,7 +123,7 @@ export const linkAccounts = authActionClient
 
       let linkedAccountIds: string[] = [];
       for (const selection of selections) {
-        if (selection.action === "IGNORE") {
+        if (selection.action === LinkAction.IGNORE) {
           const existsInDb = pendingAccounts.some(a => a.id === selection.pendingAccountId);
           if (existsInDb) {
             await tx.pendingExternalAccount.delete({
@@ -139,14 +143,14 @@ export const linkAccounts = authActionClient
         let transactionImportFrom: Date | null = null;
         let accountIdToMap = "";
 
-        if (selection.action === "CREATE") {
+        if (selection.action === LinkAction.CREATE) {
           transactionImportFrom = null; // Always null for new accounts
           
           // Map cashAccountType to an existing Account type
-          let accountType = "Bank";
-          if (pendingAcc.cashAccountType === "CACC") accountType = "Bank"; // Current Account
-          else if (pendingAcc.cashAccountType === "SVGS") accountType = "Bank"; // Savings
-          else if (pendingAcc.cashAccountType === "CARD") accountType = "Credit Card";
+          let accountType: string = AccountType.BANK;
+          if (pendingAcc.cashAccountType === OpenBankingCashAccountType.CURRENT) accountType = AccountType.BANK; // Current Account
+          else if (pendingAcc.cashAccountType === OpenBankingCashAccountType.SAVINGS) accountType = AccountType.BANK; // Savings
+          else if (pendingAcc.cashAccountType === OpenBankingCashAccountType.CARD) accountType = AccountType.CREDIT_CARD;
           else {
             throw new Error(`Unsupported account type: ${pendingAcc.cashAccountType || "Unknown"}`);
           }
@@ -161,8 +165,7 @@ export const linkAccounts = authActionClient
             }
           });
           accountIdToMap = newAccount.id;
-
-        } else if (selection.action === "LINK") {
+        } else if (selection.action === LinkAction.LINK) {
           transactionImportFrom = selection.importHistory ? null : new Date(); // Use history setting for existing accounts
 
           if (!selection.existingAccountId) throw new Error("Existing account ID required");
