@@ -120,9 +120,12 @@ export const linkAccounts = authActionClient
       let linkedAccountIds: string[] = [];
       for (const selection of selections) {
         if (selection.action === "IGNORE") {
-          await tx.pendingExternalAccount.delete({
-            where: { id: selection.pendingAccountId }
-          });
+          const existsInDb = pendingAccounts.some(a => a.id === selection.pendingAccountId);
+          if (existsInDb) {
+            await tx.pendingExternalAccount.delete({
+              where: { id: selection.pendingAccountId }
+            });
+          }
           continue;
         }
 
