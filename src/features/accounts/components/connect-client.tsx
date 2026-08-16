@@ -22,6 +22,12 @@ export function ConnectClient() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [isConnecting, setIsConnecting] = useState<string | null>(null); // holds ID of bank being connected
+  const [reconnectAccountId, setReconnectAccountId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setReconnectAccountId(params.get("reconnectAccountId"));
+  }, []);
 
   useEffect(() => {
     async function fetchInstitutions() {
@@ -50,7 +56,8 @@ export function ConnectClient() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           institutionName: institution.name,
-          institutionCountry: institution.country
+          institutionCountry: institution.country,
+          reconnectAccountId: reconnectAccountId || undefined,
         })
       });
       

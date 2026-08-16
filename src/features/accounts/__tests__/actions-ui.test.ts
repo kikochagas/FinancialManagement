@@ -104,7 +104,30 @@ describe("Phase 10 UI Actions", () => {
     expect(updated?.balance).toBe(1000); // from mock balance
   });
 
-  test("disconnectBank revokes session and updates status", async () => {
+  test("disconnectBank revokes session and updates status while preserving history", async () => {
+    const accMapInitial = await db.externalAccountMapping.findFirst({ where: { accountId } });
+    
+    // Add a dummy transaction and mapping to ensure it's preserved
+    const tx = await db.transaction.create({
+      data: {
+        userId,
+        accountId,
+        amount: -10,
+        type: "Expense",
+        date: new Date(),
+        description: "Test Tx",
+        tags: ""
+      }
+    });
+    const txMap = await db.externalTransactionMapping.create({
+      data: {
+        transactionId: tx.id,
+        externalAccountMappingId: accMapInitial!.id,
+        providerTransactionId: "ptx-123",
+        dedupKey: "dedup-123"
+      }
+    });
+
     const result = await disconnectBank({ accountId });
     
     expect(result?.data?.success).toBe(true);
@@ -112,6 +135,31 @@ describe("Phase 10 UI Actions", () => {
     const connection = await db.bankConnection.findUnique({ where: { id: connectionId } });
     expect(connection?.status).toBe("REVOKED");
     
+    // Account still exists
+    const acc = await db.account.findUnique({ where: { id: accountId } });
+    expect(acc).not.toBeNull();
+
+    // External account mapping still exists
+    const accMap = await db.externalAccountMapping.findFirst({ where: { accountId } });
+    expect(accMap).not.toBeNull();
+
+    // Transactions and mappings still exist
+    const txAfter = await db.transaction.findUnique({ where: { id: tx.id } });
+    expect(txAfter).not.toBeNull();
+
+    const txMapAfter = await db.externalTransactionMapping.findUnique({ where: { transactionId: tx.id } });
+    expect(txMapAfter).not.toBeNull();
+  });
+
+  test("syncBankAccount failure does not delete account", async () => {
+    const { EnableBankingClient } = await import("@/lib/banking/enable-banking-client");
+    (EnableBankingClient as any).prototype.getBalances.mockRejectedValueOnce(new Error("Sync failed"));
+    
+    const result = await syncBankAccount({ accountId });
+    
+    expect((result?.data as any)?.success).toBe(false);
+    expect((result?.data as any)?.error).toContain("Provider synchronization failed");
+
     // Account still exists
     const acc = await db.account.findUnique({ where: { id: accountId } });
     expect(acc).not.toBeNull();

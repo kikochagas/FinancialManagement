@@ -58,8 +58,7 @@ describe('EnableBankingClient Contract', () => {
       ok: true,
       json: async () => ({ url: 'http://redirect' })
     });
-
-    await client.createAuthorization('Bank', 'PT', 'http://cb', 'state123');
+    const res = await client.createAuthorization('Banco BPI', 'PT', 'http://localhost/cb', 'state123', 90 * 24 * 60 * 60);
 
     // Access the mocked SignJWT instance
     // Instead of mock.results, we just check the methods since we attached them to the class prototype/instances
@@ -103,6 +102,15 @@ describe('EnableBankingClient Contract', () => {
 
     // Allow 1 second tolerance for execution time
     expect(diff).toBeLessThan(1000);
+  });
+
+  it('createAuthorization rejects invalid maximumConsentValiditySeconds', async () => {
+    const client = new EnableBankingClient();
+
+    await expect(client.createAuthorization('Bank', 'PT', 'cb', 'state', 0)).rejects.toThrow("maximumConsentValiditySeconds must be a valid positive finite number.");
+    await expect(client.createAuthorization('Bank', 'PT', 'cb', 'state', -10)).rejects.toThrow("maximumConsentValiditySeconds must be a valid positive finite number.");
+    await expect(client.createAuthorization('Bank', 'PT', 'cb', 'state', NaN)).rejects.toThrow("maximumConsentValiditySeconds must be a valid positive finite number.");
+    await expect(client.createAuthorization('Bank', 'PT', 'cb', 'state', Infinity)).rejects.toThrow("maximumConsentValiditySeconds must be a valid positive finite number.");
   });
 
 

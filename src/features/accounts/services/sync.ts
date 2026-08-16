@@ -15,11 +15,11 @@ export async function internalSyncBalance(accountId: string, userId: string) {
     throw new Error("Unauthorized or invalid account");
   }
 
-  if (account.externalMappings.length === 0) {
+  const mapping = account.externalMappings.find(m => m.disconnectedAt === null);
+  if (!mapping) {
     throw new Error("Account is not linked to any external provider");
   }
 
-  const mapping = account.externalMappings[0];
   const connection = mapping.bankConnection;
 
   if (connection.status !== "CONNECTED" || !connection.providerSessionId) {
@@ -92,11 +92,11 @@ export async function internalSyncTransactions(accountId: string, userId: string
     throw new Error("Unauthorized or invalid account");
   }
 
-  if (account.externalMappings.length === 0) {
+  const mapping = account.externalMappings.find(m => m.disconnectedAt === null);
+  if (!mapping) {
     throw new Error("Account is not linked to any external provider");
   }
 
-  const mapping = account.externalMappings[0];
   const connection = mapping.bankConnection;
 
   if (connection.status !== "CONNECTED" || !mapping.providerAccountUid) {

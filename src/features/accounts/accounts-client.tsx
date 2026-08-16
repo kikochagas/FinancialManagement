@@ -27,7 +27,8 @@ interface Account {
     category: string;
     color: string;
   }>;
-  isLinked: boolean;
+  isBankConnected: boolean;
+  hasBankHistory: boolean;
   institutionName?: string | null;
   connectionStatus?: string | null;
   validUntil?: string | null;
@@ -58,12 +59,12 @@ export function AccountsClient({ data }: AccountsClientProps) {
     balance: "",
   });
 
-  // Edit Account state
   const [editAcc, setEditAcc] = useState({
     id: "",
     name: "",
     type: "",
     balance: "",
+    currency: "",
   });
 
   const handleCreate = (e: React.FormEvent) => {
@@ -88,6 +89,7 @@ export function AccountsClient({ data }: AccountsClientProps) {
       name: acc.name,
       type: acc.type,
       balance: String(acc.balance),
+      currency: acc.currency,
     });
     setIsEditOpen(true);
   };
@@ -100,6 +102,7 @@ export function AccountsClient({ data }: AccountsClientProps) {
         name: editAcc.name,
         type: editAcc.type,
         balance: Number(editAcc.balance) || 0,
+        currency: editAcc.currency,
       });
       if (res?.data?.success) {
         setIsEditOpen(false);
@@ -184,9 +187,8 @@ export function AccountsClient({ data }: AccountsClientProps) {
         return Landmark;
       case AccountType.TRADE_REPUBLIC:
         return Wallet;
-      case "Coverflex 1":
-      case "Coverflex 2":
-      case AccountType.COVERFLEX:
+
+      case AccountType.BENEFITS:
         return CreditCard;
       case AccountType.CRYPTO_WALLET:
         return Coins;
@@ -201,9 +203,8 @@ export function AccountsClient({ data }: AccountsClientProps) {
         return "bg-blue-500/10 border-blue-500/20 text-blue-400";
       case AccountType.TRADE_REPUBLIC:
         return "bg-violet-500/10 border-violet-500/20 text-violet-400";
-      case "Coverflex 1":
-      case "Coverflex 2":
-      case AccountType.COVERFLEX:
+
+      case AccountType.BENEFITS:
         return "bg-pink-500/10 border-pink-500/20 text-pink-400";
       case AccountType.CRYPTO_WALLET:
         return "bg-yellow-500/10 border-yellow-500/20 text-yellow-400";
@@ -310,8 +311,7 @@ export function AccountsClient({ data }: AccountsClientProps) {
                       <SelectContent>
                         <SelectItem value="Bank">Bank</SelectItem>
                         <SelectItem value="Trade Republic">Trade Republic</SelectItem>
-                        <SelectItem value="Coverflex 1">Coverflex Meal (Benefits)</SelectItem>
-                        <SelectItem value="Coverflex 2">Coverflex Benefits</SelectItem>
+                        <SelectItem value={AccountType.BENEFITS}>Benefits (Meal, Flex, etc.)</SelectItem>
                         <SelectItem value="Cash">Cash</SelectItem>
                         <SelectItem value="Crypto Wallet">Crypto Wallet</SelectItem>
                         <SelectItem value="Broker">Broker / Investment</SelectItem>
@@ -357,7 +357,7 @@ export function AccountsClient({ data }: AccountsClientProps) {
                     <div className="flex items-center gap-2">
                       <CardTitle className="text-sm font-semibold text-foreground">{acc.name}</CardTitle>
                       {(() => {
-                        if (acc.isLinked) {
+                        if (acc.isBankConnected) {
                            const isExpired = acc.validUntil && new Date(acc.validUntil) <= new Date();
                            const needsReconnect = isExpired || acc.connectionStatus === "EXPIRED" || acc.connectionStatus === "REVOKED";
                            
@@ -375,6 +375,13 @@ export function AccountsClient({ data }: AccountsClientProps) {
                              );
                            }
                         }
+                        if (acc.hasBankHistory) {
+                          return (
+                            <span className="inline-block text-[9px] px-2 py-0.5 rounded-full border bg-muted text-muted-foreground uppercase font-bold">
+                              Disconnected
+                            </span>
+                          );
+                        }
                         return null;
                       })()}
                     </div>
@@ -382,7 +389,7 @@ export function AccountsClient({ data }: AccountsClientProps) {
                       <span className={cn("inline-block text-[9px] px-2 py-0.5 rounded-full border uppercase font-bold", getAccountBadgeColor(acc.type))}>
                         {acc.type}
                       </span>
-                      {acc.isLinked && acc.institutionName && (
+                      {acc.isBankConnected && acc.institutionName && (
                         <span className="text-[10px] text-muted-foreground">
                           {acc.institutionName}
                         </span>
@@ -398,7 +405,7 @@ export function AccountsClient({ data }: AccountsClientProps) {
                   <div>
                     <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider flex items-center justify-between">
                       Current Balance
-                      {acc.isLinked && acc.lastBalanceSyncedAt && (
+                      {acc.isBankConnected && acc.lastBalanceSyncedAt && (
                         <span className="text-[9px] lowercase font-normal opacity-80">Synced {new Date(acc.lastBalanceSyncedAt).toLocaleDateString()}</span>
                       )}
                     </span>
@@ -436,13 +443,13 @@ export function AccountsClient({ data }: AccountsClientProps) {
               {/* Card Actions */}
               <div className="p-4 border-t border-border bg-muted/20 flex items-center justify-end gap-2 flex-wrap">
                 {(() => {
-                   if (!acc.isLinked) return null;
+                   if (!acc.isBankConnected) return null;
                    const isExpired = acc.validUntil && new Date(acc.validUntil) <= new Date();
                    const needsReconnect = isExpired || acc.connectionStatus === "EXPIRED" || acc.connectionStatus === "REVOKED";
 
                    if (needsReconnect) {
                      return (
-                       <Button variant="outline" size="sm" className="h-7 px-2.5 text-xs text-muted-foreground hover:text-foreground" onClick={() => window.location.assign(`/accounts/connect?institution=${encodeURIComponent(acc.institutionName || "")}`)}>
+                       <Button variant="outline" size="sm" className="h-7 px-2.5 text-xs text-muted-foreground hover:text-foreground" onClick={() => window.location.assign(`/accounts/connect?institution=${encodeURIComponent(acc.institutionName || "")}&reconnectAccountId=${acc.id}`)}>
                          Reconnect bank
                        </Button>
                      );
@@ -451,6 +458,7 @@ export function AccountsClient({ data }: AccountsClientProps) {
                        <Button variant="outline" size="sm" className="h-7 px-2.5 text-xs text-muted-foreground hover:text-foreground" onClick={() => handleSyncBank(acc.id)} disabled={syncingAccountId === acc.id}>
                          <RefreshCw className={cn("h-3.5 w-3.5 mr-1", syncingAccountId === acc.id && "animate-spin")} /> Sync bank
                        </Button>
+
                      );
                    }
                 })()}
@@ -460,30 +468,26 @@ export function AccountsClient({ data }: AccountsClientProps) {
                 </Button>
                 
                 {(() => {
-                   if (!acc.isLinked) {
-                     return (
-                       <Button variant="ghost" size="sm" className="h-7 px-2.5 text-xs text-muted-foreground hover:text-destructive" onClick={() => handleDeleteTrigger(acc.id)}>
-                         <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
-                       </Button>
-                     );
-                   }
-                   
-                   const isExpired = acc.validUntil && new Date(acc.validUntil) <= new Date();
-                   const needsReconnect = isExpired || acc.connectionStatus === "EXPIRED" || acc.connectionStatus === "REVOKED";
-                   
-                   if (!needsReconnect) {
-                     return (
-                       <Button variant="ghost" size="sm" className="h-7 px-2.5 text-xs text-muted-foreground hover:text-destructive" onClick={() => handleDisconnectTrigger(acc)} disabled={isPending || syncingAccountId === acc.id}>
-                         Disconnect
-                       </Button>
-                     );
-                   }
-                   
-                   return (
-                     <Button variant="ghost" size="sm" className="h-7 px-2.5 text-xs text-muted-foreground hover:text-destructive" onClick={() => handleDeleteTrigger(acc.id)}>
-                       <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
-                     </Button>
-                   );
+                  if (!acc.isBankConnected) {
+                    return (
+                      <Button variant="ghost" size="sm" className="h-7 px-2.5 text-xs text-muted-foreground hover:text-destructive" onClick={() => handleDeleteTrigger(acc.id)}>
+                        <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
+                      </Button>
+                    );
+                  }
+                  
+                  const isExpired = acc.validUntil && new Date(acc.validUntil) <= new Date();
+                  const needsReconnect = isExpired || acc.connectionStatus === "EXPIRED" || acc.connectionStatus === "REVOKED";
+                  
+                  if (!needsReconnect) {
+                    return (
+                      <Button variant="ghost" size="sm" className="h-7 px-2.5 text-xs text-muted-foreground hover:text-destructive" onClick={() => handleDisconnectTrigger(acc)} disabled={isPending || syncingAccountId === acc.id}>
+                        Disconnect
+                      </Button>
+                    );
+                  }
+                  
+                  return null;
                 })()}
               </div>
             </Card>
@@ -501,7 +505,7 @@ export function AccountsClient({ data }: AccountsClientProps) {
             </DialogHeader>
 
             <div className="space-y-4 py-4">
-              {selectedAccount?.isLinked && (
+              {selectedAccount?.isBankConnected && (
                 <div className="bg-muted/50 p-3 rounded-md text-sm text-muted-foreground border border-border flex items-start gap-2">
                   <Landmark className="h-4 w-4 mt-0.5 text-emerald-500" />
                   <div>
@@ -523,15 +527,14 @@ export function AccountsClient({ data }: AccountsClientProps) {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-semibold text-muted-foreground uppercase">Account Type</label>
-                  <Select value={editAcc.type} onValueChange={(val) => setEditAcc({ ...editAcc, type: val })} disabled={selectedAccount?.isLinked}>
+                  <Select value={editAcc.type} onValueChange={(val) => setEditAcc({ ...editAcc, type: val })} disabled={selectedAccount?.isBankConnected}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Bank">Bank</SelectItem>
                       <SelectItem value="Trade Republic">Trade Republic</SelectItem>
-                      <SelectItem value="Coverflex 1">Coverflex Meal (Benefits)</SelectItem>
-                      <SelectItem value="Coverflex 2">Coverflex Benefits</SelectItem>
+                      <SelectItem value={AccountType.BENEFITS}>Benefits (Meal, Flex, etc.)</SelectItem>
                       <SelectItem value="Cash">Cash</SelectItem>
                       <SelectItem value="Crypto Wallet">Crypto Wallet</SelectItem>
                       <SelectItem value="Broker">Broker / Investment</SelectItem>
@@ -547,8 +550,22 @@ export function AccountsClient({ data }: AccountsClientProps) {
                     value={editAcc.balance}
                     onChange={(e) => setEditAcc({ ...editAcc, balance: e.target.value })}
                     required
-                    disabled={selectedAccount?.isLinked}
+                    disabled={selectedAccount?.isBankConnected}
                   />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-semibold text-muted-foreground uppercase">Currency</label>
+                  <Select value={editAcc.currency} onValueChange={(val) => setEditAcc({ ...editAcc, currency: val })} disabled={selectedAccount?.isBankConnected}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="EUR">EUR</SelectItem>
+                      <SelectItem value="USD">USD</SelectItem>
+                      <SelectItem value="GBP">GBP</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </div>

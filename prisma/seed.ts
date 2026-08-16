@@ -65,7 +65,7 @@ async function main() {
     data: {
       userId: user.id,
       name: "Coverflex Meal",
-      type: "Coverflex 1",
+      type: "Benefits",
       balance: 0.0,
       currency: "EUR",
     },
@@ -75,7 +75,7 @@ async function main() {
     data: {
       userId: user.id,
       name: "Coverflex Benefits",
-      type: "Coverflex 2",
+      type: "Benefits",
       balance: 0.0,
       currency: "EUR",
     },

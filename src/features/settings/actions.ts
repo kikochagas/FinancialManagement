@@ -83,7 +83,7 @@ export const resetAndSeedDatabase = authActionClient.action(async ({ ctx: { user
       data: {
         userId,
         name: "Coverflex Meal",
-        type: "Coverflex 1",
+        type: "Benefits",
         balance: 0.0,
         currency: "EUR",
       },
@@ -93,7 +93,7 @@ export const resetAndSeedDatabase = authActionClient.action(async ({ ctx: { user
       data: {
         userId,
         name: "Coverflex Benefits",
-        type: "Coverflex 2",
+        type: "Benefits",
         balance: 0.0,
         currency: "EUR",
       },

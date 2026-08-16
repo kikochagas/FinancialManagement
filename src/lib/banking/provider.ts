@@ -85,7 +85,7 @@ export interface BankingProvider {
     institutionCountry: string,
     callbackUrl: string,
     state: string,
-    maximumConsentValiditySeconds?: number
+    maximumConsentValiditySeconds: number
   ): Promise<BankAuthorization>;
 
   completeAuthorization(

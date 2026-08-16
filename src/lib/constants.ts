@@ -1,7 +1,7 @@
 export const AccountType = {
   BANK: "Bank",
   TRADE_REPUBLIC: "Trade Republic",
-  COVERFLEX: "Coverflex",
+  BENEFITS: "Benefits",
   CASH: "Cash",
   CRYPTO_WALLET: "Crypto Wallet",
   BROKER: "Broker",

@@ -33,7 +33,7 @@ model Account {
   userId               String
   user                 User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
   name                 String
-  type                 String // Bank, Trade Republic, Coverflex 1, Coverflex 2, Cash, Crypto Wallet, Broker
+  type                 String // Bank, Trade Republic, Benefits, Cash, Crypto Wallet, Broker
   balance              Float
   currency             String                   @default("EUR")
   createdAt            DateTime                 @default(now())
@@ -171,6 +171,7 @@ model BankAuthorizationState {
   institutionCountry String
   expiresAt          DateTime
   usedAt             DateTime?
+  reconnectAccountId String?
   createdAt          DateTime  @default(now())
 }
 
@@ -226,6 +227,7 @@ model ExternalAccountMapping {
   transactionImportFrom   DateTime? // If null, request max available history. If set, only fetch from this date.
   lastBalanceSyncedAt     DateTime? // Tracking balance sync independently of generic connection status
   lastTransactionSyncedAt DateTime? // Tracking last transaction sync
+  disconnectedAt          DateTime? // null = actively bank-connected; not null = disconnected historical mapping
 
   transactionMappings ExternalTransactionMapping[]
 

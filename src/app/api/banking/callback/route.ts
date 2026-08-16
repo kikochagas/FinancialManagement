@@ -132,9 +132,14 @@ export async function GET(request: Request) {
 
         if (existingMapping) {
           // It's already linked. Reconcile automatically.
+          const shouldReactivate = existingMapping.disconnectedAt !== null && authState.reconnectAccountId === existingMapping.accountId;
+
           await prisma.externalAccountMapping.update({
             where: { id: existingMapping.id },
-            data: { providerAccountUid: pendingData.providerAccountUid }
+            data: { 
+              providerAccountUid: pendingData.providerAccountUid,
+              ...(shouldReactivate ? { disconnectedAt: null } : {})
+            }
           });
           // Do NOT create a pending account.
         } else {

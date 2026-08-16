@@ -95,8 +95,37 @@ export function LinkAccountsClient({ connectionId, institutionName, pendingAccou
           const linkedIds = res.data.linkedAccountIds || [];
           if (linkedIds.length > 0) {
             setIsSyncing(true);
+            let anySuccess = false;
+            let anyPartial = false;
+            let anyReauth = false;
+            let anyError = false;
+
             for (const accId of linkedIds) {
-              await syncBankAccount({ accountId: accId });
+              const syncRes = await syncBankAccount({ accountId: accId });
+              if (syncRes?.data) {
+                const data = syncRes.data;
+                if ("reauthRequired" in data && data.reauthRequired) {
+                  anyReauth = true;
+                } else if ("success" in data && data.success) {
+                  anySuccess = true;
+                } else if ("partial" in data && data.partial) {
+                  anyPartial = true;
+                } else {
+                  anyError = true;
+                }
+              } else {
+                anyError = true;
+              }
+            }
+            
+            if (anyReauth) {
+              alert("Bank account connected, but authorization must be renewed before it can be synchronized.");
+            } else if (anyError && !anySuccess && !anyPartial) {
+              alert("Bank account connected, but the initial synchronization failed. You can retry from Accounts.");
+            } else if (anyPartial || (anyError && anySuccess)) {
+              alert("Bank account connected, but some data could not be synchronized.");
+            } else {
+              alert("Bank account connected and synchronized.");
             }
           }
           router.push("/accounts");
@@ -247,7 +276,7 @@ export function LinkAccountsClient({ connectionId, institutionName, pendingAccou
                         id={`history-${acc.id}`} 
                         checked={state.importHistory}
                         onCheckedChange={(c: boolean) => handleSelectionChange(acc.id, "importHistory", !!c)}
-                        disabled={state.action === LinkAction.CREATE} // New accounts always sync full history (handled in backend by setting transactionImportFrom = null always? Wait, let's allow it to be toggled for both or force it for CREATE. The requirement says: NEW account: transactionImportFrom = null. We can just disable the checkbox and show it checked for NEW, or let backend force it.)
+                        disabled={state.action === LinkAction.CREATE}
                       />
                       <div className="space-y-1 leading-none">
                         <Label htmlFor={`history-${acc.id}`} className="text-[12px] font-medium leading-none cursor-pointer">

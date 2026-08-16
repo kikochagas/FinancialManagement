@@ -50,7 +50,8 @@ export const updateAccount = authActionClient
     const existing = await db.account.findUnique({ where: { id }, include: { externalMappings: true } });
     if (!existing || existing.userId !== userId) throw new Error("Unauthorized");
 
-    if (existing.externalMappings.length > 0) {
+    const hasActiveMapping = existing.externalMappings.some(m => m.disconnectedAt === null);
+    if (hasActiveMapping) {
       if (data.balance !== undefined && data.balance !== existing.balance) {
          throw new Error("Cannot manually modify the balance of a bank-connected account.");
       }
@@ -76,10 +77,16 @@ export const deleteAccount = authActionClient
   .schema(deleteAccountSchema)
   .action(async ({ parsedInput, ctx: { userId } }) => {
     const account = await db.account.findUnique({ 
-      where: { id: parsedInput.id }
+      where: { id: parsedInput.id },
+      include: { externalMappings: true }
     });
     if (!account) throw new Error("Account not found");
     if (account.userId !== userId) throw new Error("Unauthorized");
+
+    const hasActiveMapping = account.externalMappings && account.externalMappings.some(m => m.disconnectedAt === null);
+    if (hasActiveMapping) {
+      throw new Error("Disconnect the bank account before deleting it.");
+    }
 
     await db.account.delete({
       where: { id: parsedInput.id },
@@ -186,7 +193,7 @@ export const linkAccounts = authActionClient
           }
 
           const hasOtherMapping = existingAccount.externalMappings.some(
-             (m) => m.identificationHash !== pendingAcc.identificationHash
+             (m) => m.identificationHash !== pendingAcc.identificationHash && m.disconnectedAt === null
           );
           if (hasOtherMapping) {
             throw new Error("Account already linked to a different external identity");
@@ -206,7 +213,8 @@ export const linkAccounts = authActionClient
           update: {
             providerAccountUid: pendingAcc.providerAccountUid,
             accountId: accountIdToMap, // In case they update it somehow? The UI prevents this but fine
-            transactionImportFrom: transactionImportFrom
+            transactionImportFrom: transactionImportFrom,
+            disconnectedAt: null
           },
           create: {
             bankConnectionId: connectionId,
@@ -320,36 +328,62 @@ export const disconnectBank = authActionClient
     });
 
     if (!account || account.userId !== userId) throw new Error("Unauthorized or invalid account");
-    if (account.externalMappings.length === 0) throw new Error("Account is not connected to a bank");
 
-    const mapping = account.externalMappings[0];
+    const mapping = account.externalMappings.find(m => m.disconnectedAt === null);
+    if (!mapping) throw new Error("Account is not connected to a bank");
+
     const connection = mapping.bankConnection;
 
     if (connection.userId !== userId) throw new Error("Unauthorized connection");
 
-    if (connection.providerSessionId && connection.status !== "REVOKED" && connection.status !== "EXPIRED") {
-      const client = new EnableBankingClient();
-      try {
-        await client.revokeSession(connection.providerSessionId);
-      } catch (e: any) {
-        if (e.name === "EnableBankingProviderError") {
-          const code = e.body?.error;
-          // terminal states are safe to consider "revoked"
-          if (code === "EXPIRED_SESSION" || code === "REVOKED_SESSION" || code === "CLOSED_SESSION" || code === "NOT_FOUND") {
-            // Safe to proceed to local revocation
+    // 1. Check remaining active mappings on this connection
+    const otherActiveMappingsCount = await db.externalAccountMapping.count({
+      where: {
+        bankConnectionId: connection.id,
+        disconnectedAt: null,
+        id: { not: mapping.id }
+      }
+    });
+
+    if (otherActiveMappingsCount > 0) {
+      // Just mark this mapping as disconnected, leave connection alone
+      await db.externalAccountMapping.update({
+        where: { id: mapping.id },
+        data: { disconnectedAt: new Date() }
+      });
+    } else {
+      // Last active mapping. Revoke session FIRST.
+      if (connection.providerSessionId && connection.status !== "REVOKED" && connection.status !== "EXPIRED") {
+        const client = new EnableBankingClient();
+        try {
+          await client.revokeSession(connection.providerSessionId);
+        } catch (e: any) {
+          if (e.name === "EnableBankingProviderError") {
+            const code = e.body?.error;
+            // terminal states are safe to consider "revoked"
+            if (code === "EXPIRED_SESSION" || code === "REVOKED_SESSION" || code === "CLOSED_SESSION" || code === "NOT_FOUND") {
+              // Safe to proceed to local revocation
+            } else {
+              throw new Error(`Provider failed to revoke: ${code || e.message}`);
+            }
           } else {
-            throw new Error(`Provider failed to revoke: ${code || e.message}`);
+             throw new Error("Provider revocation failed due to a network/application error.");
           }
-        } else {
-           throw new Error("Provider revocation failed due to a network/application error.");
         }
       }
-    }
 
-    await db.bankConnection.update({
-      where: { id: connection.id },
-      data: { status: "REVOKED" }
-    });
+      // If we got here, revocation succeeded or was already revoked/terminal. Commit state.
+      await db.$transaction(async (tx) => {
+        await tx.externalAccountMapping.update({
+          where: { id: mapping.id },
+          data: { disconnectedAt: new Date() }
+        });
+        await tx.bankConnection.update({
+          where: { id: connection.id },
+          data: { status: "REVOKED" }
+        });
+      });
+    }
 
     revalidatePath("/");
     revalidatePath("/accounts");

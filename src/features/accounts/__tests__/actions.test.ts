@@ -47,6 +47,16 @@ describe('Accounts Actions', () => {
       });
       expect(res?.data?.success).toBe(true);
     });
+
+    it('should allow creating multiple Benefits accounts with different names', async () => {
+      mockDb.account.create.mockResolvedValue({ id: 'acc-1', name: 'Meal', type: 'Benefits', balance: 0, currency: 'EUR' });
+      const res1 = await createAccount({ name: 'Meal', type: 'Benefits', balance: 0, currency: 'EUR' });
+      expect(res1?.data?.success).toBe(true);
+      
+      mockDb.account.create.mockResolvedValue({ id: 'acc-2', name: 'Flex', type: 'Benefits', balance: 0, currency: 'EUR' });
+      const res2 = await createAccount({ name: 'Flex', type: 'Benefits', balance: 0, currency: 'EUR' });
+      expect(res2?.data?.success).toBe(true);
+    });
   });
 
   describe('updateAccount', () => {
@@ -68,7 +78,7 @@ describe('Accounts Actions', () => {
     it('rejects changes to balance, currency, or type on linked account', async () => {
       mockDb.account.findUnique.mockResolvedValue({ 
         id: 'acc-1', name: 'Bank', userId: 'test-user-id', balance: 100, currency: 'EUR', type: 'Bank',
-        externalMappings: [{ id: 'm-1' }] 
+        externalMappings: [{ id: 'm-1', disconnectedAt: null }] 
       });
 
       let res = await updateAccount({ id: 'acc-1', balance: 200 });

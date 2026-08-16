@@ -24,28 +24,34 @@ export async function getAccountsData() {
   });
 
   return {
-    accounts: accounts.map((a) => ({
-      id: a.id,
-      name: a.name,
-      type: a.type,
-      balance: a.balance,
-      currency: a.currency,
-      recentTransactions: a.transactions.map((t) => ({
-        id: t.id,
-        date: t.date.toISOString().split("T")[0],
-        description: t.description,
-        type: t.type,
-        amount: t.amount,
-        category: t.category?.name || "Uncategorized",
-        color: t.category?.color || "#94a3b8",
-      })),
-      isLinked: a.externalMappings.length > 0,
-      institutionName: a.externalMappings.length > 0 ? a.externalMappings[0].bankConnection.institutionName : null,
-      connectionStatus: a.externalMappings.length > 0 ? a.externalMappings[0].bankConnection.status : null,
-      validUntil: a.externalMappings.length > 0 ? a.externalMappings[0].bankConnection.validUntil?.toISOString() || null : null,
-      lastBalanceSyncedAt: a.externalMappings.length > 0 ? a.externalMappings[0].lastBalanceSyncedAt?.toISOString() || null : null,
-      lastTransactionSyncedAt: a.externalMappings.length > 0 ? a.externalMappings[0].lastTransactionSyncedAt?.toISOString() || null : null,
-    })),
+    accounts: accounts.map((a) => {
+      const activeMapping = a.externalMappings.find(m => m.disconnectedAt === null);
+      const anyMapping = a.externalMappings.length > 0 ? a.externalMappings[0] : null;
+      
+      return {
+        id: a.id,
+        name: a.name,
+        type: a.type,
+        balance: a.balance,
+        currency: a.currency,
+        recentTransactions: a.transactions.map((t) => ({
+          id: t.id,
+          date: t.date.toISOString().split("T")[0],
+          description: t.description,
+          type: t.type,
+          amount: t.amount,
+          category: t.category?.name || "Uncategorized",
+          color: t.category?.color || "#94a3b8",
+        })),
+        isBankConnected: !!activeMapping,
+        hasBankHistory: a.externalMappings.length > 0,
+        institutionName: activeMapping ? activeMapping.bankConnection.institutionName : (anyMapping ? anyMapping.bankConnection.institutionName : null),
+        connectionStatus: activeMapping ? activeMapping.bankConnection.status : null,
+        validUntil: activeMapping ? activeMapping.bankConnection.validUntil?.toISOString() || null : null,
+        lastBalanceSyncedAt: activeMapping ? activeMapping.lastBalanceSyncedAt?.toISOString() || null : null,
+        lastTransactionSyncedAt: activeMapping ? activeMapping.lastTransactionSyncedAt?.toISOString() || null : null,
+      };
+    }),
   };
 }
 

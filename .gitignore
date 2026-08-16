@@ -31,6 +31,12 @@ yarn-error.log*
 # prisma database
 dev.db
 dev.db-journal
+dev.db-shm
+dev.db-wal
+test.db
+test.db-journal
+test.db-shm
+test.db-wal
 
 # vercel
 .vercel

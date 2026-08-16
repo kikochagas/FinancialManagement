@@ -22,7 +22,7 @@ async function adjustBalances(
 
   if (tx.accountId) {
     const acc = await txDb.account.findUnique({ where: { id: tx.accountId }, include: { externalMappings: true } });
-    if (acc && (!acc.externalMappings || acc.externalMappings.length === 0)) {
+    if (acc && (!acc.externalMappings || !acc.externalMappings.some((m: any) => m.disconnectedAt === null))) {
       if (tx.type === TransactionType.INCOME || tx.type === TransactionType.INTEREST) {
         // Increase account balance
         await txDb.account.update({
@@ -41,7 +41,7 @@ async function adjustBalances(
 
   if (tx.type === "Transfer" && tx.destinationAccountId) {
     const destAcc = await txDb.account.findUnique({ where: { id: tx.destinationAccountId }, include: { externalMappings: true } });
-    if (destAcc && (!destAcc.externalMappings || destAcc.externalMappings.length === 0)) {
+    if (destAcc && (!destAcc.externalMappings || !destAcc.externalMappings.some((m: any) => m.disconnectedAt === null))) {
       // Increase destination account
       await txDb.account.update({
         where: { id: tx.destinationAccountId },
@@ -93,13 +93,13 @@ export const createTransaction = authActionClient
       if (parsedInput.accountId) {
         const acc = await txDb.account.findUnique({ where: { id: parsedInput.accountId }, include: { externalMappings: true } });
         if (!acc || acc.userId !== userId) throw new Error("Invalid or unauthorized account");
-        if (acc.externalMappings.length > 0) throw new Error("Bank-connected account transactions are managed by bank synchronization.");
+        if (acc.externalMappings.some(m => m.disconnectedAt === null)) throw new Error("Bank-connected account transactions are managed by bank synchronization.");
       }
 
       if (parsedInput.type === TransactionType.TRANSFER && parsedInput.destinationAccountId) {
         const dacc = await txDb.account.findUnique({ where: { id: parsedInput.destinationAccountId }, include: { externalMappings: true } });
         if (!dacc || dacc.userId !== userId) throw new Error("Invalid or unauthorized destination account");
-        if (dacc.externalMappings.length > 0) throw new Error("Bank-connected account transactions are managed by bank synchronization.");
+        if (dacc.externalMappings.some(m => m.disconnectedAt === null)) throw new Error("Bank-connected account transactions are managed by bank synchronization.");
       }
 
       if (parsedInput.categoryId) {
@@ -183,10 +183,12 @@ export const updateTransaction = authActionClient
       if (data.accountId !== undefined && data.accountId !== original.accountId && data.accountId !== null) {
         const acc = await txDb.account.findUnique({ where: { id: data.accountId }, include: { externalMappings: true } });
         if (!acc || acc.userId !== userId) throw new Error("Invalid or unauthorized account");
+        if (acc.externalMappings.some(m => m.disconnectedAt === null)) throw new Error("Bank-connected account transactions are managed by bank synchronization.");
       }
       if (data.destinationAccountId !== undefined && data.destinationAccountId !== original.destinationAccountId && data.destinationAccountId !== null) {
         const dacc = await txDb.account.findUnique({ where: { id: data.destinationAccountId }, include: { externalMappings: true } });
         if (!dacc || dacc.userId !== userId) throw new Error("Invalid or unauthorized destination account");
+        if (dacc.externalMappings.some(m => m.disconnectedAt === null)) throw new Error("Bank-connected account transactions are managed by bank synchronization.");
       }
 
       if (data.categoryId) {

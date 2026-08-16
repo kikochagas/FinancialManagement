@@ -126,8 +126,16 @@ export class EnableBankingClient implements BankingProvider {
     institutionCountry: string,
     callbackUrl: string,
     state: string,
-    maximumConsentValiditySeconds: number = 90 * 24 * 60 * 60
+    maximumConsentValiditySeconds: number
   ): Promise<BankAuthorization> {
+    if (
+      !Number.isFinite(maximumConsentValiditySeconds) ||
+      maximumConsentValiditySeconds <= 0
+    ) {
+      throw new Error(
+        "maximumConsentValiditySeconds must be a valid positive finite number."
+      );
+    }
     const validUntilDate = new Date(Date.now() + maximumConsentValiditySeconds * 1000);
     
     const body = {

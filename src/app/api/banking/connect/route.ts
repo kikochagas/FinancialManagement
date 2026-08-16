@@ -12,10 +12,29 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { institutionName, institutionCountry } = body;
+    const { institutionName, institutionCountry, reconnectAccountId } = body;
 
     if (!institutionName || !institutionCountry) {
       return NextResponse.json({ error: "Institution details are required" }, { status: 400 });
+    }
+
+    if (reconnectAccountId) {
+      const existingAccount = await prisma.account.findUnique({
+        where: { id: reconnectAccountId },
+        include: { externalMappings: { include: { bankConnection: true } } }
+      });
+
+      if (!existingAccount || existingAccount.userId !== userId) {
+        return NextResponse.json({ error: "Invalid reconnect account" }, { status: 403 });
+      }
+
+      const hasMatchingMapping = existingAccount.externalMappings.some(
+        m => m.bankConnection.institutionName === institutionName && m.bankConnection.institutionCountry === institutionCountry
+      );
+
+      if (!hasMatchingMapping) {
+        return NextResponse.json({ error: "Account has no historical mapping for this institution" }, { status: 400 });
+      }
     }
 
     const client = new EnableBankingClient();
@@ -36,8 +55,13 @@ export async function POST(request: Request) {
     const stateExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
     const maxValidity = institution.maximumConsentValidity;
-    if (maxValidity === undefined || maxValidity === null) {
-      return NextResponse.json({ error: "Institution maximum consent validity is required but not provided by the provider" }, { status: 400 });
+    if (
+      maxValidity === undefined || 
+      maxValidity === null || 
+      !Number.isFinite(maxValidity) || 
+      maxValidity <= 0
+    ) {
+      return NextResponse.json({ error: "Institution maximum consent validity is required and must be a positive finite number" }, { status: 400 });
     }
 
     const authData = await client.createAuthorization(
@@ -45,7 +69,7 @@ export async function POST(request: Request) {
       institution.country,
       callbackUrl,
       stateStr,
-      institution.maximumConsentValidity
+      maxValidity
     );
 
     await prisma.bankAuthorizationState.create({
@@ -55,6 +79,7 @@ export async function POST(request: Request) {
         institutionName: institution.name,
         institutionCountry: institution.country,
         expiresAt: stateExpiresAt,
+        reconnectAccountId: reconnectAccountId || null,
       }
     });
 
