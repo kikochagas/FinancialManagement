@@ -9,11 +9,24 @@ import { formatCurrency } from "@/lib/utils";
 import * as XLSX from "xlsx";
 import { FileDown, FileUp, Calculator, ShieldCheck, Printer, FileText, CheckCircle2 } from "lucide-react";
 import { parseNumber, parseDate, parseType } from "./utils";
+import { BankImportWizard } from "./bank-import/components/BankImportWizard";
 
 interface ReportsClientProps {
   data: {
     transactions: any[];
-    accounts: any[];
+    accounts: {
+      id: string;
+      name: string;
+      type: string;
+      balance: number;
+      currency: string;
+      isBankConnected: boolean;
+    }[];
+    categories: {
+      id: string;
+      name: string;
+      type: string;
+    }[];
     investments: any[];
     goals: any[];
     taxReservation: {
@@ -433,6 +446,11 @@ export function ReportsClient({ data }: ReportsClientProps) {
                   {importStatus}
                 </div>
               )}
+            </div>
+            
+            <div className="pt-2 border-t border-border mt-4">
+               <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block mb-2">Unstructured Bank Statement Import</span>
+               <BankImportWizard accounts={data.accounts} categories={data.categories} />
             </div>
 
             {/* Print trigger */}

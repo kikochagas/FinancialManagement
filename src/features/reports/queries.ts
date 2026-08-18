@@ -14,7 +14,11 @@ export async function getReportsData() {
     orderBy: { date: "desc" },
   });
 
-  const accounts = await db.account.findMany({ where: { userId } });
+  const accounts = await db.account.findMany({ 
+    where: { userId },
+    include: { externalMappings: true }
+  });
+  const categories = await db.category.findMany({ where: { userId } });
   const investments = await db.investment.findMany({ where: { userId } });
   const goals = await db.goal.findMany({ where: { userId } });
   const taxReservations = await db.taxReservation.findMany({ where: { userId } });
@@ -31,10 +35,17 @@ export async function getReportsData() {
       notes: t.notes || "",
     })),
     accounts: accounts.map((a) => ({
+      id: a.id,
       name: a.name,
       type: a.type,
       balance: a.balance,
       currency: a.currency,
+      isBankConnected: a.externalMappings.some((m) => m.disconnectedAt === null),
+    })),
+    categories: categories.map((c) => ({
+      id: c.id,
+      name: c.name,
+      type: c.type,
     })),
     investments: investments.map((i) => ({
       name: i.name,
