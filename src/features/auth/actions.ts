@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { loginUser, logoutUser } from "@/lib/auth";
 import bcrypt from "bcryptjs";
 import { redirect } from "next/navigation";
+import { ensureDefaultCategories } from "@/features/categories/default-categories";
 
 export async function login(formData: FormData) {
   const email = formData.get("email") as string;
@@ -58,6 +59,8 @@ export async function register(formData: FormData) {
       }
     }
   });
+
+  await ensureDefaultCategories(user.id);
 
   await loginUser(user.id);
   redirect("/");

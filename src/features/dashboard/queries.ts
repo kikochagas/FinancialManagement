@@ -56,11 +56,11 @@ export async function getDashboardData() {
 
   // Monthly stats
   const currentIncome = currentMonthTransactions
-    .filter((t) => t.type === "Income")
+    .filter((t) => t.direction === "Credit" && t.destinationAccountId === null)
     .reduce((acc, t) => acc + t.amount, 0);
 
   const currentExpenses = currentMonthTransactions
-    .filter((t) => t.type === "Expense")
+    .filter((t) => t.direction === "Debit" && t.destinationAccountId === null)
     .reduce((acc, t) => acc + Math.abs(t.amount), 0);
 
   const savingsRate = currentIncome > 0 ? ((currentIncome - currentExpenses) / currentIncome) * 100 : 0;
@@ -126,7 +126,7 @@ export async function getDashboardData() {
   // Chart data: Expenses by Category
   const categoryExpensesMap: Record<string, number> = {};
   currentMonthTransactions
-    .filter((t) => t.type === "Expense" && t.categoryId)
+    .filter((t) => t.direction === "Debit" && t.destinationAccountId === null && t.categoryId)
     .forEach((t) => {
       const cat = categories.find((c) => c.id === t.categoryId);
       if (cat) {
@@ -143,7 +143,7 @@ export async function getDashboardData() {
   // Chart data: Income by Source
   const sourceIncomeMap: Record<string, number> = {};
   currentMonthTransactions
-    .filter((t) => t.type === "Income" && t.categoryId)
+    .filter((t) => t.direction === "Credit" && t.destinationAccountId === null && t.categoryId)
     .forEach((t) => {
       const cat = categories.find((c) => c.id === t.categoryId);
       if (cat) {
@@ -186,7 +186,7 @@ export async function getDashboardData() {
       id: t.id,
       date: t.date.toISOString(),
       description: t.description,
-      type: t.type,
+      direction: t.direction,
       amount: t.amount,
       category: t.category?.name || "Uncategorized",
       color: t.category?.color || "#94a3b8",
@@ -212,8 +212,8 @@ export async function getDashboardData() {
         return tTime >= mStart && tTime <= mEnd;
       });
 
-      const mInc = mTransactions.filter(t => t.type === "Income").reduce((sum, t) => sum + t.amount, 0);
-      const mExp = mTransactions.filter(t => t.type === "Expense").reduce((sum, t) => sum + Math.abs(t.amount), 0);
+      const mInc = mTransactions.filter(t => t.direction === "Credit" && t.destinationAccountId === null).reduce((sum, t) => sum + t.amount, 0);
+      const mExp = mTransactions.filter(t => t.direction === "Debit" && t.destinationAccountId === null).reduce((sum, t) => sum + Math.abs(t.amount), 0);
       
       return { month: mName, Income: mInc, Expenses: mExp };
     }),

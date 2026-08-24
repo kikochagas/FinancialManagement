@@ -40,7 +40,7 @@ describe("importBankStatementAction", () => {
     const result = await importBankStatementAction({
       accountId: "acc_1",
       updateBalance: false,
-      transactions: [{ bookingDate: "2026-08-12", description: "test", amount: 10, type: "Income" }]
+      transactions: [{ bookingDate: "2026-08-12", description: "test", amount: 10, direction: "Credit" }]
     });
 
     // The safe-action client returns a serverError when an error is thrown
@@ -64,7 +64,7 @@ describe("importBankStatementAction", () => {
     const result = await importBankStatementAction({
       accountId: "acc_1",
       updateBalance: false,
-      transactions: [{ bookingDate: "2026-08-12", description: "test", amount: 10, type: "Income" }]
+      transactions: [{ bookingDate: "2026-08-12", description: "test", amount: 10, direction: "Credit" }]
     });
 
     expect(result?.data?.success).toBe(true);
@@ -78,7 +78,7 @@ describe("importBankStatementAction", () => {
       accountId: "acc_1",
       updateBalance: false,
       transactions: [
-        { bookingDate: "2026-08-12", description: "test", amount: 10, type: "Income", currency: "EUR" }
+        { bookingDate: "2026-08-12", description: "test", amount: 10, direction: "Credit", currency: "EUR" }
       ]
     });
 
@@ -92,7 +92,7 @@ describe("importBankStatementAction", () => {
       accountId: "acc_1",
       updateBalance: false,
       transactions: [
-        { bookingDate: "2026-08-12", description: "test", amount: 10, type: "Income", currency: "USD" }
+        { bookingDate: "2026-08-12", description: "test", amount: 10, direction: "Credit", currency: "USD" }
       ]
     });
 
@@ -106,8 +106,8 @@ describe("importBankStatementAction", () => {
       accountId: "acc_1",
       updateBalance: false,
       transactions: [
-        { bookingDate: "2026-08-12", description: "test1", amount: 10, type: "Income", currency: "EUR" },
-        { bookingDate: "2026-08-12", description: "test2", amount: 10, type: "Income", currency: "USD" }
+        { bookingDate: "2026-08-12", description: "test1", amount: 10, direction: "Credit", currency: "EUR" },
+        { bookingDate: "2026-08-12", description: "test2", amount: 10, direction: "Credit", currency: "USD" }
       ]
     });
 
@@ -122,8 +122,8 @@ describe("importBankStatementAction", () => {
       accountId: "acc_1",
       updateBalance: false,
       transactions: [
-        { bookingDate: "2026-08-12", description: "test1", amount: 10, type: "Income", currency: "EUR" },
-        { bookingDate: "2026-08-12", description: "test2", amount: 10, type: "Income", currency: null } // derived from bare $ or absent
+        { bookingDate: "2026-08-12", description: "test1", amount: 10, direction: "Credit", currency: "EUR" },
+        { bookingDate: "2026-08-12", description: "test2", amount: 10, direction: "Credit", currency: null } // derived from bare $ or absent
       ]
     });
 
@@ -146,7 +146,7 @@ describe("importBankStatementAction", () => {
         accountId: "acc_1",
         updateBalance: true,
         endingBalance: Infinity,
-        transactions: [{ bookingDate: "2026-08-12", description: "test", amount: 10, type: "Income" }]
+        transactions: [{ bookingDate: "2026-08-12", description: "test", amount: 10, direction: "Credit" }]
       });
       expect(result?.validationErrors?.endingBalance?._errors).toBeDefined();
     });
@@ -156,7 +156,7 @@ describe("importBankStatementAction", () => {
         accountId: "acc_1",
         updateBalance: true,
         endingBalance: -Infinity,
-        transactions: [{ bookingDate: "2026-08-12", description: "test", amount: 10, type: "Income" }]
+        transactions: [{ bookingDate: "2026-08-12", description: "test", amount: 10, direction: "Credit" }]
       });
       expect(result?.validationErrors?.endingBalance?._errors).toBeDefined();
     });
@@ -166,7 +166,7 @@ describe("importBankStatementAction", () => {
         accountId: "acc_1",
         updateBalance: true,
         endingBalance: NaN,
-        transactions: [{ bookingDate: "2026-08-12", description: "test", amount: 10, type: "Income" }]
+        transactions: [{ bookingDate: "2026-08-12", description: "test", amount: 10, direction: "Credit" }]
       });
       expect(result?.validationErrors?.endingBalance?._errors).toBeDefined();
     });
@@ -179,7 +179,7 @@ describe("importBankStatementAction", () => {
         accountId: "acc_1",
         updateBalance: true,
         endingBalance: 123.45,
-        transactions: [{ bookingDate: "2026-08-12", description: "test", amount: 10, type: "Income" }]
+        transactions: [{ bookingDate: "2026-08-12", description: "test", amount: 10, direction: "Credit" }]
       });
       expect(result?.data?.success).toBe(true);
     });

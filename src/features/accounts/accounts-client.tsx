@@ -22,7 +22,7 @@ interface Account {
     id: string;
     date: string;
     description: string;
-    type: string;
+    direction: string;
     amount: number;
     category: string;
     color: string;
@@ -426,8 +426,8 @@ export function AccountsClient({ data }: AccountsClientProps) {
                             <span className="font-semibold text-card-foreground truncate max-w-[140px]">{tx.description}</span>
                             <span className="text-[9px] text-muted-foreground mt-0.5 font-mono">{tx.date}</span>
                           </div>
-                          <span className={cn("font-bold text-[11px]", tx.type === "Income" || tx.type === "Interest" ? "text-emerald-500 dark:text-emerald-400" : "text-foreground")}>
-                            {tx.type === "Income" || tx.type === "Interest" ? "+" : "-"}
+                          <span className={cn("font-bold text-[11px]", tx.direction === "Credit" ? "text-emerald-500 dark:text-emerald-400" : "text-foreground")}>
+                            {tx.direction === "Credit" ? "+" : "-"}
                             {formatCurrency(tx.amount)}
                           </span>
                         </div>

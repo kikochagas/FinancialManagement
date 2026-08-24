@@ -27,7 +27,7 @@ export async function getReportsData() {
     transactions: transactions.map((t) => ({
       date: t.date.toISOString().split("T")[0],
       description: t.description,
-      type: t.type,
+      direction: t.direction,
       amount: t.amount,
       accountName: t.account?.name || "External",
       categoryName: t.category?.name || "",
@@ -45,7 +45,6 @@ export async function getReportsData() {
     categories: categories.map((c) => ({
       id: c.id,
       name: c.name,
-      type: c.type,
     })),
     investments: investments.map((i) => ({
       name: i.name,

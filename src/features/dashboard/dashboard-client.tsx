@@ -58,7 +58,7 @@ interface DashboardClientProps {
       id: string;
       date: string;
       description: string;
-      type: string;
+      direction: string;
       amount: number;
       category: string;
       color: string;
@@ -363,8 +363,8 @@ export function DashboardClient({ data }: DashboardClientProps) {
                     <span className="text-[10px] text-muted-foreground mt-0.5">{tx.account}</span>
                   </div>
                   <div className="flex flex-col items-end">
-                    <span className={cn("text-xs font-bold", tx.type === "Income" || tx.type === "Interest" ? "text-emerald-500 dark:text-emerald-400" : "text-foreground")}>
-                      {tx.type === "Income" || tx.type === "Interest" ? "+" : "-"}
+                    <span className={cn("text-xs font-bold", tx.direction === "Credit" ? "text-emerald-500 dark:text-emerald-400" : "text-foreground")}>
+                      {tx.direction === "Credit" ? "+" : "-"}
                       {formatCurrency(tx.amount)}
                     </span>
                     <span

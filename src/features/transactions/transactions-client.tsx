@@ -18,8 +18,9 @@ import { Search, Plus, Filter, Trash2, Edit2, Check, X, ArrowUpDown, ChevronLeft
 interface Transaction {
   id: string;
   date: string;
+  createdAt: string;
   description: string;
-  type: "Income" | "Expense" | "Transfer" | "Investment" | "Interest" | "Tax" | string;
+  direction: "Debit" | "Credit";
   amount: number;
   accountId: string;
   accountName: string;
@@ -40,7 +41,7 @@ interface TransactionsClientProps {
   };
 }
 
-type SortField = "date" | "description" | "type" | "amount";
+type SortField = "date" | "description" | "direction" | "amount";
 type SortOrder = "asc" | "desc";
 
 export function TransactionsClient({ data }: TransactionsClientProps) {
@@ -51,7 +52,7 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
 
   // Filters & Search
   const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [directionFilter, setDirectionFilter] = useState<string>("all");
   const [accountFilter, setAccountFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
 
@@ -68,13 +69,13 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
 
   // Inline Editing state
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<Partial<Transaction>>({});
+  const [editForm, setEditForm] = useState<Partial<Omit<Transaction, "direction">> & { direction?: "Debit" | "Credit" | "Transfer" }>({});
 
   // New Transaction Form State
   const [newTx, setNewTx] = useState({
     date: new Date().toISOString().split("T")[0],
     description: "",
-    type: "Expense" as any,
+    direction: "Debit" as any,
     amount: "",
     accountId: data.accounts[0]?.id || "none",
     categoryId: data.categories[0]?.id || "",
@@ -111,22 +112,26 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
   // Inline Edit Trigger
   const startEdit = (tx: Transaction) => {
     setEditingId(tx.id);
-    setEditForm({ ...tx });
+    setEditForm({ 
+      ...tx, 
+      direction: tx.destinationAccountId ? "Transfer" : tx.direction 
+    } as any);
   };
 
   // Save Inline Edit
   const saveEdit = () => {
     if (!editForm.id) return;
     startTransition(async () => {
+      const isTransfer = editForm.direction === "Transfer";
       const res = await updateTransaction({
         id: editForm.id!,
         description: editForm.description,
         amount: Number(editForm.amount),
         date: editForm.date,
-        type: editForm.type as any,
+        direction: (isTransfer ? "Debit" : editForm.direction) as "Debit" | "Credit" | undefined,
         accountId: editForm.accountId === "none" ? undefined : editForm.accountId,
         categoryId: editForm.categoryId || null,
-        destinationAccountId: editForm.destinationAccountId || null,
+        destinationAccountId: isTransfer && editForm.destinationAccountId ? editForm.destinationAccountId : null,
         tags: editForm.tags || "",
         notes: editForm.notes
       });
@@ -159,14 +164,15 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
     startTransition(async () => {
+      const isTransfer = newTx.direction === "Transfer";
       const res = await createTransaction({
         date: newTx.date,
         description: newTx.description,
-        type: newTx.type,
+        direction: (isTransfer ? "Debit" : newTx.direction) as "Debit" | "Credit",
         amount: Number(newTx.amount),
         accountId: newTx.accountId === "none" ? undefined : newTx.accountId,
-        categoryId: newTx.type === "Transfer" ? null : newTx.categoryId || null,
-        destinationAccountId: newTx.type === "Transfer" ? newTx.destinationAccountId : null,
+        categoryId: newTx.categoryId || null,
+        destinationAccountId: isTransfer && newTx.destinationAccountId ? newTx.destinationAccountId : null,
         tags: newTx.tags,
         notes: newTx.notes
       });
@@ -175,7 +181,7 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
         setNewTx({
           date: new Date().toISOString().split("T")[0],
           description: "",
-          type: "Expense",
+          direction: "Debit",
           amount: "",
           accountId: data.accounts[0]?.id || "",
           categoryId: data.categories[0]?.id || "",
@@ -192,17 +198,21 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
     const matchesSearch =
       tx.description.toLowerCase().includes(search.toLowerCase()) ||
       tx.tags.toLowerCase().includes(search.toLowerCase());
-    const matchesType = typeFilter === "all" || tx.type === typeFilter;
+    const matchesDirection = directionFilter === "all" || tx.direction === directionFilter;
     const matchesAccount = accountFilter === "all" || tx.accountId === accountFilter;
     const matchesCategory = categoryFilter === "all" || tx.categoryId === categoryFilter;
-    return matchesSearch && matchesType && matchesAccount && matchesCategory;
+    return matchesSearch && matchesDirection && matchesAccount && matchesCategory;
   });
 
   // Sorting Logic
   const sorted = [...filtered].sort((a, b) => {
     let multiplier = sortOrder === "asc" ? 1 : -1;
     if (sortField === "date") {
-      return (new Date(a.date).getTime() - new Date(b.date).getTime()) * multiplier;
+      const dateDiff = new Date(a.date).getTime() - new Date(b.date).getTime();
+      if (dateDiff === 0 && a.createdAt && b.createdAt) {
+        return (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) * multiplier;
+      }
+      return dateDiff * multiplier;
     }
     if (sortField === "amount") {
       return (a.amount - b.amount) * multiplier;
@@ -210,8 +220,8 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
     if (sortField === "description") {
       return a.description.localeCompare(b.description) * multiplier;
     }
-    if (sortField === "type") {
-      return a.type.localeCompare(b.type) * multiplier;
+    if (sortField === "direction") {
+      return a.direction.localeCompare(b.direction) * multiplier;
     }
     return 0;
   });
@@ -271,24 +281,21 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
                   {/* Row 2: Type & Account */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-[11px] font-semibold text-muted-foreground uppercase">Type</label>
-                      <Select value={newTx.type} onValueChange={(val) => setNewTx({ ...newTx, type: val as any })}>
+                      <label className="text-[11px] font-semibold text-muted-foreground uppercase">Direction</label>
+                      <Select value={newTx.direction} onValueChange={(val) => setNewTx({ ...newTx, direction: val as any })}>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select type" />
+                          <SelectValue placeholder="Select direction" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Income">Income</SelectItem>
-                          <SelectItem value="Expense">Expense</SelectItem>
-                          <SelectItem value="Transfer">Transfer</SelectItem>
-                          <SelectItem value="Investment">Investment</SelectItem>
-                          <SelectItem value="Interest">Interest</SelectItem>
-                          <SelectItem value="Tax">Tax</SelectItem>
+                          <SelectItem value="Debit">Debit</SelectItem>
+                          <SelectItem value="Credit">Credit</SelectItem>
+                          <SelectItem value="Transfer">Internal Transfer</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-[11px] font-semibold text-muted-foreground uppercase">Account Source</label>
+                      <label className="text-[11px] font-semibold text-muted-foreground uppercase">Account</label>
                       <Select value={newTx.accountId} onValueChange={(val) => setNewTx({ ...newTx, accountId: val })}>
                         <SelectTrigger>
                           <SelectValue placeholder="Select account" />
@@ -304,35 +311,39 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
                   </div>
 
                   {/* Row 3: Category / Destination Account */}
-                  {newTx.type === "Transfer" ? (
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-semibold text-muted-foreground uppercase">Destination Account</label>
-                      <Select value={newTx.destinationAccountId} onValueChange={(val) => setNewTx({ ...newTx, destinationAccountId: val })}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select destination account" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {data.accounts.filter(a => a.id !== newTx.accountId).map((ac) => (
-                            <SelectItem key={ac.id} value={ac.id}>{ac.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  ) : data.categories.length > 0 ? (
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-semibold text-muted-foreground uppercase">Category</label>
-                      <Select value={newTx.categoryId} onValueChange={(val) => setNewTx({ ...newTx, categoryId: val })}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {data.categories.map((cat) => (
-                            <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  ) : null}
+                  <div className="grid grid-cols-2 gap-4">
+                    {data.categories.length > 0 && (
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-semibold text-muted-foreground uppercase">Category</label>
+                        <Select value={newTx.categoryId} onValueChange={(val) => setNewTx({ ...newTx, categoryId: val })}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select category" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {data.categories.map((cat) => (
+                              <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                    {newTx.direction === "Transfer" && (
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-semibold text-muted-foreground uppercase">Transfer To (Optional)</label>
+                        <Select value={newTx.destinationAccountId} onValueChange={(val) => setNewTx({ ...newTx, destinationAccountId: val === "none" ? "" : val })}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Internal transfer to..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Not an internal transfer</SelectItem>
+                            {data.accounts.filter(a => a.id !== newTx.accountId).map((ac) => (
+                              <SelectItem key={ac.id} value={ac.id}>{ac.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                  </div>
 
                   {/* Row 4: Tags & Notes */}
                   <div className="grid grid-cols-2 gap-4">
@@ -377,18 +388,14 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
           <div className="flex flex-wrap items-center gap-3">
             {/* Filter by Type */}
             <div className="w-[140px]">
-              <Select value={typeFilter} onValueChange={(val) => { setTypeFilter(val); setCurrentPage(1); }}>
+              <Select value={directionFilter} onValueChange={(val) => { setDirectionFilter(val); setCurrentPage(1); }}>
                 <SelectTrigger className="h-9">
-                  <SelectValue placeholder="All Types" />
+                  <SelectValue placeholder="All Directions" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="Income">Income</SelectItem>
-                  <SelectItem value="Expense">Expense</SelectItem>
-                  <SelectItem value="Transfer">Transfer</SelectItem>
-                  <SelectItem value="Investment">Investment</SelectItem>
-                  <SelectItem value="Interest">Interest</SelectItem>
-                  <SelectItem value="Tax">Tax</SelectItem>
+                  <SelectItem value="all">All Directions</SelectItem>
+                  <SelectItem value="Debit">Debit</SelectItem>
+                  <SelectItem value="Credit">Credit</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -451,9 +458,9 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
                       Description <ArrowUpDown className="h-3 w-3" />
                     </div>
                   </th>
-                  <th className="p-4 cursor-pointer select-none" onClick={() => handleSort("type")}>
+                  <th className="p-4 cursor-pointer select-none" onClick={() => handleSort("direction")}>
                     <div className="flex items-center gap-1.5 hover:text-foreground">
-                      Type <ArrowUpDown className="h-3 w-3" />
+                      Direction <ArrowUpDown className="h-3 w-3" />
                     </div>
                   </th>
                   <th className="p-4">Account</th>
@@ -517,24 +524,21 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
                         )}
                       </td>
 
-                      {/* Type */}
+                      {/* Direction */}
                       <td className="p-4 text-xs font-medium">
                         {isEditing ? (
                           <div className="w-[110px]">
                             <Select
-                              value={editForm.type}
-                              onValueChange={(val) => setEditForm({ ...editForm, type: val })}
+                              value={editForm.direction}
+                              onValueChange={(val) => setEditForm({ ...editForm, direction: val as any })}
                             >
                               <SelectTrigger className="h-8 text-xs py-0.5">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="Income">Income</SelectItem>
-                                <SelectItem value="Expense">Expense</SelectItem>
-                                <SelectItem value="Transfer">Transfer</SelectItem>
-                                <SelectItem value="Investment">Investment</SelectItem>
-                                <SelectItem value="Interest">Interest</SelectItem>
-                                <SelectItem value="Tax">Tax</SelectItem>
+                                <SelectItem value="Debit">Debit</SelectItem>
+                                <SelectItem value="Credit">Credit</SelectItem>
+                                <SelectItem value="Transfer">Internal Transfer</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
@@ -542,15 +546,11 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
                           <span
                             className={cn(
                               "px-2 py-0.5 rounded text-[10px] font-bold border",
-                              tx.type === "Income" && "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400",
-                              tx.type === "Expense" && "bg-accent border-border text-foreground",
-                              tx.type === "Transfer" && "bg-indigo-500/10 border-indigo-500/20 text-indigo-600 dark:text-indigo-400",
-                              tx.type === "Investment" && "bg-blue-500/10 border-blue-500/20 text-blue-600 dark:text-blue-400",
-                              tx.type === "Interest" && "bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400",
-                              tx.type === "Tax" && "bg-rose-500/10 border-rose-500/20 text-rose-600 dark:text-rose-400"
+                              tx.direction === "Credit" && "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400",
+                              tx.direction === "Debit" && "bg-accent border-border text-foreground"
                             )}
                           >
-                            {tx.type}
+                            {tx.direction}
                           </span>
                         )}
                       </td>
@@ -582,40 +582,44 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
                       {/* Category */}
                       <td className="p-4 text-xs font-semibold">
                         {isEditing ? (
-                          tx.type === "Transfer" ? (
-                            <div className="w-[130px]">
-                              <Select
-                                value={editForm.destinationAccountId}
-                                onValueChange={(val) => setEditForm({ ...editForm, destinationAccountId: val })}
-                              >
-                                <SelectTrigger className="h-8 text-xs py-0.5">
-                                  <SelectValue placeholder="Destination" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {data.accounts.filter(a => a.id !== editForm.accountId).map((a) => (
-                                    <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          ) : data.categories.length > 0 ? (
-                            <div className="w-[130px]">
-                              <Select
-                                value={editForm.categoryId}
-                                onValueChange={(val) => setEditForm({ ...editForm, categoryId: val })}
-                              >
-                                <SelectTrigger className="h-8 text-xs py-0.5">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {data.categories.map((c) => (
-                                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          ) : null
-                        ) : tx.type === "Transfer" ? (
+                          <div className="flex gap-2">
+                            {data.categories.length > 0 && (
+                              <div className="w-[130px]">
+                                <Select
+                                  value={editForm.categoryId || undefined}
+                                  onValueChange={(val) => setEditForm({ ...editForm, categoryId: val })}
+                                >
+                                  <SelectTrigger className="h-8 text-xs py-0.5">
+                                    <SelectValue placeholder="Category" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {data.categories.map((c) => (
+                                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            )}
+                            {editForm.direction === "Transfer" && (
+                              <div className="w-[130px]">
+                                <Select
+                                  value={editForm.destinationAccountId || "none"}
+                                  onValueChange={(val) => setEditForm({ ...editForm, destinationAccountId: val === "none" ? undefined : val })}
+                                >
+                                  <SelectTrigger className="h-8 text-xs py-0.5">
+                                    <SelectValue placeholder="Destination" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="none">Not a transfer</SelectItem>
+                                    {data.accounts.filter(a => a.id !== editForm.accountId).map((a) => (
+                                      <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            )}
+                          </div>
+                        ) : tx.destinationAccountId ? (
                           <span className="text-muted-foreground">→ {tx.destinationAccountName}</span>
                         ) : (
                           <span style={{ color: tx.categoryColor }}>{tx.categoryName}</span>
@@ -653,8 +657,8 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
                             className="h-8 py-0.5 px-2 text-xs text-right font-mono w-[100px]"
                           />
                         ) : (
-                          <span className={cn(tx.type === "Income" || tx.type === "Interest" ? "text-emerald-500 dark:text-emerald-400" : "text-foreground")}>
-                            {tx.type === "Income" || tx.type === "Interest" ? "+" : "-"}
+                          <span className={cn(tx.direction === "Credit" ? "text-emerald-500 dark:text-emerald-400" : "text-foreground")}>
+                            {tx.direction === "Credit" ? "+" : "-"}
                             {formatCurrency(Math.abs(tx.amount))}
                           </span>
                         )}

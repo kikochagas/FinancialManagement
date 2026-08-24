@@ -98,22 +98,22 @@ describe("Bank Import Strict Requirements", () => {
     };
     const { transactions } = buildTransactions(rows, 0, mapping);
     
-    expect(transactions[0].type).toBe("Expense");
+    expect(transactions[0].direction).toBe("Debit");
     expect(transactions[0].amount).toBe(128.00);
     
-    expect(transactions[1].type).toBe("Income");
+    expect(transactions[1].direction).toBe("Credit");
     expect(transactions[1].amount).toBe(128.00);
     
-    expect(transactions[2].type).toBe(null); // Conflict
+    expect(transactions[2].direction).toBe(null); // Conflict
     expect(transactions[2].warnings.some(w => w.includes("conflict") || w.includes("Conflict"))).toBe(true);
 
-    expect(transactions[3].type).toBe(null); // Conflict
+    expect(transactions[3].direction).toBe(null); // Conflict
     expect(transactions[3].warnings.some(w => w.includes("conflict") || w.includes("Conflict"))).toBe(true);
   });
 
   it("Debit + Credit both populated -> review", () => {
-    const { type, warnings } = resolveAmount(undefined, "10", "20");
-    expect(type).toBe(null);
+    const { direction, warnings } = resolveAmount(undefined, "10", "20");
+    expect(direction).toBe(null);
     expect(warnings.some(w => w.includes("Both Debit and Credit"))).toBe(true);
   });
 });

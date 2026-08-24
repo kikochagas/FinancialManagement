@@ -182,17 +182,23 @@ export function BankImportWizard({ accounts, categories }: { accounts: any[], ca
           bookingDate: t.bookingDate!,
           description: t.description,
           amount: t.amount!,
-          type: t.type as "Income" | "Expense"
+          direction: t.direction as "Debit" | "Credit"
         }))
       });
       
       if (res?.data?.success) {
         const duplicates = res.data.duplicateIndices;
+        const categoriesMap = res.data.categories;
         setTransactions(prev => prev.map((t, i) => {
+          let updated = { ...t };
           if (duplicates.includes(i)) {
-            return { ...t, isProbableDuplicate: true, import: false };
+            updated = { ...updated, isProbableDuplicate: true, import: false };
           }
-          return t;
+          if (categoriesMap && categoriesMap[i] && !updated.categoryId) {
+            updated.categoryId = categoriesMap[i];
+            (updated as any).isCategorySuggested = true;
+          }
+          return updated;
         }));
       }
     } catch (err) {
@@ -215,7 +221,7 @@ export function BankImportWizard({ accounts, categories }: { accounts: any[], ca
       updates.bookingDate !== undefined || 
       updates.description !== undefined || 
       updates.amount !== undefined || 
-      updates.type !== undefined
+      updates.direction !== undefined
     ) {
       isProbableDuplicate = false;
     }
@@ -502,7 +508,7 @@ export function BankImportWizard({ accounts, categories }: { accounts: any[], ca
                     <th className="p-2 text-left">Import</th>
                     <th className="p-2 text-left">Date</th>
                     <th className="p-2 text-left">Description</th>
-                    <th className="p-2 text-left">Type</th>
+                    <th className="p-2 text-left">Direction</th>
                     <th className="p-2 text-right">Amount</th>
                     <th className="p-2 text-left">Category</th>
                   </tr>
@@ -537,12 +543,12 @@ export function BankImportWizard({ accounts, categories }: { accounts: any[], ca
                       <td className="p-2">
                          <select 
                           className="border rounded p-1 text-xs"
-                          value={tx.type || ""}
-                          onChange={(e) => revalidateRow(idx, { type: e.target.value as "Income"|"Expense" })}
+                          value={tx.direction || ""}
+                          onChange={(e) => revalidateRow(idx, { direction: e.target.value as "Credit"|"Debit" })}
                          >
                            <option value="">--</option>
-                           <option value="Income">Income</option>
-                           <option value="Expense">Expense</option>
+                           <option value="Credit">Credit (+)</option>
+                           <option value="Debit">Debit (-)</option>
                          </select>
                       </td>
                       <td className="p-2 text-right">
@@ -556,14 +562,19 @@ export function BankImportWizard({ accounts, categories }: { accounts: any[], ca
                         />
                       </td>
                       <td className="p-2">
-                         <select 
-                          className="border rounded p-1 text-xs w-24"
-                          value={tx.categoryId || ""}
-                          onChange={(e) => revalidateRow(idx, { categoryId: e.target.value || undefined })}
-                         >
-                           <option value="">Uncategorized</option>
-                           {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                         </select>
+                         <div className="flex flex-col gap-1">
+                           <select 
+                            className="border rounded p-1 text-xs w-24"
+                            value={tx.categoryId || ""}
+                            onChange={(e) => revalidateRow(idx, { categoryId: e.target.value || undefined, isCategorySuggested: false } as any)}
+                           >
+                             <option value="">Uncategorized</option>
+                             {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                           </select>
+                           {(tx as any).isCategorySuggested && (
+                             <span className="text-[10px] text-violet-500 font-medium">Suggested</span>
+                           )}
+                         </div>
                       </td>
                     </tr>
                   ))}

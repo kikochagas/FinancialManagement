@@ -7,7 +7,7 @@ export async function getTransactionsData() {
 
   const transactions = await db.transaction.findMany({
     where: { userId },
-    orderBy: { date: "desc" },
+    orderBy: [{ date: "desc" }, { createdAt: "desc" }],
     include: {
       account: true,
       category: true,
@@ -22,8 +22,10 @@ export async function getTransactionsData() {
     transactions: transactions.map((t) => ({
       id: t.id,
       date: t.date.toISOString().split("T")[0],
+      createdAt: t.createdAt.toISOString(),
       description: t.description,
       type: t.type,
+      direction: t.direction as "Debit" | "Credit",
       amount: t.amount,
       accountId: t.accountId || "none",
       accountName: t.account?.name || "External",

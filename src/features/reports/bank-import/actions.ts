@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { authActionClient } from "@/lib/safe-action";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
+import { classifyTransactions } from "./category-classifier";
 
 const importBankStatementSchema = z.object({
   accountId: z.string().min(1),
@@ -14,7 +15,7 @@ const importBankStatementSchema = z.object({
       bookingDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid calendar date"),
       description: z.string().min(1, "Description is required"),
       amount: z.number().finite().positive(),
-      type: z.enum(["Income", "Expense"]),
+      direction: z.enum(["Debit", "Credit"]),
       categoryId: z.string().nullable().optional(),
       forceImportDuplicate: z.boolean().default(false),
       currency: z.string().nullable().optional(),
@@ -103,7 +104,7 @@ export const importBankStatementAction = authActionClient
               date: new Date(tx.bookingDate),
               description: tx.description,
               amount: tx.amount,
-              type: tx.type
+              direction: tx.direction
             }
           });
 
@@ -120,7 +121,8 @@ export const importBankStatementAction = authActionClient
             date: new Date(tx.bookingDate),
             description: tx.description,
             amount: tx.amount,
-            type: tx.type,
+            type: tx.direction === "Credit" ? "Income" : "Expense",
+            direction: tx.direction,
             categoryId: tx.categoryId,
             tags: "Imported"
           }
@@ -154,7 +156,7 @@ export const previewBankStatementDuplicatesAction = authActionClient
         bookingDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid calendar date"),
         description: z.string().min(1),
         amount: z.number().finite().positive(),
-        type: z.enum(["Income", "Expense"])
+        direction: z.enum(["Debit", "Credit"])
       })
     )
   }))
@@ -180,7 +182,7 @@ export const previewBankStatementDuplicatesAction = authActionClient
     const dates = [...new Set(transactions.map(t => new Date(t.bookingDate).getTime()))].map(t => new Date(t));
     const existing = await db.transaction.findMany({
       where: { accountId, date: { in: dates } },
-      select: { date: true, description: true, amount: true, type: true }
+      select: { date: true, description: true, amount: true, direction: true }
     });
 
     transactions.forEach((tx) => {
@@ -188,12 +190,14 @@ export const previewBankStatementDuplicatesAction = authActionClient
         e.date.getTime() === new Date(tx.bookingDate).getTime() &&
         e.description === tx.description &&
         e.amount === tx.amount &&
-        e.type === tx.type
+        e.direction === tx.direction
       );
       if (match) duplicateIndices.push(tx.candidateIndex);
     });
 
-    return { success: true, duplicateIndices };
+    const categories = await classifyTransactions(userId, transactions);
+
+    return { success: true, duplicateIndices, categories };
   });
 
 const shapeSchema = z.enum([

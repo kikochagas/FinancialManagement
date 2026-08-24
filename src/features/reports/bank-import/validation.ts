@@ -6,7 +6,7 @@ import { ParsedBankTransaction } from "./types";
  * - bookingDate (valid date)
  * - description (non-empty string)
  * - amount (valid number)
- * - type (Income or Expense)
+ * - direction (Credit or Debit)
  */
 export function validateTransaction(tx: ParsedBankTransaction): ParsedBankTransaction {
   if (!tx.warnings) tx.warnings = [];
@@ -41,8 +41,8 @@ export function validateTransaction(tx: ParsedBankTransaction): ParsedBankTransa
     isValid = false;
   }
 
-  if (tx.type !== "Income" && tx.type !== "Expense") {
-    tx.warnings.push("Transaction type must be Income or Expense.");
+  if (tx.direction !== "Credit" && tx.direction !== "Debit") {
+    tx.warnings.push("Transaction direction must be Credit or Debit.");
     isValid = false;
   }
 

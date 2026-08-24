@@ -25,6 +25,6 @@ export const parseDate = (val: any) => {
 
 export const parseType = (val: any) => {
   const s = String(val || "").toLowerCase().trim();
-  if (s === "entrada" || s === "income") return "Income";
+  if (s === "entrada" || s === "income" || s === "credit" || s === "crédito" || s === "credito") return "Income";
   return "Expense";
 };

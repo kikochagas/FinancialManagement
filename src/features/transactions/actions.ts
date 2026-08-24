@@ -5,12 +5,13 @@ import { authActionClient } from "@/lib/safe-action";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { TransactionType } from "@/lib/constants";
+import { directionToLegacyType } from "./legacy-migration";
 
 // Helper function to update account balance
 async function adjustBalances(
   txDb: any,
   tx: {
-    type: string;
+    direction: string;
     amount: number;
     accountId: string | null;
     destinationAccountId?: string | null;
@@ -23,13 +24,13 @@ async function adjustBalances(
   if (tx.accountId) {
     const acc = await txDb.account.findUnique({ where: { id: tx.accountId }, include: { externalMappings: true } });
     if (acc && (!acc.externalMappings || !acc.externalMappings.some((m: any) => m.disconnectedAt === null))) {
-      if (tx.type === TransactionType.INCOME || tx.type === TransactionType.INTEREST) {
+      if (tx.direction === "Credit") {
         // Increase account balance
         await txDb.account.update({
           where: { id: tx.accountId },
           data: { balance: { increment: amount } },
         });
-      } else if (tx.type === TransactionType.EXPENSE || tx.type === TransactionType.TAX || tx.type === TransactionType.INVESTMENT || tx.type === TransactionType.TRANSFER) {
+      } else if (tx.direction === "Debit") {
         // Decrease account balance
         await txDb.account.update({
           where: { id: tx.accountId },
@@ -39,7 +40,7 @@ async function adjustBalances(
     }
   }
 
-  if (tx.type === "Transfer" && tx.destinationAccountId) {
+  if (tx.direction === "Debit" && tx.destinationAccountId) {
     const destAcc = await txDb.account.findUnique({ where: { id: tx.destinationAccountId }, include: { externalMappings: true } });
     if (destAcc && (!destAcc.externalMappings || !destAcc.externalMappings.some((m: any) => m.disconnectedAt === null))) {
       // Increase destination account
@@ -55,7 +56,7 @@ async function adjustBalances(
 const createTransactionSchema = z.object({
   date: z.string(),
   description: z.string().min(1),
-  type: z.string(),
+  direction: z.enum(["Debit", "Credit"]),
   amount: z.number().positive(),
   accountId: z.string().optional().nullable(),
   categoryId: z.string().optional().nullable(),
@@ -68,7 +69,7 @@ const updateTransactionSchema = z.object({
   id: z.string(),
   date: z.string().optional(),
   description: z.string().optional(),
-  type: z.string().optional(),
+  direction: z.enum(["Debit", "Credit"]).optional(),
   amount: z.number().positive().optional(),
   accountId: z.string().optional(),
   categoryId: z.string().optional().nullable(),
@@ -96,7 +97,7 @@ export const createTransaction = authActionClient
         if (acc.externalMappings.some(m => m.disconnectedAt === null)) throw new Error("Bank-connected account transactions are managed by bank synchronization.");
       }
 
-      if (parsedInput.type === TransactionType.TRANSFER && parsedInput.destinationAccountId) {
+      if (parsedInput.destinationAccountId) {
         const dacc = await txDb.account.findUnique({ where: { id: parsedInput.destinationAccountId }, include: { externalMappings: true } });
         if (!dacc || dacc.userId !== userId) throw new Error("Invalid or unauthorized destination account");
         if (dacc.externalMappings.some(m => m.disconnectedAt === null)) throw new Error("Bank-connected account transactions are managed by bank synchronization.");
@@ -112,7 +113,8 @@ export const createTransaction = authActionClient
           userId,
           date: new Date(parsedInput.date),
           description: parsedInput.description,
-          type: parsedInput.type,
+          type: directionToLegacyType(parsedInput.direction),
+          direction: parsedInput.direction,
           amount: parsedInput.amount,
           accountId: parsedInput.accountId,
           categoryId: parsedInput.categoryId || null,
@@ -153,7 +155,7 @@ export const updateTransaction = authActionClient
         if (data.amount !== undefined && data.amount !== original.amount) changedBankFields.push('amount');
         if (data.date !== undefined && new Date(data.date).getTime() !== original.date.getTime()) changedBankFields.push('date');
         if (data.description !== undefined && data.description !== original.description) changedBankFields.push('description');
-        if (data.type !== undefined && data.type !== original.type) changedBankFields.push('type');
+        if (data.direction !== undefined && data.direction !== original.direction) changedBankFields.push('direction');
         if (data.accountId !== undefined && data.accountId !== original.accountId) changedBankFields.push('accountId');
         if (data.destinationAccountId !== undefined && data.destinationAccountId !== original.destinationAccountId) changedBankFields.push('destinationAccountId');
 
@@ -203,7 +205,10 @@ export const updateTransaction = authActionClient
       const updateData: any = {};
       if (data.date) updateData.date = new Date(data.date);
       if (data.description) updateData.description = data.description;
-      if (data.type) updateData.type = data.type;
+      if (data.direction) {
+        updateData.direction = data.direction;
+        updateData.type = directionToLegacyType(data.direction);
+      }
       if (data.amount !== undefined) updateData.amount = data.amount;
       if (data.accountId) updateData.accountId = data.accountId;
       if (data.categoryId !== undefined) updateData.categoryId = data.categoryId;

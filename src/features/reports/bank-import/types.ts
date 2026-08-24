@@ -54,7 +54,7 @@ export interface AISanitizedColumnInfo {
   valueShapes: ValueShape[];
 }
 
-export type TransactionType = "Income" | "Expense";
+export type TransactionDirection = "Debit" | "Credit";
 
 export interface ParsedBankTransaction {
   sourceRow: number;
@@ -62,7 +62,7 @@ export interface ParsedBankTransaction {
   valueDate?: string | null;
   description: string;
   amount: number | null;
-  type: TransactionType | null;
+  direction: TransactionDirection | null;
   balanceAfter?: number | null;
   counterparty?: string | null;
   currency?: string | null;
@@ -76,6 +76,7 @@ export interface ParsedBankTransaction {
   warnings: string[];
   currencyConflict?: boolean;
   isProbableDuplicate?: boolean;
+  isCategorySuggested?: boolean;
 }
 
 export interface BankStatementParseResult {

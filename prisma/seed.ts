@@ -1,4 +1,6 @@
 import { PrismaClient } from "@prisma/client";
+import bcrypt from 'bcryptjs';
+import { ensureDefaultCategories } from '../src/features/categories/default-categories';
 
 const prisma = new PrismaClient();
 
@@ -24,7 +26,7 @@ async function main() {
     update: {},
     create: {
       email: 'demo@example.com',
-      passwordHash: 'hashed',
+      passwordHash: await bcrypt.hash('password123', 10),
       name: 'Demo User'
     }
   });
@@ -114,22 +116,26 @@ async function main() {
   console.log("Accounts seeded.");
 
   // 4. Create Categories
+  console.log('Creating categories...');
+  await ensureDefaultCategories(user.id);
+  const existingCategories = await prisma.category.findMany({ where: { userId: user.id } });
+  
   const categoryNames = [
-    { name: "Phone", type: "Expense", color: "#3B82F6" },
-    { name: "DECO", type: "Expense", color: "#6366F1" },
-    { name: "ChatGPT", type: "Expense", color: "#10B981" },
-    { name: "Fuel", type: "Expense", color: "#F59E0B" },
-    { name: "Gym", type: "Expense", color: "#EC4899" },
-    { name: "Trips", type: "Expense", color: "#8B5CF6" },
-    { name: "Family", type: "Expense", color: "#EF4444" },
-    { name: "Health Insurance", type: "Expense", color: "#14B8A6" },
-    { name: "Car Insurance", type: "Expense", color: "#F97316" },
-    { name: "Car Maintenance", type: "Expense", color: "#64748B" },
-    { name: "Food", type: "Expense", color: "#A855F7" },
-    { name: "Leisure", type: "Expense", color: "#06B6D4" },
-    { name: "Salary", type: "Income", color: "#22C55E" },
-    { name: "Investment Profit", type: "Interest", color: "#EAB308" },
-    { name: "Tax Reservation", type: "Tax", color: "#EF4444" },
+    { name: "Phone", type: "Expense", direction: "Debit", color: "#3B82F6" },
+    { name: "DECO", type: "Expense", direction: "Debit", color: "#6366F1" },
+    { name: "ChatGPT", type: "Expense", direction: "Debit", color: "#10B981" },
+    { name: "Fuel", type: "Expense", direction: "Debit", color: "#F59E0B" },
+    { name: "Gym", type: "Expense", direction: "Debit", color: "#EC4899" },
+    { name: "Trips", type: "Expense", direction: "Debit", color: "#8B5CF6" },
+    { name: "Family", type: "Expense", direction: "Debit", color: "#EF4444" },
+    { name: "Health Insurance", type: "Expense", direction: "Debit", color: "#14B8A6" },
+    { name: "Car Insurance", type: "Expense", direction: "Debit", color: "#F97316" },
+    { name: "Car Maintenance", type: "Expense", direction: "Debit", color: "#64748B" },
+    { name: "Food", type: "Expense", direction: "Debit", color: "#A855F7" },
+    { name: "Leisure", type: "Expense", direction: "Debit", color: "#06B6D4" },
+    { name: "Salary", type: "Income", direction: "Credit", color: "#22C55E" },
+    { name: "Investment Profit", type: "Interest", direction: "Credit", color: "#EAB308" },
+    { name: "Tax Reservation", type: "Tax", direction: "Debit", color: "#EF4444" },
   ];
 
   const categories: Record<string, any> = {};
@@ -167,7 +173,7 @@ async function main() {
       userId: user.id,
         date: new Date(2026, 5, 10), // June 10, 2026
         description: `Monthly ${exp.name} payment`,
-        type: "Expense",
+        type: "Expense", direction: "Debit",
         amount: exp.amount,
         categoryId: categories[exp.name].id,
         accountId: bank.id,
@@ -182,7 +188,7 @@ async function main() {
       userId: user.id,
       date: new Date(2026, 5, 28), // June 28, 2026
       description: "Monthly Salary Deposit",
-      type: "Income",
+      type: "Income", direction: "Credit",
       amount: 4500.0,
       categoryId: categories["Salary"].id,
       accountId: bank.id,
@@ -197,7 +203,7 @@ async function main() {
       userId: user.id,
         date: new Date(2026, 6, 2), // July 2, 2026
         description: `Monthly ${exp.name} payment`,
-        type: "Expense",
+        type: "Expense", direction: "Debit",
         amount: exp.amount,
         categoryId: categories[exp.name].id,
         accountId: bank.id,

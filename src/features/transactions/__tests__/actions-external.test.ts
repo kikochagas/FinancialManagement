@@ -27,10 +27,10 @@ describe("Protected External Transactions and Accounts", () => {
     const conn = await db.bankConnection.create({ data: { id: "c-1", userId: "u-1", provider: "ENABLE_BANKING", institutionName: "T", institutionCountry: "PT", status: "CONNECTED" } });
     const map = await db.externalAccountMapping.create({ data: { id: "m-1", bankConnectionId: conn.id, accountId: linkedAcc.id, providerAccountUid: "u", identificationHash: "h" } });
     
-    const linkedTx = await db.transaction.create({ data: { id: "tx-linked", userId: "u-1", accountId: linkedAcc.id, date: new Date(), description: "D", type: "Income", amount: 50, tags: "" } });
+    const linkedTx = await db.transaction.create({ data: { id: "tx-linked", userId: "u-1", accountId: linkedAcc.id, date: new Date(), description: "D", type: "Income", direction: "Credit", amount: 50, tags: "" } });
     await db.externalTransactionMapping.create({ data: { externalAccountMappingId: map.id, transactionId: linkedTx.id, dedupKey: "entry:1" } });
     
-    const normalTx = await db.transaction.create({ data: { id: "tx-normal", userId: "u-1", accountId: normalAcc.id, date: new Date(), description: "D2", type: "Expense", amount: 20, tags: "" } });
+    const normalTx = await db.transaction.create({ data: { id: "tx-normal", userId: "u-1", accountId: normalAcc.id, date: new Date(), description: "D2", type: "Expense", direction: "Debit", amount: 20, tags: "" } });
 
     return { normalAcc, linkedAcc, linkedTx, normalTx };
   };
@@ -97,7 +97,7 @@ describe("Protected External Transactions and Accounts", () => {
     vi.mocked(auth.getUserId).mockResolvedValue("u-1");
     await setupData();
 
-    await createTransaction({ date: new Date().toISOString(), description: "Test", amount: 50, type: "Income", accountId: "a-normal" });
+    await createTransaction({ date: new Date().toISOString(), description: "Test", amount: 50, direction: "Credit", accountId: "a-normal" });
     const acc = await db.account.findUnique({ where: { id: "a-normal" } });
     expect(acc?.balance).toBe(150); // 100 + 50
   });
@@ -106,10 +106,10 @@ describe("Protected External Transactions and Accounts", () => {
     vi.mocked(auth.getUserId).mockResolvedValue("u-1");
     await setupData();
 
-    let res = await createTransaction({ date: new Date().toISOString(), description: "Test", amount: 50, type: "Income", accountId: "a-linked" });
+    let res = await createTransaction({ date: new Date().toISOString(), description: "Test", amount: 50, direction: "Credit", accountId: "a-linked" });
     expect(res?.serverError).toContain("managed by bank synchronization");
     
-    res = await createTransaction({ date: new Date().toISOString(), description: "Test", amount: 50, type: "Expense", accountId: "a-linked" });
+    res = await createTransaction({ date: new Date().toISOString(), description: "Test", amount: 50, direction: "Debit", accountId: "a-linked" });
     expect(res?.serverError).toContain("managed by bank synchronization");
   });
 
@@ -117,10 +117,10 @@ describe("Protected External Transactions and Accounts", () => {
     vi.mocked(auth.getUserId).mockResolvedValue("u-1");
     await setupData();
 
-    let res = await createTransaction({ date: new Date().toISOString(), description: "Test", amount: 50, type: "Transfer", accountId: "a-linked", destinationAccountId: "a-normal" });
+    let res = await createTransaction({ date: new Date().toISOString(), description: "Test", amount: 50, direction: "Debit", accountId: "a-linked", destinationAccountId: "a-normal" });
     expect(res?.serverError).toContain("managed by bank synchronization");
     
-    res = await createTransaction({ date: new Date().toISOString(), description: "Test", amount: 50, type: "Transfer", accountId: "a-normal", destinationAccountId: "a-linked" });
+    res = await createTransaction({ date: new Date().toISOString(), description: "Test", amount: 50, direction: "Debit", accountId: "a-normal", destinationAccountId: "a-linked" });
     expect(res?.serverError).toContain("managed by bank synchronization");
   });
 
@@ -142,10 +142,10 @@ describe("Protected External Transactions and Accounts", () => {
     vi.mocked(auth.getUserId).mockResolvedValue("u-2");
     await db.user.create({ data: { id: "u-2", email: "u-2@test.com", passwordHash: "h" } });
 
-    let res = await createTransaction({ date: new Date().toISOString(), description: "Test", amount: 50, type: "Income", accountId: "a-normal" });
+    let res = await createTransaction({ date: new Date().toISOString(), description: "Test", amount: 50, direction: "Credit", accountId: "a-normal" });
     expect(res?.serverError).toContain("Invalid or unauthorized account");
     
-    res = await createTransaction({ date: new Date().toISOString(), description: "Test", amount: 50, type: "Transfer", accountId: "a-normal", destinationAccountId: "a-linked" });
+    res = await createTransaction({ date: new Date().toISOString(), description: "Test", amount: 50, direction: "Debit", accountId: "a-normal", destinationAccountId: "a-linked" });
     expect(res?.serverError).toContain("Invalid or unauthorized account");
   });
 
@@ -156,7 +156,7 @@ describe("Protected External Transactions and Accounts", () => {
     await db.account.create({ data: { id: "a-u2", userId: "u-2", name: "Acc", type: "Cash", balance: 0 }});
 
     // cat-1 is owned by u-1
-    let res = await createTransaction({ date: new Date().toISOString(), description: "Test", amount: 50, type: "Income", accountId: "a-u2", categoryId: "cat-1" });
+    let res = await createTransaction({ date: new Date().toISOString(), description: "Test", amount: 50, direction: "Credit", accountId: "a-u2", categoryId: "cat-1" });
     expect(res?.serverError).toContain("Invalid or unauthorized category");
 
     // Also update
@@ -177,7 +177,7 @@ describe("Protected External Transactions and Accounts", () => {
     await setupData();
 
     // Create a historical transaction (pretend it was created before linking)
-    const tx = await db.transaction.create({ data: { userId: "u-1", accountId: "a-linked", date: new Date(), description: "Old", type: "Expense", amount: 10, tags: "" } });
+    const tx = await db.transaction.create({ data: { userId: "u-1", accountId: "a-linked", date: new Date(), description: "Old", type: "Expense", direction: "Debit", amount: 10, tags: "" } });
 
     // Update it
     await updateTransaction({ id: tx.id, amount: 20 });
@@ -189,7 +189,7 @@ describe("Protected External Transactions and Accounts", () => {
     vi.mocked(auth.getUserId).mockResolvedValue("u-1");
     await setupData();
 
-    const tx = await db.transaction.create({ data: { userId: "u-1", accountId: "a-linked", date: new Date(), description: "Old", type: "Expense", amount: 10, tags: "" } });
+    const tx = await db.transaction.create({ data: { userId: "u-1", accountId: "a-linked", date: new Date(), description: "Old", type: "Expense", direction: "Debit", amount: 10, tags: "" } });
 
     await deleteTransaction({ id: tx.id });
     const acc = await db.account.findUnique({ where: { id: "a-linked" } });
@@ -200,7 +200,7 @@ describe("Protected External Transactions and Accounts", () => {
     vi.mocked(auth.getUserId).mockResolvedValue("u-1");
     await setupData();
 
-    const tx = await db.transaction.create({ data: { userId: "u-1", accountId: "a-linked", destinationAccountId: "a-normal", date: new Date(), description: "Transfer", type: "Transfer", amount: 10, tags: "" } });
+    const tx = await db.transaction.create({ data: { userId: "u-1", accountId: "a-linked", destinationAccountId: "a-normal", date: new Date(), description: "Transfer", type: "Transfer", direction: "Debit", amount: 10, tags: "" } });
 
     // Change amount from 10 to 20
     // Expected:

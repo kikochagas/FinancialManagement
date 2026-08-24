@@ -53,13 +53,13 @@ describe("Bank Statement Import Orchestration", () => {
     // First valid tx
     expect(validTxs[0].description).toBe("TRANSFERENCIA CREDITO"); // Not overwritten
     expect(validTxs[0].amount).toBe(128.00);
-    expect(validTxs[0].type).toBe("Income");
+    expect(validTxs[0].direction).toBe("Credit");
     expect(validTxs[0].bookingDate).toBe("2026-08-14");
 
     // Second valid tx
     expect(validTxs[1].description).toBe("COMPRA C. DEBITO");
     expect(validTxs[1].amount).toBe(14.74); // Absolute amount
-    expect(validTxs[1].type).toBe("Expense"); // Derived from sign/TYPE
+    expect(validTxs[1].direction).toBe("Debit"); // Derived from sign/TYPE
     expect(validTxs[1].bookingDate).toBe("2026-08-15");
 
     // The invalid date row

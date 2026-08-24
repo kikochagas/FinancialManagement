@@ -38,7 +38,7 @@ export async function getAccountsData() {
           id: t.id,
           date: t.date.toISOString().split("T")[0],
           description: t.description,
-          type: t.type,
+          direction: t.direction,
           amount: t.amount,
           category: t.category?.name || "Uncategorized",
           color: t.category?.color || "#94a3b8",

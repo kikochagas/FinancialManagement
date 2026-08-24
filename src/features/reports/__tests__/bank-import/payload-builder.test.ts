@@ -9,7 +9,7 @@ describe("payload-builder", () => {
         bookingDate: "2026-08-12",
         description: "Test Transaction 1",
         amount: 100,
-        type: "Income",
+        direction: "Credit",
         valid: true,
         import: true,
         isProbableDuplicate: false,
@@ -22,7 +22,7 @@ describe("payload-builder", () => {
         bookingDate: "2026-08-13",
         description: "Test Transaction 2",
         amount: 50,
-        type: "Expense",
+        direction: "Debit",
         valid: false, // Should be ignored
         import: true,
         isProbableDuplicate: false,
@@ -35,7 +35,7 @@ describe("payload-builder", () => {
         bookingDate: "2026-08-14",
         description: "Test Transaction 3",
         amount: 25,
-        type: "Expense",
+        direction: "Debit",
         valid: true,
         import: false, // Should be ignored
         isProbableDuplicate: false,
@@ -57,7 +57,7 @@ describe("payload-builder", () => {
       bookingDate: "2026-08-12",
       description: "Test Transaction 1",
       amount: 100,
-      type: "Income",
+      direction: "Credit",
       categoryId: undefined,
       forceImportDuplicate: false,
       currency: "EUR"

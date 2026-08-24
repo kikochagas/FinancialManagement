@@ -181,6 +181,7 @@ export async function internalSyncTransactions(accountId: string, userId: string
                  date: t.date,
                  description: t.description,
                  type,
+                 direction: t.creditDebitIndicator === "CREDIT" ? "Credit" : "Debit",
                  amount: t.amount,
                  categoryId: null,
                  tags: "",

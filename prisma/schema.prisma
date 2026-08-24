@@ -44,14 +44,16 @@ model Account {
 }
 
 model Category {
-  id           String        @id @default(uuid())
-  userId       String
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name         String
-  type         String // Income, Expense
-  color        String? // Hex color or Tailwind class name
-  transactions Transaction[]
-  budgets      Budget[]
+  id            String  @id @default(uuid())
+  userId        String
+  user          User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name          String
+  type          String // Legacy: Income, Expense
+  directionHint String  @default("Both") // Debit, Credit, Both
+  systemKey     String? // Stable key for defaults, e.g. "salary", "groceries"
+  color         String? // Hex color or Tailwind class name
+  transactions  Transaction[]
+  budgets       Budget[]
 
   @@unique([userId, name])
 }
@@ -62,7 +64,8 @@ model Transaction {
   user                 User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
   date                 DateTime
   description          String
-  type                 String // Income, Expense, Transfer, Investment, Interest, Tax
+  type                 String // Legacy: Income, Expense, Transfer, Investment, Interest, Tax
+  direction            String // Debit, Credit (Authoritative financial movement)
   amount               Float
   categoryId           String?
   category             Category?                   @relation(fields: [categoryId], references: [id], onDelete: SetNull)

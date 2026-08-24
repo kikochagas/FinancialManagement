@@ -25,7 +25,6 @@ interface ReportsClientProps {
     categories: {
       id: string;
       name: string;
-      type: string;
     }[];
     investments: any[];
     goals: any[];
@@ -95,7 +94,7 @@ export function ReportsClient({ data }: ReportsClientProps) {
 
               const rawDate = getVal(["date", "data"]);
               const rawDesc = getVal(["description", "descrição", "descricao"]);
-              const rawType = getVal(["type", "tipo"]);
+              const rawType = getVal(["type", "tipo", "direction", "direção", "direcao"]);
               const rawAmount = getVal(["amount", "valor (€)", "valor"]);
               const rawAccount = getVal(["account", "accountname", "conta"]);
               const rawCategory = getVal(["category", "categoryname", "categoria"]);
@@ -246,12 +245,26 @@ export function ReportsClient({ data }: ReportsClientProps) {
   const handleExportExcel = () => {
     const wb = XLSX.utils.book_new();
 
+    // Metadata Sheet (FormatVersion 2)
+    const wsMetadata = XLSX.utils.json_to_sheet([{ FormatVersion: 2 }]);
+    XLSX.utils.book_append_sheet(wb, wsMetadata, "Metadata");
+
     // Accounts Sheet
     const wsAccounts = XLSX.utils.json_to_sheet(data.accounts);
     XLSX.utils.book_append_sheet(wb, wsAccounts, "Accounts");
 
     // Transactions Sheet
-    const wsTransactions = XLSX.utils.json_to_sheet(data.transactions);
+    const exportTransactions = data.transactions.map((t) => ({
+      Date: t.date,
+      Description: t.description,
+      Direction: t.direction,
+      Amount: t.amount,
+      Account: t.accountName,
+      Category: t.categoryName,
+      Tags: t.tags,
+      Notes: t.notes,
+    }));
+    const wsTransactions = XLSX.utils.json_to_sheet(exportTransactions);
     XLSX.utils.book_append_sheet(wb, wsTransactions, "Transactions");
 
     // Investments Sheet
@@ -269,14 +282,14 @@ export function ReportsClient({ data }: ReportsClientProps) {
   // Export Transactions to CSV
   const handleExportCSV = () => {
     if (data.transactions.length === 0) return;
-    const headers = ["Date", "Description", "Type", "Amount", "Account", "Category", "Tags", "Notes"];
+    const headers = ["Date", "Description", "Direction", "Amount", "Account", "Category", "Tags", "Notes"];
     const csvContent = [
       headers.join(","),
       ...data.transactions.map((t) =>
         [
           t.date,
           `"${t.description.replace(/"/g, '""')}"`,
-          t.type,
+          t.direction,
           t.amount,
           t.accountName,
           t.categoryName,

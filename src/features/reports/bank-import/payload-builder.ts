@@ -16,7 +16,7 @@ export function buildImportPayload(
       bookingDate: t.bookingDate!,
       description: t.description,
       amount: t.amount!,
-      type: t.type as "Income" | "Expense",
+      direction: t.direction as "Debit" | "Credit",
       categoryId: t.categoryId,
       forceImportDuplicate: t.isProbableDuplicate && t.import ? true : false,
       currency: t.currency ?? null,

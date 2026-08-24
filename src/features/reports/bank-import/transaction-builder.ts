@@ -1,5 +1,5 @@
 import { ColumnMapping, ParsedBankTransaction } from "./types";
-import { resolveAmount, normalizeTransactionDescription, deriveTransactionType } from "./normalization";
+import { resolveAmount, normalizeTransactionDescription, deriveTransactionDirection } from "./normalization";
 import { validateTransaction } from "./validation";
 import { parseDateStrict } from "./date-parser";
 import { parseMoneyStrict } from "./money-parser";
@@ -68,7 +68,7 @@ export function buildTransactions(
     const bookingDateRes = parseDateStrict(bookingDateRaw);
     const valueDateRes = valueDateRaw ? parseDateStrict(valueDateRaw) : null;
     
-    const { amount, type: inferredType, explicitSign, warnings, currency: extractedCurrency } = resolveAmount(amtRaw, debitRaw, creditRaw);
+    const { amount, direction: inferredDirection, explicitSign, warnings, currency: extractedCurrency } = resolveAmount(amtRaw, debitRaw, creditRaw);
 
     const hasValidDate = bookingDateRes.valid;
     const hasValidAmount = amount !== null;
@@ -82,20 +82,20 @@ export function buildTransactions(
     }
 
     // Resolve TYPE conflict
-    let finalType = inferredType;
+    let finalDirection = inferredDirection;
     if (typeRaw) {
-      const explicit = deriveTransactionType(null, String(typeRaw), null, null);
+      const explicit = deriveTransactionDirection(null, String(typeRaw), null, null);
       if (explicit) {
-        if (finalType && explicit !== finalType) {
+        if (finalDirection && explicit !== finalDirection) {
           if (explicitSign) {
-            warnings.push(`Sign and Type column conflict: Amount suggests ${finalType}, but Type column says ${explicit}.`);
-            finalType = null; // Unresolved conflict forces manual review
+            warnings.push(`Sign and Type column conflict: Amount suggests ${finalDirection}, but Type column says ${explicit}.`);
+            finalDirection = null; // Unresolved conflict forces manual review
           } else {
              // Yield to explicit TYPE
-             finalType = explicit;
+             finalDirection = explicit;
           }
         } else {
-          finalType = explicit;
+          finalDirection = explicit;
         }
       }
     }
@@ -124,7 +124,7 @@ export function buildTransactions(
       valueDate: valueDateRes?.valid ? valueDateRes.value : null,
       description: normalizeTransactionDescription(descRaw),
       amount: amount ?? null,
-      type: finalType ?? null,
+      direction: finalDirection ?? null,
       balanceAfter: balanceRaw !== undefined && balanceRaw !== null && balanceRaw !== "" ? parseMoneyStrict(balanceRaw).value : null,
       counterparty: counterpartyRaw ? String(counterpartyRaw).trim() : null,
       payer: payerRaw ? String(payerRaw).trim() : null,
