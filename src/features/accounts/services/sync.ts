@@ -157,8 +157,6 @@ export async function internalSyncTransactions(accountId: string, userId: string
            continue;
          }
 
-         const type = t.creditDebitIndicator === "CREDIT" ? "Income" : "Expense";
-
          try {
            await db.$transaction(async (tx) => {
              const existing = await tx.externalTransactionMapping.findUnique({
@@ -180,7 +178,6 @@ export async function internalSyncTransactions(accountId: string, userId: string
                  accountId: account.id,
                  date: t.date,
                  description: t.description,
-                 type,
                  direction: t.creditDebitIndicator === "CREDIT" ? "Credit" : "Debit",
                  amount: t.amount,
                  categoryId: null,

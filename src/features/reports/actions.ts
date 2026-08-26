@@ -9,7 +9,7 @@ const importDataSchema = z.object({
   transactions: z.array(z.object({
     date: z.string(),
     description: z.string(),
-    type: z.string(),
+    direction: z.enum(["Credit", "Debit"]),
     amount: z.number(),
     accountName: z.string(),
     categoryName: z.string().optional().nullable(),
@@ -102,7 +102,6 @@ export const importDataAction = authActionClient
                 data: {
                   userId,
                   name: tx.categoryName,
-                  type: tx.type === "Income" ? "Income" : "Expense",
                   color: "#94a3b8",
                 },
               });
@@ -119,7 +118,7 @@ export const importDataAction = authActionClient
               userId,
               date: txDate,
               description: tx.description,
-              type: tx.type, direction: tx.type === 'Income' || tx.type === 'Interest' ? 'Credit' : 'Debit',
+              direction: tx.direction,
               amount: tx.amount,
               accountId: account.id,
             },
@@ -134,7 +133,7 @@ export const importDataAction = authActionClient
               userId,
               date: txDate,
               description: tx.description,
-              type: tx.type, direction: tx.type === 'Income' || tx.type === 'Interest' ? 'Credit' : 'Debit',
+              direction: tx.direction,
               amount: tx.amount,
               accountId: account.id,
               categoryId,
@@ -144,7 +143,7 @@ export const importDataAction = authActionClient
           });
 
           // Adjust account balance accordingly
-          if (tx.type === "Income" || tx.type === "Interest") {
+          if (tx.direction === "Credit") {
             await txDb.account.update({
               where: { id: account.id },
               data: { balance: { increment: tx.amount } },

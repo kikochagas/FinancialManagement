@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { syncTransactions } from "../actions";
 import { db } from "@/lib/db";
 import * as auth from "@/lib/auth";

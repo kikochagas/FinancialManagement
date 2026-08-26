@@ -21,16 +21,16 @@ describe("Protected External Transactions and Accounts", () => {
 
   const setupData = async () => {
     await db.user.create({ data: { id: "u-1", email: "u-1@test.com", passwordHash: "h" } });
-    await db.category.create({ data: { id: "cat-1", name: "Cat 1", type: "Expense", userId: "u-1", color: "#000000" } });
+    await db.category.create({ data: { id: "cat-1", name: "Cat 1", userId: "u-1", color: "#000000" } });
     const normalAcc = await db.account.create({ data: { id: "a-normal", userId: "u-1", name: "Normal", type: "Cash", balance: 100 } });
     const linkedAcc = await db.account.create({ data: { id: "a-linked", userId: "u-1", name: "Linked", type: "Bank", balance: 100 } });
     const conn = await db.bankConnection.create({ data: { id: "c-1", userId: "u-1", provider: "ENABLE_BANKING", institutionName: "T", institutionCountry: "PT", status: "CONNECTED" } });
     const map = await db.externalAccountMapping.create({ data: { id: "m-1", bankConnectionId: conn.id, accountId: linkedAcc.id, providerAccountUid: "u", identificationHash: "h" } });
     
-    const linkedTx = await db.transaction.create({ data: { id: "tx-linked", userId: "u-1", accountId: linkedAcc.id, date: new Date(), description: "D", type: "Income", direction: "Credit", amount: 50, tags: "" } });
+    const linkedTx = await db.transaction.create({ data: { id: "tx-linked", userId: "u-1", accountId: linkedAcc.id, date: new Date(), description: "D", direction: "Credit", amount: 50, tags: "" } });
     await db.externalTransactionMapping.create({ data: { externalAccountMappingId: map.id, transactionId: linkedTx.id, dedupKey: "entry:1" } });
     
-    const normalTx = await db.transaction.create({ data: { id: "tx-normal", userId: "u-1", accountId: normalAcc.id, date: new Date(), description: "D2", type: "Expense", direction: "Debit", amount: 20, tags: "" } });
+    const normalTx = await db.transaction.create({ data: { id: "tx-normal", userId: "u-1", accountId: normalAcc.id, date: new Date(), description: "D2", direction: "Debit", amount: 20, tags: "" } });
 
     return { normalAcc, linkedAcc, linkedTx, normalTx };
   };
@@ -162,7 +162,7 @@ describe("Protected External Transactions and Accounts", () => {
     // Also update
     vi.mocked(auth.getUserId).mockResolvedValue("u-1");
     // Let's create cat-2 owned by u-2
-    await db.category.create({ data: { id: "cat-2", name: "Cat 2", type: "Expense", userId: "u-2", color: "#000000" } });
+    await db.category.create({ data: { id: "cat-2", name: "Cat 2", userId: "u-2", color: "#000000" } });
     
     let res2 = await updateTransaction({ id: "tx-normal", categoryId: "cat-2" });
     expect(res2?.serverError).toContain("Invalid or unauthorized category");
@@ -177,7 +177,7 @@ describe("Protected External Transactions and Accounts", () => {
     await setupData();
 
     // Create a historical transaction (pretend it was created before linking)
-    const tx = await db.transaction.create({ data: { userId: "u-1", accountId: "a-linked", date: new Date(), description: "Old", type: "Expense", direction: "Debit", amount: 10, tags: "" } });
+    const tx = await db.transaction.create({ data: { userId: "u-1", accountId: "a-linked", date: new Date(), description: "Old", direction: "Debit", amount: 10, tags: "" } });
 
     // Update it
     await updateTransaction({ id: tx.id, amount: 20 });
@@ -189,7 +189,7 @@ describe("Protected External Transactions and Accounts", () => {
     vi.mocked(auth.getUserId).mockResolvedValue("u-1");
     await setupData();
 
-    const tx = await db.transaction.create({ data: { userId: "u-1", accountId: "a-linked", date: new Date(), description: "Old", type: "Expense", direction: "Debit", amount: 10, tags: "" } });
+    const tx = await db.transaction.create({ data: { userId: "u-1", accountId: "a-linked", date: new Date(), description: "Old", direction: "Debit", amount: 10, tags: "" } });
 
     await deleteTransaction({ id: tx.id });
     const acc = await db.account.findUnique({ where: { id: "a-linked" } });
@@ -200,7 +200,7 @@ describe("Protected External Transactions and Accounts", () => {
     vi.mocked(auth.getUserId).mockResolvedValue("u-1");
     await setupData();
 
-    const tx = await db.transaction.create({ data: { userId: "u-1", accountId: "a-linked", destinationAccountId: "a-normal", date: new Date(), description: "Transfer", type: "Transfer", direction: "Debit", amount: 10, tags: "" } });
+    const tx = await db.transaction.create({ data: { userId: "u-1", accountId: "a-linked", destinationAccountId: "a-normal", date: new Date(), description: "Transfer", direction: "Debit", amount: 10, tags: "" } });
 
     // Change amount from 10 to 20
     // Expected:

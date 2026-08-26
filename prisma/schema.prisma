@@ -48,7 +48,6 @@ model Category {
   userId        String
   user          User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   name          String
-  type          String // Legacy: Income, Expense
   directionHint String  @default("Both") // Debit, Credit, Both
   systemKey     String? // Stable key for defaults, e.g. "salary", "groceries"
   color         String? // Hex color or Tailwind class name
@@ -64,7 +63,6 @@ model Transaction {
   user                 User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
   date                 DateTime
   description          String
-  type                 String // Legacy: Income, Expense, Transfer, Investment, Interest, Tax
   direction            String // Debit, Credit (Authoritative financial movement)
   amount               Float
   categoryId           String?

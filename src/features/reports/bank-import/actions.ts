@@ -121,7 +121,7 @@ export const importBankStatementAction = authActionClient
             date: new Date(tx.bookingDate),
             description: tx.description,
             amount: tx.amount,
-            type: tx.direction === "Credit" ? "Income" : "Expense",
+            
             direction: tx.direction,
             categoryId: tx.categoryId,
             tags: "Imported"

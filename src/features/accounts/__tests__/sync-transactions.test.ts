@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { syncTransactions } from "../actions";
 import { db } from "@/lib/db";
 import * as auth from "@/lib/auth";
@@ -81,7 +81,7 @@ describe("Transaction Synchronization Phase (Advanced)", () => {
     const acc2 = await db.account.create({ data: { id: "acc-2", userId: "user-1", name: "Acc 2", type: "Bank", balance: 50, currency: "EUR" } });
     const mapping2 = await db.externalAccountMapping.create({ data: { bankConnectionId: mapping.bankConnectionId, accountId: acc2.id, providerAccountUid: "uid-2", identificationHash: "h-2" } });
 
-    const tx = await db.transaction.create({ data: { userId: "user-1", accountId: acc.id, amount: 10, type: "Income", direction: "Credit", date: new Date(), description: "T", tags: "" }});
+    const tx = await db.transaction.create({ data: { userId: "user-1", accountId: acc.id, amount: 10, direction: "Credit", date: new Date(), description: "T", tags: "" }});
     await db.externalTransactionMapping.create({ data: { externalAccountMappingId: mapping.id, transactionId: tx.id, dedupKey: "entry:1" } });
 
     vi.spyOn(EnableBankingClient.prototype, "getTransactions").mockResolvedValue({

@@ -113,7 +113,7 @@ describe("Phase 10 UI Actions", () => {
         userId,
         accountId,
         amount: -10,
-        type: "Expense", direction: "Debit",
+        direction: "Debit",
         date: new Date(),
         description: "Test Tx",
         tags: ""

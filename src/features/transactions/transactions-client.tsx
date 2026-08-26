@@ -37,7 +37,7 @@ interface TransactionsClientProps {
   data: {
     transactions: Transaction[];
     accounts: { id: string; name: string; type: string }[];
-    categories: { id: string; name: string; type: string; color: string }[];
+    categories: { id: string; name: string; color: string }[];
   };
 }
 

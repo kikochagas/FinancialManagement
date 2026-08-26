@@ -28,7 +28,7 @@ describe('Transactions Actions', () => {
 
       const mockTx = {
         id: 'tx-1',
-        type: 'Expense',
+        
         direction: 'Debit',
         amount: 100,
         accountId: 'acc-1'
@@ -65,7 +65,7 @@ describe('Transactions Actions', () => {
 
       const oldTx = {
         id: 'tx-1',
-        type: 'Expense',
+        
         direction: 'Debit',
         amount: 50,
         accountId: 'acc-1',
@@ -74,7 +74,7 @@ describe('Transactions Actions', () => {
 
       const updatedTx = {
         id: 'tx-1',
-        type: 'Expense',
+        
         direction: 'Debit',
         amount: 100,
         accountId: 'acc-1'
@@ -110,7 +110,7 @@ describe('Transactions Actions', () => {
 
       const mockTx = {
         id: 'tx-1',
-        type: 'Income',
+        
         direction: 'Credit',
         amount: 200,
         accountId: 'acc-1',

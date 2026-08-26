@@ -5,7 +5,6 @@ import { authActionClient } from "@/lib/safe-action";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { TransactionType } from "@/lib/constants";
-import { directionToLegacyType } from "./legacy-migration";
 
 // Helper function to update account balance
 async function adjustBalances(
@@ -113,7 +112,6 @@ export const createTransaction = authActionClient
           userId,
           date: new Date(parsedInput.date),
           description: parsedInput.description,
-          type: directionToLegacyType(parsedInput.direction),
           direction: parsedInput.direction,
           amount: parsedInput.amount,
           accountId: parsedInput.accountId,
@@ -207,7 +205,6 @@ export const updateTransaction = authActionClient
       if (data.description) updateData.description = data.description;
       if (data.direction) {
         updateData.direction = data.direction;
-        updateData.type = directionToLegacyType(data.direction);
       }
       if (data.amount !== undefined) updateData.amount = data.amount;
       if (data.accountId) updateData.accountId = data.accountId;

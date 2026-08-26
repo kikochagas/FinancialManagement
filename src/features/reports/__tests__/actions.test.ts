@@ -28,7 +28,7 @@ describe('Reports Actions', () => {
       const transactions = [{
         date: '2026-07-01',
         description: 'Salary',
-        type: 'Income',
+        direction: 'Credit' as const,
         amount: 2000,
         accountName: 'Bank',
         categoryName: 'Salary',
