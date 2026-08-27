@@ -10,6 +10,7 @@ export async function getReportsData() {
     include: {
       account: true,
       category: true,
+      destinationAccount: true,
     },
     orderBy: { date: "desc" },
   });
@@ -30,6 +31,7 @@ export async function getReportsData() {
       direction: t.direction,
       amount: t.amount,
       accountName: t.account?.name || "External",
+      destinationAccountName: t.destinationAccount?.name || "",
       categoryName: t.category?.name || "",
       tags: t.tags,
       notes: t.notes || "",

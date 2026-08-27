@@ -200,7 +200,7 @@ describe("Protected External Transactions and Accounts", () => {
     vi.mocked(auth.getUserId).mockResolvedValue("u-1");
     await setupData();
 
-    const tx = await db.transaction.create({ data: { userId: "u-1", accountId: "a-linked", destinationAccountId: "a-normal", date: new Date(), description: "Transfer", direction: "Debit", amount: 10, tags: "" } });
+    const tx = await db.transaction.create({ data: { userId: "u-1", accountId: "a-linked", destinationAccountId: "a-normal", date: new Date(), description: "Transfer", direction: "InternalTransfer", amount: 10, tags: "" } });
 
     // Change amount from 10 to 20
     // Expected:

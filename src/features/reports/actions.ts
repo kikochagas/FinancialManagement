@@ -6,12 +6,14 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 
 const importDataSchema = z.object({
+  importMode: z.enum(["FullBackup", "TransactionsOnly"]).default("TransactionsOnly"),
   transactions: z.array(z.object({
     date: z.string(),
     description: z.string(),
-    direction: z.enum(["Credit", "Debit"]),
+    direction: z.enum(["Credit", "Debit", "InternalTransfer"]),
     amount: z.number(),
     accountName: z.string(),
+    destinationAccountName: z.string().optional().nullable(),
     categoryName: z.string().optional().nullable(),
     tags: z.string().default(""),
     notes: z.string().optional().nullable(),
@@ -47,7 +49,7 @@ const importDataSchema = z.object({
 export const importDataAction = authActionClient
   .schema(importDataSchema)
   .action(async ({ parsedInput, ctx: { userId } }) => {
-    const { transactions, accounts, investments, goals, snapshots } = parsedInput;
+    const { importMode, transactions, accounts, investments, goals, snapshots } = parsedInput;
 
     await db.$transaction(async (txDb) => {
       // 1. Process Accounts
@@ -79,6 +81,21 @@ export const importDataAction = authActionClient
         const dbCategories = await txDb.category.findMany({ where: { userId } });
 
         for (const tx of transactions) {
+          // Enforce invariants
+          if (tx.direction === "Debit" || tx.direction === "Credit") {
+            if (tx.destinationAccountName) {
+              throw new Error(`Destination account must not be supplied for ${tx.direction}`);
+            }
+          }
+          if (tx.direction === "InternalTransfer") {
+            if (!tx.accountName || !tx.destinationAccountName) {
+              throw new Error("Source and destination required for InternalTransfer");
+            }
+            if (tx.accountName.toLowerCase() === tx.destinationAccountName.toLowerCase()) {
+              throw new Error("Source and destination accounts cannot be the same");
+            }
+          }
+
           // Find or create account
           let account = dbAccounts.find((a) => a.name.toLowerCase() === tx.accountName.toLowerCase());
           if (!account) {
@@ -112,6 +129,22 @@ export const importDataAction = authActionClient
 
           const txDate = new Date(tx.date);
 
+          let destAccount: any = null;
+          if (tx.direction === "InternalTransfer" && tx.destinationAccountName) {
+            destAccount = dbAccounts.find((a) => a.name.toLowerCase() === tx.destinationAccountName!.toLowerCase());
+            if (!destAccount) {
+              destAccount = await txDb.account.create({
+                data: {
+                  userId,
+                  name: tx.destinationAccountName,
+                  type: "Bank",
+                  balance: 0,
+                },
+              });
+              dbAccounts.push(destAccount);
+            }
+          }
+
           // Check for duplicate transaction
           const existingTx = await txDb.transaction.findFirst({
             where: {
@@ -121,6 +154,7 @@ export const importDataAction = authActionClient
               direction: tx.direction,
               amount: tx.amount,
               accountId: account.id,
+              destinationAccountId: destAccount ? destAccount.id : null,
             },
           });
 
@@ -136,23 +170,37 @@ export const importDataAction = authActionClient
               direction: tx.direction,
               amount: tx.amount,
               accountId: account.id,
+              destinationAccountId: destAccount ? destAccount.id : null,
               categoryId,
               tags: tx.tags || "",
               notes: tx.notes || null,
             },
           });
 
-          // Adjust account balance accordingly
-          if (tx.direction === "Credit") {
-            await txDb.account.update({
-              where: { id: account.id },
-              data: { balance: { increment: tx.amount } },
-            });
-          } else {
-            await txDb.account.update({
-              where: { id: account.id },
-              data: { balance: { decrement: tx.amount } },
-            });
+          // Adjust account balance accordingly only if TransactionsOnly mode
+          if (importMode === "TransactionsOnly") {
+            if (tx.direction === "Credit") {
+              await txDb.account.update({
+                where: { id: account.id },
+                data: { balance: { increment: tx.amount } },
+              });
+            } else if (tx.direction === "Debit") {
+              await txDb.account.update({
+                where: { id: account.id },
+                data: { balance: { decrement: tx.amount } },
+              });
+            } else if (tx.direction === "InternalTransfer") {
+              await txDb.account.update({
+                where: { id: account.id },
+                data: { balance: { decrement: tx.amount } },
+              });
+              if (destAccount) {
+                await txDb.account.update({
+                  where: { id: destAccount.id },
+                  data: { balance: { increment: tx.amount } },
+                });
+              }
+            }
           }
         }
       }

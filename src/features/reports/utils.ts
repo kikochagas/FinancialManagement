@@ -23,8 +23,12 @@ export const parseDate = (val: any) => {
   return str;
 };
 
-export const parseType = (val: any) => {
+export const parseLegacyTransactionType = (val: any) => {
   const s = String(val || "").toLowerCase().trim();
   if (s === "entrada" || s === "income" || s === "credit" || s === "crédito" || s === "credito") return "Income";
+  if (s === "transfer" || s === "transferência" || s === "transferencia") return "Transfer";
+  if (s === "interest" || s === "juros") return "Interest";
+  if (s === "tax" || s === "imposto") return "Tax";
+  if (s === "investment" || s === "investimento") return "Investment";
   return "Expense";
 };

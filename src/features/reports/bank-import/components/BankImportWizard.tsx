@@ -568,7 +568,6 @@ export function BankImportWizard({ accounts, categories }: { accounts: any[], ca
                             value={tx.categoryId || ""}
                             onChange={(e) => revalidateRow(idx, { categoryId: e.target.value || undefined, isCategorySuggested: false } as any)}
                            >
-                             <option value="">Uncategorized</option>
                              {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                            </select>
                            {(tx as any).isCategorySuggested && (

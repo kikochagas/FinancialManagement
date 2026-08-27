@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { authActionClient } from "@/lib/safe-action";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { TransactionType } from "@/lib/constants";
+
 
 // Helper function to update account balance
 async function adjustBalances(
@@ -24,13 +24,16 @@ async function adjustBalances(
     const acc = await txDb.account.findUnique({ where: { id: tx.accountId }, include: { externalMappings: true } });
     if (acc && (!acc.externalMappings || !acc.externalMappings.some((m: any) => m.disconnectedAt === null))) {
       if (tx.direction === "Credit") {
-        // Increase account balance
         await txDb.account.update({
           where: { id: tx.accountId },
           data: { balance: { increment: amount } },
         });
       } else if (tx.direction === "Debit") {
-        // Decrease account balance
+        await txDb.account.update({
+          where: { id: tx.accountId },
+          data: { balance: { decrement: amount } },
+        });
+      } else if (tx.direction === "InternalTransfer") {
         await txDb.account.update({
           where: { id: tx.accountId },
           data: { balance: { decrement: amount } },
@@ -39,7 +42,7 @@ async function adjustBalances(
     }
   }
 
-  if (tx.direction === "Debit" && tx.destinationAccountId) {
+  if (tx.direction === "InternalTransfer" && tx.destinationAccountId) {
     const destAcc = await txDb.account.findUnique({ where: { id: tx.destinationAccountId }, include: { externalMappings: true } });
     if (destAcc && (!destAcc.externalMappings || !destAcc.externalMappings.some((m: any) => m.disconnectedAt === null))) {
       // Increase destination account
@@ -55,7 +58,7 @@ async function adjustBalances(
 const createTransactionSchema = z.object({
   date: z.string(),
   description: z.string().min(1),
-  direction: z.enum(["Debit", "Credit"]),
+  direction: z.enum(["Debit", "Credit", "InternalTransfer"]),
   amount: z.number().positive(),
   accountId: z.string().optional().nullable(),
   categoryId: z.string().optional().nullable(),
@@ -68,7 +71,7 @@ const updateTransactionSchema = z.object({
   id: z.string(),
   date: z.string().optional(),
   description: z.string().optional(),
-  direction: z.enum(["Debit", "Credit"]).optional(),
+  direction: z.enum(["Debit", "Credit", "InternalTransfer"]).optional(),
   amount: z.number().positive().optional(),
   accountId: z.string().optional(),
   categoryId: z.string().optional().nullable(),
@@ -105,6 +108,13 @@ export const createTransaction = authActionClient
       if (parsedInput.categoryId) {
         const cat = await txDb.category.findUnique({ where: { id: parsedInput.categoryId } });
         if (!cat || cat.userId !== userId) throw new Error("Invalid or unauthorized category");
+      }
+
+      if (parsedInput.direction === "InternalTransfer") {
+        if (!parsedInput.accountId || !parsedInput.destinationAccountId) throw new Error("InternalTransfer requires both source and destination accounts");
+        if (parsedInput.accountId === parsedInput.destinationAccountId) throw new Error("Source and destination accounts must be different");
+      } else {
+        if (parsedInput.destinationAccountId) throw new Error("Destination account is only allowed for InternalTransfer");
       }
 
       const created = await txDb.transaction.create({
@@ -194,6 +204,17 @@ export const updateTransaction = authActionClient
       if (data.categoryId) {
          const cat = await txDb.category.findUnique({ where: { id: data.categoryId } });
          if (!cat || cat.userId !== userId) throw new Error("Invalid or unauthorized category");
+      }
+
+      const finalSourceId = data.accountId !== undefined ? data.accountId : original.accountId;
+      const finalDestId = data.destinationAccountId !== undefined ? data.destinationAccountId : original.destinationAccountId;
+      const finalDirection = data.direction || original.direction;
+
+      if (finalDirection === "InternalTransfer") {
+        if (!finalSourceId || !finalDestId) throw new Error("InternalTransfer requires both source and destination accounts");
+        if (finalSourceId === finalDestId) throw new Error("Source and destination accounts must be different");
+      } else {
+        if (finalDestId) throw new Error("Destination account is only allowed for InternalTransfer");
       }
 
       // 2. Reverse original balance changes

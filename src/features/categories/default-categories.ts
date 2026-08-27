@@ -25,23 +25,48 @@ export async function ensureDefaultCategories(userId: string) {
   });
 
   const existingKeys = new Set(existingCategories.map(c => c.systemKey).filter(Boolean));
-  const existingNames = new Set(existingCategories.map(c => c.name.toLowerCase()));
+  const existingNames = new Map<string, any>(
+    existingCategories.map(c => [c.name.toLowerCase(), c])
+  );
 
   for (const cat of DEFAULT_CATEGORIES) {
-    // Skip if systemKey exists or a category with the same exact name exists
-    if (existingKeys.has(cat.systemKey) || existingNames.has(cat.name.toLowerCase())) {
+    // 1. If exact systemKey already exists, we are good
+    if (existingKeys.has(cat.systemKey)) {
       continue;
     }
 
+    // 2. If a category with the same name exists, adopt it if it doesn't already have a conflicting systemKey
+    const existingByName = existingNames.get(cat.name.toLowerCase());
+    if (existingByName) {
+      if (!existingByName.systemKey || existingByName.systemKey === cat.systemKey) {
+        await db.category.update({
+          where: { id: existingByName.id },
+          data: {
+            systemKey: cat.systemKey,
+            directionHint: cat.directionHint,
+          }
+        });
+        existingKeys.add(cat.systemKey);
+        continue;
+      } else {
+        // Leave the existing row unchanged, do not attempt duplicate creation.
+        continue;
+      }
+    }
+
+    // 3. Otherwise, create a new one
     await db.category.create({
       data: {
         userId,
         name: cat.name,
-
         directionHint: cat.directionHint,
         systemKey: cat.systemKey,
         color: cat.color,
       }
     });
   }
+
+  return await db.category.findMany({
+    where: { userId }
+  });
 }

@@ -55,5 +55,105 @@ describe('Reports Actions', () => {
       
       expect(res?.data?.success).toBe(true);
     });
+
+    it('should import InternalTransfer and correctly adjust balances', async () => {
+      mockDb.$transaction.mockImplementation(async (callback: any) => {
+        return callback(mockDb);
+      });
+
+      const transactions = [
+        {
+          date: '2026-08-01',
+          description: 'Transfer',
+          direction: 'InternalTransfer' as const,
+          amount: 500,
+          accountName: 'Bank',
+          destinationAccountName: 'Savings',
+          categoryName: 'Transfer',
+        }
+      ];
+
+      mockDb.category.findMany.mockResolvedValue([{ id: 'cat-trans', name: 'Transfer' }]);
+      mockDb.account.findMany.mockResolvedValue([
+        { id: 'acc-bank', name: 'Bank', balance: 1000 },
+        { id: 'acc-save', name: 'Savings', balance: 500 }
+      ]);
+      
+      const res = await importDataAction({ transactions });
+
+      // Check transaction was created with destination
+      expect(mockDb.transaction.create).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({
+          direction: 'InternalTransfer',
+          accountId: 'acc-bank',
+          destinationAccountId: 'acc-save',
+          amount: 500
+        })
+      }));
+
+      // Check balances were adjusted (Bank -500, Savings +500)
+      expect(mockDb.account.update).toHaveBeenCalledWith(expect.objectContaining({
+        where: { id: 'acc-bank' },
+        data: { balance: { decrement: 500 } }
+      }));
+      expect(mockDb.account.update).toHaveBeenCalledWith(expect.objectContaining({
+        where: { id: 'acc-save' },
+        data: { balance: { increment: 500 } }
+      }));
+
+      expect(res?.data?.success).toBe(true);
+    });
+
+    it('should not adjust balances in FullBackup mode', async () => {
+      mockDb.$transaction.mockImplementation(async (callback: any) => {
+        return callback(mockDb);
+      });
+
+      const transactions = [
+        {
+          date: '2026-08-01',
+          description: 'Transfer',
+          direction: 'InternalTransfer' as const,
+          amount: 500,
+          accountName: 'Bank',
+          destinationAccountName: 'Savings',
+          categoryName: 'Transfer',
+        }
+      ];
+
+      mockDb.category.findMany.mockResolvedValue([{ id: 'cat-trans', name: 'Transfer' }]);
+      mockDb.account.findMany.mockResolvedValue([
+        { id: 'acc-bank', name: 'Bank', balance: 1000 },
+        { id: 'acc-save', name: 'Savings', balance: 500 }
+      ]);
+      
+      const res = await importDataAction({ importMode: 'FullBackup', transactions });
+
+      // Balances should not be updated
+      expect(mockDb.account.update).not.toHaveBeenCalled();
+      expect(res?.data?.success).toBe(true);
+    });
+
+    it('should throw error for invalid InternalTransfer', async () => {
+      mockDb.$transaction.mockImplementation(async (callback: any) => {
+        return callback(mockDb);
+      });
+
+      const transactions = [
+        {
+          date: '2026-08-01',
+          description: 'Transfer',
+          direction: 'InternalTransfer' as const,
+          amount: 500,
+          accountName: 'Bank',
+          // Missing destinationAccountName
+          categoryName: 'Transfer',
+        }
+      ];
+
+      const res = await importDataAction({ transactions });
+      expect(res?.serverError).toBeDefined();
+      expect(res?.serverError).toContain("Source and destination required for InternalTransfer");
+    });
   });
 });

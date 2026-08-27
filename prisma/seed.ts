@@ -121,24 +121,28 @@ async function main() {
   const existingCategories = await prisma.category.findMany({ where: { userId: user.id } });
   
   const categoryNames = [
-    { name: "Phone", direction: "Debit", color: "#3B82F6" },
-    { name: "DECO", direction: "Debit", color: "#6366F1" },
-    { name: "ChatGPT", direction: "Debit", color: "#10B981" },
-    { name: "Fuel", direction: "Debit", color: "#F59E0B" },
-    { name: "Gym", direction: "Debit", color: "#EC4899" },
-    { name: "Trips", direction: "Debit", color: "#8B5CF6" },
-    { name: "Family", direction: "Debit", color: "#EF4444" },
-    { name: "Health Insurance", direction: "Debit", color: "#14B8A6" },
-    { name: "Car Insurance", direction: "Debit", color: "#F97316" },
-    { name: "Car Maintenance", direction: "Debit", color: "#64748B" },
-    { name: "Food", direction: "Debit", color: "#A855F7" },
-    { name: "Leisure", direction: "Debit", color: "#06B6D4" },
-    { name: "Salary", direction: "Credit", color: "#22C55E" },
-    { name: "Investment Profit", direction: "Credit", color: "#EAB308" },
-    { name: "Tax Reservation", direction: "Debit", color: "#EF4444" },
+    { name: "Phone", directionHint: "Debit", color: "#3B82F6" },
+    { name: "DECO", directionHint: "Debit", color: "#6366F1" },
+    { name: "ChatGPT", directionHint: "Debit", color: "#10B981" },
+    { name: "Fuel", directionHint: "Debit", color: "#F59E0B" },
+    { name: "Gym", directionHint: "Debit", color: "#EC4899" },
+    { name: "Trips", directionHint: "Debit", color: "#8B5CF6" },
+    { name: "Family", directionHint: "Debit", color: "#EF4444" },
+    { name: "Health Insurance", directionHint: "Debit", color: "#14B8A6" },
+    { name: "Car Insurance", directionHint: "Debit", color: "#F97316" },
+    { name: "Car Maintenance", directionHint: "Debit", color: "#64748B" },
+    { name: "Food", directionHint: "Debit", color: "#A855F7" },
+    { name: "Leisure", directionHint: "Debit", color: "#06B6D4" },
+    { name: "Investment Profit", directionHint: "Credit", color: "#EAB308" },
+    { name: "Tax Reservation", directionHint: "Debit", color: "#EF4444" },
   ];
 
   const categories: Record<string, any> = {};
+  for (const c of existingCategories) {
+    if (c.systemKey) {
+      categories[c.systemKey] = c;
+    }
+  }
   for (const cat of categoryNames) {
     categories[cat.name] = await prisma.category.create({
       data: {
@@ -190,7 +194,7 @@ async function main() {
       description: "Monthly Salary Deposit",
       direction: "Credit",
       amount: 4500.0,
-      categoryId: categories["Salary"].id,
+      categoryId: categories["salary"].id,
       accountId: bank.id,
       tags: "salary,income",
     },

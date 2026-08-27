@@ -63,7 +63,7 @@ model Transaction {
   user                 User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
   date                 DateTime
   description          String
-  direction            String // Debit, Credit (Authoritative financial movement)
+  direction            String // Debit, Credit, InternalTransfer (Authoritative financial movement)
   amount               Float
   categoryId           String?
   category             Category?                   @relation(fields: [categoryId], references: [id], onDelete: SetNull)

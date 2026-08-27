@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { authActionClient } from "@/lib/safe-action";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
+import { ensureDefaultCategories } from "../categories/default-categories";
 
 const updateSettingsSchema = z.object({
   theme: z.enum(["Dark", "Light", "System"]),
@@ -129,47 +130,23 @@ export const resetAndSeedDatabase = authActionClient.action(async ({ ctx: { user
       },
     });
 
-    // 4. Create Categories
-    const categoryNames = [
-      { name: "Phone", directionHint: "Debit", color: "#3B82F6" },
-      { name: "DECO", directionHint: "Debit", color: "#6366F1" },
-      { name: "ChatGPT", directionHint: "Debit", color: "#10B981" },
-      { name: "Fuel", directionHint: "Debit", color: "#F59E0B" },
-      { name: "Gym", directionHint: "Debit", color: "#EC4899" },
-      { name: "Trips", directionHint: "Debit", color: "#8B5CF6" },
-      { name: "Family", directionHint: "Debit", color: "#EF4444" },
-      { name: "Health Insurance", directionHint: "Debit", color: "#14B8A6" },
-      { name: "Car Insurance", directionHint: "Debit", color: "#F97316" },
-      { name: "Car Maintenance", directionHint: "Debit", color: "#64748B" },
-      { name: "Food", directionHint: "Debit", color: "#A855F7" },
-      { name: "Leisure", directionHint: "Debit", color: "#06B6D4" },
-      { name: "Salary", directionHint: "Credit", color: "#22C55E" },
-      { name: "Investment Profit", directionHint: "Credit", color: "#EAB308" },
-      { name: "Tax Reservation", directionHint: "Debit", color: "#EF4444" },
-      { name: "Other", directionHint: "Both", color: "#94A3B8" },
-      { name: "Internal Transfer", directionHint: "Both", color: "#9CA3AF" },
-    ];
-
-    const categories: Record<string, any> = {};
-    for (const cat of categoryNames) {
-      categories[cat.name] = await db.category.create({
-        data: { ...cat, userId },
-      });
-    }
+    // 4. Create Categories via canonical system
+    const seededCategories = await ensureDefaultCategories(userId);
+    const catMap = new Map<string, string>(seededCategories.map((c: any) => [c.systemKey, c.id]));
 
     const expensesList = [
-      { name: "Phone", amount: 62 },
-      { name: "DECO", amount: 18 },
-      { name: "ChatGPT", amount: 23 },
-      { name: "Fuel", amount: 100 },
-      { name: "Gym", amount: 256 },
-      { name: "Trips", amount: 100 },
-      { name: "Family", amount: 500 },
-      { name: "Health Insurance", amount: 34 },
-      { name: "Car Insurance", amount: 42 },
-      { name: "Car Maintenance", amount: 58 },
-      { name: "Food", amount: 300 },
-      { name: "Leisure", amount: 500 },
+      { name: "Phone", amount: 62, sys: "entertainment" },
+      { name: "DECO", amount: 18, sys: "fees" },
+      { name: "ChatGPT", amount: 23, sys: "entertainment" },
+      { name: "Fuel", amount: 100, sys: "travel" },
+      { name: "Gym", amount: 256, sys: "entertainment" },
+      { name: "Trips", amount: 100, sys: "travel" },
+      { name: "Family", amount: 500, sys: "purchase" },
+      { name: "Health Insurance", amount: 34, sys: "tax" },
+      { name: "Car Insurance", amount: 42, sys: "tax" },
+      { name: "Car Maintenance", amount: 58, sys: "travel" },
+      { name: "Food", amount: 300, sys: "groceries" },
+      { name: "Leisure", amount: 500, sys: "entertainment" },
     ];
 
     // Seed June 2026 expenses
@@ -181,7 +158,7 @@ export const resetAndSeedDatabase = authActionClient.action(async ({ ctx: { user
           description: `Monthly ${exp.name} payment`,
           direction: "Debit",
           amount: exp.amount,
-          categoryId: categories[exp.name].id,
+          categoryId: catMap.get(exp.sys) as string,
           accountId: bank.id,
           tags: "monthly,fixed",
         },
@@ -196,7 +173,7 @@ export const resetAndSeedDatabase = authActionClient.action(async ({ ctx: { user
         description: "Monthly Salary Deposit",
         direction: "Credit",
         amount: 4500.0,
-        categoryId: categories["Salary"].id,
+        categoryId: catMap.get("salary") as string,
         accountId: bank.id,
         tags: "salary,income",
       },
@@ -211,7 +188,7 @@ export const resetAndSeedDatabase = authActionClient.action(async ({ ctx: { user
           description: `Monthly ${exp.name} payment`,
           direction: "Debit",
           amount: exp.amount,
-          categoryId: categories[exp.name].id,
+          categoryId: catMap.get(exp.sys) as string,
           accountId: bank.id,
           tags: "monthly,fixed",
         },

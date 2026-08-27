@@ -99,6 +99,44 @@ describe("importBankStatementAction", () => {
     expect(result?.serverError).toContain("Statement currency does not match account currency");
   });
 
+    it('should reject InternalTransfer direction', async () => {
+      const parsedInput = {
+        accountId: 'acc-1',
+        updateBalance: false,
+        transactions: [
+          {
+            bookingDate: '2026-08-01',
+            description: 'Transfer',
+            amount: 100,
+            direction: 'InternalTransfer' as any,
+            forceImportDuplicate: false
+          }
+        ]
+      };
+
+      const res = await importBankStatementAction(parsedInput);
+      expect(res?.validationErrors).toBeDefined();
+    });
+
+    it('should reject InternalTransfer in previewBankStatementDuplicatesAction', async () => {
+      const { previewBankStatementDuplicatesAction } = await import('../../bank-import/actions');
+      const parsedInput = {
+        accountId: 'acc-1',
+        transactions: [
+          {
+            candidateIndex: 0,
+            bookingDate: '2026-08-01',
+            description: 'Transfer',
+            amount: 100,
+            direction: 'InternalTransfer' as any
+          }
+        ]
+      };
+      
+      const res = await previewBankStatementDuplicatesAction(parsedInput);
+      expect(res?.validationErrors).toBeDefined();
+    });
+
   it("server rejects mixed-currency rows", async () => {
     (db.account.findFirst as any).mockResolvedValue({ id: "acc_1", currency: "EUR", externalMappings: [] });
 

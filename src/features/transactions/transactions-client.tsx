@@ -12,6 +12,7 @@ import {
   deleteTransaction,
   bulkDeleteTransactions
 } from "./actions";
+import { buildTransactionPayload } from "./utils";
 import { formatCurrency, cn } from "@/lib/utils";
 import { Search, Plus, Filter, Trash2, Edit2, Check, X, ArrowUpDown, ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -20,7 +21,7 @@ interface Transaction {
   date: string;
   createdAt: string;
   description: string;
-  direction: "Debit" | "Credit";
+  direction: "Debit" | "Credit" | "InternalTransfer";
   amount: number;
   accountId: string;
   accountName: string;
@@ -37,7 +38,7 @@ interface TransactionsClientProps {
   data: {
     transactions: Transaction[];
     accounts: { id: string; name: string; type: string }[];
-    categories: { id: string; name: string; color: string }[];
+    categories: { id: string; name: string; systemKey: string; color: string }[];
   };
 }
 
@@ -69,13 +70,13 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
 
   // Inline Editing state
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<Partial<Omit<Transaction, "direction">> & { direction?: "Debit" | "Credit" | "Transfer" }>({});
+  const [editForm, setEditForm] = useState<Partial<Omit<Transaction, "direction">> & { direction?: "Debit" | "Credit" | "InternalTransfer" }>({});
 
   // New Transaction Form State
   const [newTx, setNewTx] = useState({
     date: new Date().toISOString().split("T")[0],
     description: "",
-    direction: "Debit" as any,
+    direction: "Debit" as "Debit" | "Credit" | "InternalTransfer",
     amount: "",
     accountId: data.accounts[0]?.id || "none",
     categoryId: data.categories[0]?.id || "",
@@ -113,27 +114,18 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
   const startEdit = (tx: Transaction) => {
     setEditingId(tx.id);
     setEditForm({ 
-      ...tx, 
-      direction: tx.destinationAccountId ? "Transfer" : tx.direction 
-    } as any);
+      ...tx
+    });
   };
 
   // Save Inline Edit
   const saveEdit = () => {
     if (!editForm.id) return;
     startTransition(async () => {
-      const isTransfer = editForm.direction === "Transfer";
+      const payload = buildTransactionPayload(editForm);
       const res = await updateTransaction({
         id: editForm.id!,
-        description: editForm.description,
-        amount: Number(editForm.amount),
-        date: editForm.date,
-        direction: (isTransfer ? "Debit" : editForm.direction) as "Debit" | "Credit" | undefined,
-        accountId: editForm.accountId === "none" ? undefined : editForm.accountId,
-        categoryId: editForm.categoryId || null,
-        destinationAccountId: isTransfer && editForm.destinationAccountId ? editForm.destinationAccountId : null,
-        tags: editForm.tags || "",
-        notes: editForm.notes
+        ...payload
       });
       if (res?.data?.success) {
         setEditingId(null);
@@ -163,19 +155,13 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
   // Create Transaction
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
+    if (newTx.direction === "InternalTransfer" && !newTx.destinationAccountId) {
+        alert("Please select a destination account for the internal transfer.");
+        return;
+    }
     startTransition(async () => {
-      const isTransfer = newTx.direction === "Transfer";
-      const res = await createTransaction({
-        date: newTx.date,
-        description: newTx.description,
-        direction: (isTransfer ? "Debit" : newTx.direction) as "Debit" | "Credit",
-        amount: Number(newTx.amount),
-        accountId: newTx.accountId === "none" ? undefined : newTx.accountId,
-        categoryId: newTx.categoryId || null,
-        destinationAccountId: isTransfer && newTx.destinationAccountId ? newTx.destinationAccountId : null,
-        tags: newTx.tags,
-        notes: newTx.notes
-      });
+      const payload = buildTransactionPayload(newTx);
+      const res = await createTransaction(payload);
       if (res?.data?.success) {
         setIsOpen(false);
         setNewTx({
@@ -282,20 +268,34 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <label className="text-[11px] font-semibold text-muted-foreground uppercase">Direction</label>
-                      <Select value={newTx.direction} onValueChange={(val) => setNewTx({ ...newTx, direction: val as any })}>
+                      <Select 
+                        value={newTx.direction} 
+                        onValueChange={(val) => {
+                          const isNowTransfer = val === "InternalTransfer";
+                          const defaultTransferCat = data.categories.find(c => c.systemKey === "transfer")?.id || newTx.categoryId;
+                          setNewTx({ 
+                            ...newTx, 
+                            direction: val as any,
+                            destinationAccountId: isNowTransfer ? newTx.destinationAccountId : "",
+                            categoryId: isNowTransfer ? defaultTransferCat : newTx.categoryId
+                          });
+                        }}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Select direction" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="Debit">Debit</SelectItem>
                           <SelectItem value="Credit">Credit</SelectItem>
-                          <SelectItem value="Transfer">Internal Transfer</SelectItem>
+                          <SelectItem value="InternalTransfer">Internal Transfer</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-[11px] font-semibold text-muted-foreground uppercase">Account</label>
+                      <label className="text-[11px] font-semibold text-muted-foreground uppercase">
+                        {newTx.direction === "InternalTransfer" ? "From Account" : "Account"}
+                      </label>
                       <Select value={newTx.accountId} onValueChange={(val) => setNewTx({ ...newTx, accountId: val })}>
                         <SelectTrigger>
                           <SelectValue placeholder="Select account" />
@@ -327,15 +327,14 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
                         </Select>
                       </div>
                     )}
-                    {newTx.direction === "Transfer" && (
+                    {newTx.direction === "InternalTransfer" && (
                       <div className="space-y-1.5">
-                        <label className="text-[11px] font-semibold text-muted-foreground uppercase">Transfer To (Optional)</label>
+                        <label className="text-[11px] font-semibold text-muted-foreground uppercase">To Account</label>
                         <Select value={newTx.destinationAccountId} onValueChange={(val) => setNewTx({ ...newTx, destinationAccountId: val === "none" ? "" : val })}>
                           <SelectTrigger>
                             <SelectValue placeholder="Internal transfer to..." />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="none">Not an internal transfer</SelectItem>
                             {data.accounts.filter(a => a.id !== newTx.accountId).map((ac) => (
                               <SelectItem key={ac.id} value={ac.id}>{ac.name}</SelectItem>
                             ))}
@@ -396,6 +395,7 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
                   <SelectItem value="all">All Directions</SelectItem>
                   <SelectItem value="Debit">Debit</SelectItem>
                   <SelectItem value="Credit">Credit</SelectItem>
+                  <SelectItem value="InternalTransfer">Internal Transfer</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -530,7 +530,14 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
                           <div className="w-[110px]">
                             <Select
                               value={editForm.direction}
-                              onValueChange={(val) => setEditForm({ ...editForm, direction: val as any })}
+                              onValueChange={(val) => {
+                                const isNowTransfer = val === "InternalTransfer";
+                                setEditForm({ 
+                                  ...editForm, 
+                                  direction: val as any,
+                                  destinationAccountId: isNowTransfer ? editForm.destinationAccountId : undefined
+                                });
+                              }}
                             >
                               <SelectTrigger className="h-8 text-xs py-0.5">
                                 <SelectValue />
@@ -538,7 +545,7 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
                               <SelectContent>
                                 <SelectItem value="Debit">Debit</SelectItem>
                                 <SelectItem value="Credit">Credit</SelectItem>
-                                <SelectItem value="Transfer">Internal Transfer</SelectItem>
+                                <SelectItem value="InternalTransfer">Internal Transfer</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
@@ -547,10 +554,11 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
                             className={cn(
                               "px-2 py-0.5 rounded text-[10px] font-bold border",
                               tx.direction === "Credit" && "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400",
-                              tx.direction === "Debit" && "bg-accent border-border text-foreground"
+                              tx.direction === "Debit" && "bg-accent border-border text-foreground",
+                              tx.direction === "InternalTransfer" && "bg-blue-500/10 border-blue-500/20 text-blue-600 dark:text-blue-400"
                             )}
                           >
-                            {tx.direction}
+                            {tx.direction === "InternalTransfer" ? "Transfer" : tx.direction}
                           </span>
                         )}
                       </td>
@@ -600,17 +608,16 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
                                 </Select>
                               </div>
                             )}
-                            {editForm.direction === "Transfer" && (
+                            {editForm.direction === "InternalTransfer" && (
                               <div className="w-[130px]">
                                 <Select
-                                  value={editForm.destinationAccountId || "none"}
-                                  onValueChange={(val) => setEditForm({ ...editForm, destinationAccountId: val === "none" ? undefined : val })}
+                                  value={editForm.destinationAccountId || ""}
+                                  onValueChange={(val) => setEditForm({ ...editForm, destinationAccountId: val })}
                                 >
                                   <SelectTrigger className="h-8 text-xs py-0.5">
                                     <SelectValue placeholder="Destination" />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    <SelectItem value="none">Not a transfer</SelectItem>
                                     {data.accounts.filter(a => a.id !== editForm.accountId).map((a) => (
                                       <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
                                     ))}
@@ -657,8 +664,12 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
                             className="h-8 py-0.5 px-2 text-xs text-right font-mono w-[100px]"
                           />
                         ) : (
-                          <span className={cn(tx.direction === "Credit" ? "text-emerald-500 dark:text-emerald-400" : "text-foreground")}>
-                            {tx.direction === "Credit" ? "+" : "-"}
+                          <span className={cn(
+                            tx.direction === "Credit" ? "text-emerald-500 dark:text-emerald-400" : 
+                            tx.direction === "InternalTransfer" ? "text-blue-500 dark:text-blue-400" : 
+                            "text-foreground"
+                          )}>
+                            {tx.direction === "Credit" ? "+" : (tx.direction === "InternalTransfer" ? "⇄ " : "-")}
                             {formatCurrency(Math.abs(tx.amount))}
                           </span>
                         )}

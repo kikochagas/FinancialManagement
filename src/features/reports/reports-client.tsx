@@ -8,7 +8,7 @@ import { importDataAction } from "./actions";
 import { formatCurrency } from "@/lib/utils";
 import * as XLSX from "xlsx";
 import { FileDown, FileUp, Calculator, ShieldCheck, Printer, FileText, CheckCircle2 } from "lucide-react";
-import { parseNumber, parseDate, parseType } from "./utils";
+import { parseStructuredImport } from "./structured-import-parser";
 import { BankImportWizard } from "./bank-import/components/BankImportWizard";
 
 interface ReportsClientProps {
@@ -65,146 +65,8 @@ export function ReportsClient({ data }: ReportsClientProps) {
     const reader = new FileReader();
     reader.onload = (evt) => {
       try {
-        const bstr = evt.target?.result;
-        const wb = XLSX.read(bstr, { type: "binary" });
-
-        const result: { transactions?: any[]; accounts?: any[]; investments?: any[]; goals?: any[]; snapshots?: any[] } = {};
-
-        // Automatic Sheet Mapping
-        wb.SheetNames.forEach((sheetName) => {
-          const ws = wb.Sheets[sheetName];
-          const rawData = XLSX.utils.sheet_to_json(ws);
-
-          if (rawData.length === 0) return;
-
-          const firstRow = rawData[0] as any;
-          const keys = Object.keys(firstRow).map((k) => k.toLowerCase().trim());
-
-          const hasAmount = keys.includes("amount") || keys.includes("valor (€)") || keys.includes("valor");
-          const hasDesc = keys.includes("description") || keys.includes("descrição") || keys.includes("descricao");
-
-          if (hasAmount && hasDesc) {
-            // Map to Transactions
-            result.transactions = rawData.map((row: any) => {
-              const rowKeys = Object.keys(row);
-              const getVal = (possibleNames: string[]) => {
-                const key = rowKeys.find(k => possibleNames.includes(k.toLowerCase().trim()));
-                return key ? row[key] : undefined;
-              };
-
-              const rawDate = getVal(["date", "data"]);
-              const rawDesc = getVal(["description", "descrição", "descricao"]);
-              const rawType = getVal(["type", "tipo", "direction", "direção", "direcao"]);
-              const rawAmount = getVal(["amount", "valor (€)", "valor"]);
-              const rawAccount = getVal(["account", "accountname", "conta"]);
-              const rawCategory = getVal(["category", "categoryname", "categoria"]);
-              const rawTags = getVal(["tags", "tag"]);
-              const rawNotes = getVal(["notes", "notas"]);
-
-              return {
-                date: parseDate(rawDate),
-                description: rawDesc || "Imported Entry",
-                type: parseType(rawType),
-                amount: parseNumber(rawAmount),
-                accountName: rawAccount || "Bank",
-                categoryName: rawCategory || "Other",
-                tags: rawTags || "",
-                notes: rawNotes || "",
-              };
-            });
-            setImportStatus((prev) => prev + ` Found Transactions sheet (${sheetName}). `);
-          } else if (keys.some(k => ["balance", "saldo", "total"].includes(k)) && keys.some(k => ["name", "account", "conta", "banco"].includes(k))) {
-            // Map to Accounts
-            result.accounts = rawData.map((row: any) => {
-              const rowKeys = Object.keys(row);
-              const getVal = (possibleNames: string[]) => {
-                const key = rowKeys.find(k => possibleNames.includes(k.toLowerCase().trim()));
-                return key ? row[key] : undefined;
-              };
-              
-              const rawName = getVal(["name", "account", "conta", "banco"]);
-              const rawBalance = getVal(["balance", "saldo", "total"]);
-              
-              return {
-                name: rawName || "Imported Account",
-                type: "Bank",
-                balance: parseNumber(rawBalance),
-                currency: "EUR",
-              };
-            });
-            setImportStatus((prev) => prev + ` Found Accounts sheet (${sheetName}). `);
-          } else if (keys.includes("costbasis") || keys.includes("marketvalue") || sheetName.toLowerCase().includes("investment")) {
-            // Map to Investments
-            result.investments = rawData.map((row: any) => {
-              const rowKeys = Object.keys(row);
-              const getVal = (possibleNames: string[]) => {
-                const key = rowKeys.find(k => possibleNames.includes(k.toLowerCase().trim()));
-                return key ? row[key] : undefined;
-              };
-              
-              const rawName = getVal(["name", "nome", "ativo"]);
-              const rawType = getVal(["type", "tipo"]);
-              const rawCostBasis = getVal(["costbasis", "cost basis", "cost_basis"]);
-              const rawMarketValue = getVal(["marketvalue", "market value", "market_value"]);
-              
-              return {
-                name: String(rawName || "Imported Investment"),
-                type: String(rawType || "Stocks"),
-                costBasis: parseNumber(rawCostBasis) || 0,
-                marketValue: parseNumber(rawMarketValue) || 0,
-              };
-            });
-            setImportStatus((prev) => prev + ` Found Investments sheet (${sheetName}). `);
-          } else if (keys.includes("targetamount") || keys.includes("currentamount") || sheetName.toLowerCase().includes("goal")) {
-            // Map to Goals
-            result.goals = rawData.map((row: any) => {
-              const rowKeys = Object.keys(row);
-              const getVal = (possibleNames: string[]) => {
-                const key = rowKeys.find(k => possibleNames.includes(k.toLowerCase().trim()));
-                return key ? row[key] : undefined;
-              };
-              
-              const rawName = getVal(["name", "nome", "objetivo"]);
-              const rawType = getVal(["type", "tipo"]);
-              const rawTargetAmount = getVal(["targetamount", "target amount", "target"]);
-              const rawCurrentAmount = getVal(["currentamount", "current amount", "current"]);
-              
-              return {
-                name: String(rawName || "Imported Goal"),
-                type: String(rawType || "Custom"),
-                targetAmount: parseNumber(rawTargetAmount) || 0,
-                currentAmount: parseNumber(rawCurrentAmount) || 0,
-              };
-            });
-            setImportStatus((prev) => prev + ` Found Goals sheet (${sheetName}). `);
-          } else if (keys.includes("networth") || keys.includes("net worth") || sheetName.toLowerCase().includes("snapshot")) {
-            // Map to Snapshots
-            result.snapshots = rawData.map((row: any) => {
-              const rowKeys = Object.keys(row);
-              const getVal = (possibleNames: string[]) => {
-                const key = rowKeys.find(k => possibleNames.includes(k.toLowerCase().trim()));
-                return key ? row[key] : undefined;
-              };
-              
-              const rawYear = getVal(["year", "ano"]);
-              const rawMonth = getVal(["month", "mês", "mes"]);
-              const rawNetWorth = getVal(["networth", "net worth", "net_worth", "património líquido"]);
-              const rawLiquidAssets = getVal(["liquidassets", "liquid assets", "liquid_assets", "ativos líquidos"]);
-              const rawInvestments = getVal(["investmentsvalue", "investments", "investments value", "investimentos"]);
-              const rawSavingsRate = getVal(["savingsrate", "savings rate", "taxa de poupança"]);
-              
-              return {
-                year: parseNumber(rawYear) || new Date().getFullYear(),
-                month: parseNumber(rawMonth) || (new Date().getMonth() + 1),
-                netWorth: parseNumber(rawNetWorth) || 0,
-                liquidAssets: parseNumber(rawLiquidAssets) || 0,
-                investmentsValue: parseNumber(rawInvestments) || 0,
-                savingsRate: parseNumber(rawSavingsRate) || 0,
-              };
-            });
-            setImportStatus((prev) => prev + ` Found Snapshots sheet (${sheetName}). `);
-          }
-        });
+        const buffer = evt.target?.result as string;
+        const result = parseStructuredImport({ buffer, fileName: file.name });
 
         if (result.transactions || result.accounts || result.investments || result.goals || result.snapshots) {
           setImportedPreview(result);
@@ -214,7 +76,7 @@ export function ReportsClient({ data }: ReportsClientProps) {
         }
       } catch (err) {
         console.error(err);
-        setImportStatus("Error parsing Excel file.");
+        setImportStatus("Error parsing file.");
       }
     };
     reader.readAsBinaryString(file);
@@ -225,6 +87,7 @@ export function ReportsClient({ data }: ReportsClientProps) {
     if (!importedPreview) return;
     startTransition(async () => {
       const res = await importDataAction({
+        importMode: (importedPreview as any).importMode || "TransactionsOnly",
         transactions: importedPreview.transactions,
         accounts: importedPreview.accounts,
         investments: importedPreview.investments,
@@ -260,6 +123,7 @@ export function ReportsClient({ data }: ReportsClientProps) {
       Direction: t.direction,
       Amount: t.amount,
       Account: t.accountName,
+      DestinationAccount: t.destinationAccountName || "",
       Category: t.categoryName,
       Tags: t.tags,
       Notes: t.notes,
@@ -282,7 +146,7 @@ export function ReportsClient({ data }: ReportsClientProps) {
   // Export Transactions to CSV
   const handleExportCSV = () => {
     if (data.transactions.length === 0) return;
-    const headers = ["Date", "Description", "Direction", "Amount", "Account", "Category", "Tags", "Notes"];
+    const headers = ["Date", "Description", "Direction", "Amount", "Account", "DestinationAccount", "Category", "Tags", "Notes"];
     const csvContent = [
       headers.join(","),
       ...data.transactions.map((t) =>
@@ -292,6 +156,7 @@ export function ReportsClient({ data }: ReportsClientProps) {
           t.direction,
           t.amount,
           t.accountName,
+          t.destinationAccountName || "",
           t.categoryName,
           `"${t.tags}"`,
           `"${(t.notes || "").replace(/"/g, '""')}"`,
@@ -537,7 +402,7 @@ export function ReportsClient({ data }: ReportsClientProps) {
                         <tr key={index}>
                           <td className="p-2 font-mono text-[10px] text-muted-foreground">{tx.date}</td>
                           <td className="p-2 font-semibold text-foreground">{tx.description}</td>
-                          <td className="p-2 text-muted-foreground">{tx.type}</td>
+                          <td className="p-2 text-muted-foreground">{tx.direction}</td>
                           <td className="p-2 text-muted-foreground">{tx.accountName}</td>
                           <td className="p-2 text-violet-600 dark:text-violet-400">{tx.categoryName}</td>
                           <td className="p-2 text-right font-mono font-bold text-foreground">{formatCurrency(tx.amount)}</td>

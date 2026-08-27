@@ -7,60 +7,75 @@ export async function classifyTransactions(
   // 1. Fetch user's categories
   const categories = await db.category.findMany({ where: { userId } });
   
-  // 2. Fetch user's historical transactions
-  const history = await db.transaction.findMany({
-    where: { userId, categoryId: { not: null } },
-    select: { description: true, categoryId: true },
-    orderBy: { date: "desc" },
-    take: 1000
-  });
-
-  const exactMatchMap = new Map<string, string>();
-  for (const h of history) {
-    const norm = h.description.toLowerCase().trim();
-    if (!exactMatchMap.has(norm) && h.categoryId) {
-      exactMatchMap.set(norm, h.categoryId);
-    }
-  }
-
   // System fallback mapping
   const systemKeywords: Record<string, string> = {
     // Keywords -> systemKey of default categories
-    "uber": "transport",
-    "bolt": "transport",
-    "mcdonalds": "food",
-    "continente": "groceries",
-    "pingo doce": "groceries",
-    "lidl": "groceries",
-    "netflix": "entertainment",
-    "spotify": "entertainment",
-    "interest": "interest",
-    "tax": "tax",
-    "irs": "tax",
-    "vanguard": "investment",
-    "trade republic": "investment",
-    "salary": "salary",
+    "ordenado": "salary",
+    "ordenados": "salary",
+    "salário": "salary",
     "salario": "salary",
-    "vencimento": "salary"
+    "salary": "salary",
+    "payroll": "salary",
+
+    "levantamento": "withdrawal",
+    "atm": "withdrawal",
+    "withdrawal": "withdrawal",
+
+    "transfer": "transfer",
+    "transferência": "transfer",
+    "transferencia": "transfer",
+    "transf": "transfer",
+    "sepa": "transfer",
+
+    "comissão": "fees",
+    "comissao": "fees",
+    "commission": "fees",
+    "fee": "fees",
+    "fees": "fees",
+
+    "tax": "tax",
+    "imposto": "tax",
+    "irs": "tax",
+
+    "interest": "interest",
+    "juros": "interest",
+
+    "investment": "investment",
+    "investimento": "investment",
+    "broker": "investment",
+    "securities": "investment",
+
+    "compra": "purchase",
+    "purchase": "purchase",
+    "card payment": "purchase",
   };
 
   const results: Record<number, string | null> = {};
 
-  for (const tx of transactions) {
-    const desc = tx.description.toLowerCase().trim();
-    
-    // 1. Exact historical match
-    if (exactMatchMap.has(desc)) {
-      results[tx.candidateIndex] = exactMatchMap.get(desc)!;
-      continue;
-    }
+  const normalizeStr = (str: string) => 
+    str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 
-    // 2. System keyword match (fallback)
+  for (const tx of transactions) {
+    const desc = normalizeStr(tx.description);
+    
+    // 2. System keyword match
     let matchedSystemKey = null;
+    const shortKeywords = ["fee", "fees", "tax", "irs", "atm"];
+
     for (const [kw, sysKey] of Object.entries(systemKeywords)) {
-      if (desc.includes(kw)) {
-        matchedSystemKey = sysKey;
-        break;
+      const normalizedKw = normalizeStr(kw);
+      if (shortKeywords.includes(kw)) {
+        // Use word boundary for short keywords to prevent substrings ("coffee" -> "fee")
+        const regex = new RegExp(`\\b${normalizedKw}\\b`, 'i');
+        if (regex.test(desc)) {
+          matchedSystemKey = sysKey;
+          break;
+        }
+      } else {
+        if (desc.includes(normalizedKw)) {
+          matchedSystemKey = sysKey;
+          break;
+        }
       }
     }
 
@@ -74,7 +89,8 @@ export async function classifyTransactions(
     }
 
     // 3. Uncategorized fallback
-    results[tx.candidateIndex] = null;
+    const uncategorized = categories.find(c => c.systemKey === "uncategorized");
+    results[tx.candidateIndex] = uncategorized ? uncategorized.id : null;
   }
 
   return results;

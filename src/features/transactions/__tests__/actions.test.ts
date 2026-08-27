@@ -20,6 +20,78 @@ describe('Transactions Actions', () => {
   });
 
   describe('createTransaction', () => {
+    it('should create an InternalTransfer and adjust both balances correctly', async () => {
+      mockDb.$transaction.mockImplementation(async (callback: any) => callback(mockDb));
+
+      const mockTx = {
+        id: 'tx-2',
+        direction: 'InternalTransfer',
+        amount: 200,
+        accountId: 'acc-1',
+        destinationAccountId: 'acc-2'
+      };
+
+      mockDb.transaction.create.mockResolvedValue(mockTx);
+      mockDb.account.findUnique.mockImplementation(async (args: any) => {
+        if (args.where.id === 'acc-1') return { id: 'acc-1', userId: 'test-user-id', externalMappings: [] };
+        if (args.where.id === 'acc-2') return { id: 'acc-2', userId: 'test-user-id', externalMappings: [] };
+        return null;
+      });
+
+      const result = await createTransaction({
+        date: '2026-07-02',
+        description: 'Internal Transfer test',
+        direction: 'InternalTransfer',
+        amount: 200,
+        accountId: 'acc-1',
+        destinationAccountId: 'acc-2'
+      });
+
+      expect(mockDb.transaction.create).toHaveBeenCalled();
+      
+      // Source account should decrement
+      expect(mockDb.account.update).toHaveBeenCalledWith({
+        where: { id: 'acc-1' },
+        data: { balance: { decrement: 200 } }
+      });
+      // Destination account should increment
+      expect(mockDb.account.update).toHaveBeenCalledWith({
+        where: { id: 'acc-2' },
+        data: { balance: { increment: 200 } }
+      });
+      expect(result?.data?.success).toBe(true);
+    });
+
+    it('should reject InternalTransfer if destination is missing', async () => {
+      mockDb.$transaction.mockImplementation(async (callback: any) => callback(mockDb));
+
+      const result = await createTransaction({
+        date: '2026-07-02',
+        description: 'Internal Transfer invalid',
+        direction: 'InternalTransfer',
+        amount: 200,
+        accountId: 'acc-1',
+        destinationAccountId: null
+      });
+
+      expect(result?.serverError || result?.validationErrors).toBeDefined();
+    });
+
+    it('should reject Debit if destination is provided', async () => {
+      mockDb.$transaction.mockImplementation(async (callback: any) => callback(mockDb));
+
+      const result = await createTransaction({
+        date: '2026-07-02',
+        description: 'Debit invalid',
+        direction: 'Debit',
+        amount: 200,
+        accountId: 'acc-1',
+        destinationAccountId: 'acc-2'
+      });
+
+      expect(result?.serverError || result?.validationErrors).toBeDefined();
+    });
+
     it('should create a transaction and adjust balances correctly', async () => {
       // Mock the transaction to just execute the callback
       mockDb.$transaction.mockImplementation(async (callback: any) => {

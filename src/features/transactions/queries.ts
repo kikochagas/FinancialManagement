@@ -24,7 +24,7 @@ export async function getTransactionsData() {
       date: t.date.toISOString().split("T")[0],
       createdAt: t.createdAt.toISOString(),
       description: t.description,
-      direction: t.direction as "Debit" | "Credit",
+      direction: t.direction as "Debit" | "Credit" | "InternalTransfer",
       amount: t.amount,
       accountId: t.accountId || "none",
       accountName: t.account?.name || "External",
@@ -37,6 +37,6 @@ export async function getTransactionsData() {
       notes: t.notes || "",
     })),
     accounts: accounts.map((a) => ({ id: a.id, name: a.name, type: a.type, balance: a.balance })),
-    categories: categories.map((c) => ({ id: c.id, name: c.name, color: c.color || "#94a3b8" })),
+    categories: categories.map((c) => ({ id: c.id, name: c.name, systemKey: c.systemKey || "", color: c.color || "#94a3b8" })),
   };
 }

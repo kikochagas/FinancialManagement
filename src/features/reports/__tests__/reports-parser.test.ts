@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseNumber, parseDate, parseType } from '../utils';
+import { parseNumber, parseDate, parseLegacyTransactionType } from '../utils';
 
 describe('Reports Parser Utils', () => {
   describe('parseNumber', () => {
@@ -36,11 +36,19 @@ describe('Reports Parser Utils', () => {
     });
   });
 
-  describe('parseType', () => {
-    it('should map Portuguese to standard types', () => {
-      expect(parseType('Entrada')).toBe('Income');
-      expect(parseType('Saída')).toBe('Expense');
-      expect(parseType('saida')).toBe('Expense');
+  describe('parseLegacyTransactionType', () => {
+    it('should parse known income keywords as Income', () => {
+      expect(parseLegacyTransactionType('income')).toBe('Income');
+      expect(parseLegacyTransactionType('Credit')).toBe('Income');
+      expect(parseLegacyTransactionType('entrada')).toBe('Income');
+      expect(parseLegacyTransactionType(' crÉdito ')).toBe('Income');
+    });
+
+    it('should default to Expense for unknown types', () => {
+      expect(parseLegacyTransactionType('Expense')).toBe('Expense');
+      expect(parseLegacyTransactionType('saída')).toBe('Expense');
+      expect(parseLegacyTransactionType('')).toBe('Expense');
+      expect(parseLegacyTransactionType(null)).toBe('Expense');
     });
   });
 });
