@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 import { getUserId } from "@/lib/auth";
 import { db as prisma } from "@/lib/db";
 import { EnableBankingClient } from "@/lib/banking/enable-banking-client";
+import { getAppBaseUrl } from "@/lib/url";
 
 export async function GET(request: Request) {
+  const baseUrl = getAppBaseUrl();
   try {
     const url = new URL(request.url);
     const code = url.searchParams.get("code");
@@ -12,12 +14,12 @@ export async function GET(request: Request) {
     const errorDescription = url.searchParams.get("error_description");
 
     if (!state) {
-      return NextResponse.redirect(new URL("/accounts?error=missing_state", request.url));
+      return NextResponse.redirect(new URL("/accounts?error=missing_state", baseUrl));
     }
 
     const userId = await getUserId();
     if (!userId) {
-      return NextResponse.redirect(new URL("/login", request.url));
+      return NextResponse.redirect(new URL("/login", baseUrl));
     }
 
     // Atomically find and mark state as used
@@ -39,23 +41,15 @@ export async function GET(request: Request) {
     });
 
     if (!authState) {
-      return NextResponse.redirect(new URL("/accounts?error=invalid_state", request.url));
+      return NextResponse.redirect(new URL("/accounts?error=invalid_state", baseUrl));
     }
 
     if (errorParam || !code) {
       // User cancelled or provider error
-      return NextResponse.redirect(new URL("/accounts?error=authorization_failed", request.url));
+      return NextResponse.redirect(new URL("/accounts?error=authorization_failed", baseUrl));
     }
 
     const client = new EnableBankingClient();
-        let baseUrl = process.env.APP_URL;
-    if (!baseUrl) {
-      if (process.env.NODE_ENV === "production") {
-        throw new Error("APP_URL environment variable is missing. Required for Open Banking in production.");
-      }
-      baseUrl = "http://localhost:3000";
-    }
-    baseUrl = baseUrl.replace(/\/+$/, "");
     const redirectUri = `${baseUrl}/api/banking/callback`;
     
     let connectionResult;
@@ -63,7 +57,7 @@ export async function GET(request: Request) {
       connectionResult = await client.completeAuthorization(code, redirectUri);
     } catch (err: any) {
       console.error("Session creation failed.");
-      return NextResponse.redirect(new URL("/accounts?error=session_creation_failed", request.url));
+      return NextResponse.redirect(new URL("/accounts?error=session_creation_failed", baseUrl));
     }
 
     // Re-authorization vs new connection:
@@ -166,12 +160,12 @@ export async function GET(request: Request) {
       }
     }
 
-    const response = NextResponse.redirect(new URL(`/accounts/link?connectionId=${bankConnectionId}`, request.url));
+    const response = NextResponse.redirect(new URL(`/accounts/link?connectionId=${bankConnectionId}`, baseUrl));
     
     return response;
 
   } catch (error: any) {
     console.error("Callback error occurred.");
-    return NextResponse.redirect(new URL("/accounts?error=internal_error", request.url));
+    return NextResponse.redirect(new URL("/accounts?error=internal_error", baseUrl));
   }
 }

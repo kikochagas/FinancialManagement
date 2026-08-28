@@ -3,6 +3,7 @@ import { getUserId } from "@/lib/auth";
 import { EnableBankingClient } from "@/lib/banking/enable-banking-client";
 import { db as prisma } from "@/lib/db";
 import crypto from "crypto";
+import { getAppBaseUrl } from "@/lib/url";
 
 export async function POST(request: Request) {
   try {
@@ -49,14 +50,7 @@ export async function POST(request: Request) {
     }
 
     const stateStr = crypto.randomBytes(32).toString("hex");
-        let baseUrl = process.env.APP_URL;
-    if (!baseUrl) {
-      if (process.env.NODE_ENV === "production") {
-        throw new Error("APP_URL environment variable is missing. Required for Open Banking in production.");
-      }
-      baseUrl = "http://localhost:3000";
-    }
-    baseUrl = baseUrl.replace(/\/+$/, "");
+    const baseUrl = getAppBaseUrl();
     const callbackUrl = `${baseUrl}/api/banking/callback`;
     
     // We add 5 minutes to expiration for the state itself
