@@ -21,7 +21,7 @@ Manage all your daily financial movements seamlessly.
 - **Multi-Account Tracking:** Support for standard Bank accounts, Trade Republic, Coverflex, Cash, Crypto Wallets, and Brokers.
 - **Open Banking Integration:** Securely connect your real-world bank accounts using the Enable Banking API (supporting European ASPSPs).
 - **Automated Synchronization:** Automatically fetches initial balances and transaction histories upon linking, with one-click manual syncing thereafter.
-- **Transactions:** Log Income, Expenses, Transfers, Investments, Interests, and Taxes.
+- **Transactions:** Log Debits, Credits, and Internal Transfers across customizable categories (e.g. Salary, Purchase, Tax, Investments).
 - **Categorization & Tagging:** Keep things organized with customizable categories and searchable tags.
 - **Full Control:** Easily disconnect or permanently delete bank-connected accounts and all associated data at any time.
 
@@ -49,9 +49,11 @@ Name the sheet: `Transactions` (or similar)
 - **Date** (e.g., 2026-08-10)
 - **Description** (e.g., Grocery Shopping)
 - **Amount** / Valor (e.g., 150)
-- **Type** / Tipo (e.g., Expense)
-- **Category** / Categoria (e.g., Food)
+- **Direction** / Direção (e.g., Debit, Credit, Internal Transfer)
+- **Category** / Categoria (e.g., Groceries, Salary, Transfer)
 - **Account** / Conta (e.g., Main Bank Account)
+- **DestinationAccount** / Conta Destino (Optional, required for Internal Transfer)
+*(Legacy 'Type' such as Income/Expense is still supported for V1 backward compatibility).*
 - **Tags** (e.g., essential, monthly)
 
 #### 2. Accounts Sheet

@@ -11,9 +11,12 @@ export async function getAccountsData() {
       transactions: {
         orderBy: { date: "desc" },
         take: 5,
-        include: {
-          category: true,
-        },
+        include: { category: true, account: true, destinationAccount: true },
+      },
+      transferTransactions: {
+        orderBy: { date: "desc" },
+        take: 5,
+        include: { category: true, account: true, destinationAccount: true },
       },
       externalMappings: {
         include: {
@@ -34,15 +37,31 @@ export async function getAccountsData() {
         type: a.type,
         balance: a.balance,
         currency: a.currency,
-        recentTransactions: a.transactions.map((t) => ({
-          id: t.id,
-          date: t.date.toISOString().split("T")[0],
-          description: t.description,
-          direction: t.direction,
-          amount: t.amount,
-          category: t.category?.name || "Uncategorized",
-          color: t.category?.color || "#94a3b8",
-        })),
+        recentTransactions: [...a.transactions, ...a.transferTransactions]
+          .sort((x, y) => {
+             const diff = y.date.getTime() - x.date.getTime();
+             if (diff !== 0) return diff;
+             return y.createdAt.getTime() - x.createdAt.getTime();
+          })
+          .slice(0, 5)
+          .map((t) => {
+             let desc = t.description;
+             if (t.direction === "InternalTransfer") {
+                if (t.accountId === a.id) desc = `Transfer to ${t.destinationAccount?.name || 'External'}`;
+                else if (t.destinationAccountId === a.id) desc = `Transfer from ${t.account?.name || 'External'}`;
+             }
+             return {
+               id: t.id,
+               date: t.date.toISOString().split("T")[0],
+               description: desc,
+               direction: t.direction,
+               amount: t.amount,
+               category: t.category?.name || "Uncategorized",
+               color: t.category?.color || "#94a3b8",
+               accountId: t.accountId || "",
+               destinationAccountId: t.destinationAccountId || "",
+             };
+          }),
         isBankConnected: !!activeMapping,
         hasBankHistory: a.externalMappings.length > 0,
         institutionName: activeMapping ? activeMapping.bankConnection.institutionName : (anyMapping ? anyMapping.bankConnection.institutionName : null),

@@ -12,7 +12,7 @@ import {
   deleteTransaction,
   bulkDeleteTransactions
 } from "./actions";
-import { buildTransactionPayload } from "./utils";
+import { buildTransactionPayload, getTransactionPerspective, filterTransactions } from "./utils";
 import { formatCurrency, cn } from "@/lib/utils";
 import { Search, Plus, Filter, Trash2, Edit2, Check, X, ArrowUpDown, ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -180,14 +180,11 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
   };
 
   // Filter Logic
-  const filtered = data.transactions.filter((tx) => {
-    const matchesSearch =
-      tx.description.toLowerCase().includes(search.toLowerCase()) ||
-      tx.tags.toLowerCase().includes(search.toLowerCase());
-    const matchesDirection = directionFilter === "all" || tx.direction === directionFilter;
-    const matchesAccount = accountFilter === "all" || tx.accountId === accountFilter;
-    const matchesCategory = categoryFilter === "all" || tx.categoryId === categoryFilter;
-    return matchesSearch && matchesDirection && matchesAccount && matchesCategory;
+  const filtered = filterTransactions(data.transactions, {
+    search,
+    directionFilter,
+    accountFilter,
+    categoryFilter
   });
 
   // Sorting Logic
@@ -215,6 +212,9 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
   // Pagination Logic
   const pageCount = Math.ceil(sorted.length / itemsPerPage);
   const paginated = sorted.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+
+
 
   return (
     <div className="space-y-6">
@@ -582,6 +582,8 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
                               </SelectContent>
                             </Select>
                           </div>
+                        ) : tx.direction === "InternalTransfer" ? (
+                          <span>{tx.accountName} &rarr; {tx.destinationAccountName}</span>
                         ) : (
                           tx.accountName
                         )}
@@ -626,8 +628,6 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
                               </div>
                             )}
                           </div>
-                        ) : tx.destinationAccountId ? (
-                          <span className="text-muted-foreground">→ {tx.destinationAccountName}</span>
                         ) : (
                           <span style={{ color: tx.categoryColor }}>{tx.categoryName}</span>
                         )}
@@ -644,7 +644,7 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
                           />
                         ) : (
                           <div className="flex flex-wrap gap-1">
-                            {tx.tags.split(",").filter(Boolean).map((tg) => (
+                            {tx.tags.split(",").filter(Boolean).map((tg: string) => (
                               <span key={tg} className="text-[10px] bg-accent/50 border border-border text-muted-foreground px-1.5 py-0.5 rounded">
                                 {tg}
                               </span>
@@ -664,14 +664,14 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
                             className="h-8 py-0.5 px-2 text-xs text-right font-mono w-[100px]"
                           />
                         ) : (
-                          <span className={cn(
-                            tx.direction === "Credit" ? "text-emerald-500 dark:text-emerald-400" : 
-                            tx.direction === "InternalTransfer" ? "text-blue-500 dark:text-blue-400" : 
-                            "text-foreground"
-                          )}>
-                            {tx.direction === "Credit" ? "+" : (tx.direction === "InternalTransfer" ? "⇄ " : "-")}
-                            {formatCurrency(Math.abs(tx.amount))}
-                          </span>
+                          (() => {
+                            const p = getTransactionPerspective(tx, accountFilter);
+                            return (
+                              <span className={cn("font-bold text-[11px]", p.color)}>
+                                {p.sign}{formatCurrency(Math.abs(tx.amount))}
+                              </span>
+                            );
+                          })()
                         )}
                       </td>
 

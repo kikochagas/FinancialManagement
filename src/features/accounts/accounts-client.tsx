@@ -26,6 +26,8 @@ interface Account {
     amount: number;
     category: string;
     color: string;
+    accountId?: string;
+    destinationAccountId?: string;
   }>;
   isBankConnected: boolean;
   hasBankHistory: boolean;
@@ -426,10 +428,24 @@ export function AccountsClient({ data }: AccountsClientProps) {
                             <span className="font-semibold text-card-foreground truncate max-w-[140px]">{tx.description}</span>
                             <span className="text-[9px] text-muted-foreground mt-0.5 font-mono">{tx.date}</span>
                           </div>
-                          <span className={cn("font-bold text-[11px]", tx.direction === "Credit" ? "text-emerald-500 dark:text-emerald-400" : tx.direction === "InternalTransfer" ? "text-blue-500 dark:text-blue-400" : "text-foreground")}>
-                            {tx.direction === "Credit" ? "+" : tx.direction === "InternalTransfer" ? "⇄ " : "-"}
-                            {formatCurrency(tx.amount)}
-                          </span>
+                          {(() => {
+                             let sign = "-";
+                             let color = "text-foreground";
+                             if (tx.direction === "Credit") {
+                               sign = "+"; color = "text-emerald-500 dark:text-emerald-400";
+                             } else if (tx.direction === "InternalTransfer") {
+                               if (tx.destinationAccountId === acc.id) {
+                                 sign = "+"; color = "text-emerald-500 dark:text-emerald-400";
+                               } else {
+                                 sign = "-"; color = "text-foreground";
+                               }
+                             }
+                             return (
+                               <span className={cn("font-bold text-[11px]", color)}>
+                                 {tx.direction === "InternalTransfer" ? "⇄ " : ""}{sign}{formatCurrency(Math.abs(tx.amount))}
+                               </span>
+                             );
+                          })()}
                         </div>
                       ))}
                       {acc.recentTransactions.length === 0 && (
