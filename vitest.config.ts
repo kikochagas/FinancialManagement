@@ -13,7 +13,10 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
     env: {
-      DATABASE_URL: 'file:../test.db'
+      DATABASE_URL: 'file:../test.db',
+      TURSO_DATABASE_URL: '',
+      TURSO_AUTH_TOKEN: '',
+      RENDER: ''
     }
   },
 })
