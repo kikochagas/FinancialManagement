@@ -34,14 +34,21 @@ export class EnableBankingClient implements BankingProvider {
     if (!this.appId) {
       console.warn("ENABLE_BANKING_APPLICATION_ID is not set");
     }
-    if (!this.privateKeyPath) {
-      console.warn("ENABLE_BANKING_PRIVATE_KEY_PATH is not set");
+    if (!process.env.ENABLE_BANKING_PRIVATE_KEY && !this.privateKeyPath) {
+      console.warn("ENABLE_BANKING_PRIVATE_KEY and ENABLE_BANKING_PRIVATE_KEY_PATH are both not set");
     }
   }
 
   private async getPrivateKey() {
     try {
-      const keyStr = readFileSync(path.resolve(this.privateKeyPath), "utf8");
+      let keyStr = "";
+      if (process.env.ENABLE_BANKING_PRIVATE_KEY) {
+        keyStr = process.env.ENABLE_BANKING_PRIVATE_KEY.replace(/\\n/g, '\n');
+      } else if (this.privateKeyPath) {
+        keyStr = readFileSync(path.resolve(this.privateKeyPath), "utf8");
+      } else {
+        throw new Error("No private key provided via ENV or PATH");
+      }
       return await jose.importPKCS8(keyStr, "RS256");
     } catch (error) {
       console.error("Failed to load Enable Banking private key:", error);

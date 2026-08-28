@@ -49,7 +49,15 @@ export async function POST(request: Request) {
     }
 
     const stateStr = crypto.randomBytes(32).toString("hex");
-    const callbackUrl = `${process.env.APP_URL || "http://localhost:3000"}/api/banking/callback`;
+        let baseUrl = process.env.APP_URL;
+    if (!baseUrl) {
+      if (process.env.NODE_ENV === "production") {
+        throw new Error("APP_URL environment variable is missing. Required for Open Banking in production.");
+      }
+      baseUrl = "http://localhost:3000";
+    }
+    baseUrl = baseUrl.replace(/\/+$/, "");
+    const callbackUrl = `${baseUrl}/api/banking/callback`;
     
     // We add 5 minutes to expiration for the state itself
     const stateExpiresAt = new Date(Date.now() + 5 * 60 * 1000);

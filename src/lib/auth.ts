@@ -2,19 +2,27 @@ import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 
-const secretKey = process.env.JWT_SECRET || "default_super_secret_key_change_in_production";
-const key = new TextEncoder().encode(secretKey);
+function getSecretKey() {
+  const rawSecret = process.env.JWT_SECRET;
+  if (!rawSecret && process.env.NODE_ENV === "production") {
+    if (process.env.npm_lifecycle_event === 'build' || process.env.NEXT_PHASE === 'phase-production-build') {
+       return new TextEncoder().encode("build_time_dummy_secret_do_not_use");
+    }
+    throw new Error("JWT_SECRET environment variable is missing. A secure secret is required in production runtime.");
+  }
+  return new TextEncoder().encode(rawSecret || "default_super_secret_key_change_in_production");
+}
 
 export async function encrypt(payload: any) {
   return await new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("7d")
-    .sign(key);
+    .sign(getSecretKey());
 }
 
 export async function decrypt(input: string): Promise<any> {
-  const { payload } = await jwtVerify(input, key, {
+  const { payload } = await jwtVerify(input, getSecretKey(), {
     algorithms: ["HS256"],
   });
   return payload;

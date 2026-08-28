@@ -48,7 +48,15 @@ export async function GET(request: Request) {
     }
 
     const client = new EnableBankingClient();
-    const redirectUri = `${process.env.APP_URL || "http://localhost:3000"}/api/banking/callback`;
+        let baseUrl = process.env.APP_URL;
+    if (!baseUrl) {
+      if (process.env.NODE_ENV === "production") {
+        throw new Error("APP_URL environment variable is missing. Required for Open Banking in production.");
+      }
+      baseUrl = "http://localhost:3000";
+    }
+    baseUrl = baseUrl.replace(/\/+$/, "");
+    const redirectUri = `${baseUrl}/api/banking/callback`;
     
     let connectionResult;
     try {
