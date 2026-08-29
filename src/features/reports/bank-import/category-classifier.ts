@@ -1,11 +1,13 @@
 import { db } from "@/lib/db";
+import { ensureDefaultCategories } from "@/features/categories/default-categories";
+
 
 export async function classifyTransactions(
   userId: string,
   transactions: { candidateIndex: number; description: string; direction: "Debit" | "Credit" }[]
 ): Promise<Record<number, string | null>> {
   // 1. Fetch user's categories
-  const categories = await db.category.findMany({ where: { userId } });
+  const categories = await ensureDefaultCategories(userId);
   
   // System fallback mapping
   const systemKeywords: Record<string, string> = {

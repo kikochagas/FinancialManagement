@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { db } from '@/lib/db';
+import { ensureDefaultCategories } from '@/features/categories/default-categories';
 import { classifyTransactions } from '../../bank-import/category-classifier';
 
 vi.mock('@/lib/db', () => ({
@@ -13,13 +14,19 @@ vi.mock('@/lib/db', () => ({
   }
 }));
 
+vi.mock('@/features/categories/default-categories', () => ({
+  ensureDefaultCategories: vi.fn(),
+}));
+
 const mockDb = db as any;
 
 describe('Category Classifier (Deterministic)', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     
-    mockDb.category.findMany.mockResolvedValue([
+    vi.mocked(ensureDefaultCategories).mockResolvedValue([
+      // @ts-ignore
+      // @ts-ignore
       { id: 'cat-salary', systemKey: 'salary', name: 'Salary' },
       { id: 'cat-withdrawal', systemKey: 'withdrawal', name: 'Withdrawal' },
       { id: 'cat-transfer', systemKey: 'transfer', name: 'Transfer' },
@@ -29,7 +36,7 @@ describe('Category Classifier (Deterministic)', () => {
       { id: 'cat-investment', systemKey: 'investment', name: 'Investment' },
       { id: 'cat-purchase', systemKey: 'purchase', name: 'Purchase' },
       { id: 'cat-uncategorized', systemKey: 'uncategorized', name: 'Uncategorized' },
-    ]);
+    ] as any);
   });
 
   it('classifies salary keywords correctly', async () => {

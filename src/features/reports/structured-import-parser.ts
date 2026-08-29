@@ -16,6 +16,18 @@ export interface ParseStructuredImportArgs {
   fileName: string;
 }
 
+
+function getNormalizedHeaderValue(row: any, possibleNames: string[]) {
+  const rowKeys = Object.keys(row);
+  const normalizedNames = possibleNames.map(n => n.toLowerCase().replace(/[\s _-]+/g, ""));
+  
+  const key = rowKeys.find(k => {
+    const normalizedK = k.toLowerCase().replace(/[\s _-]+/g, "");
+    return normalizedNames.includes(normalizedK);
+  });
+  return key ? row[key] : undefined;
+}
+
 export function parseStructuredImport({ buffer, fileName }: ParseStructuredImportArgs): StructuredImportResult {
   const isCsv = fileName.toLowerCase().endsWith(".csv");
   const wb = XLSX.read(buffer, { type: "binary" });
@@ -47,7 +59,12 @@ function parseExcelWorkbook(wb: XLSX.WorkBook): StructuredImportResult {
     const ws = wb.Sheets["Accounts"];
     const data = XLSX.utils.sheet_to_json(ws);
     if (data.length > 0) {
-      result.accounts = data;
+      result.accounts = data.map((row: any) => ({
+        name: getNormalizedHeaderValue(row, ["name", "account", "conta", "nome"]),
+        type: getNormalizedHeaderValue(row, ["type", "tipo"]),
+        balance: parseNumber(getNormalizedHeaderValue(row, ["balance", "saldo"])),
+        currency: getNormalizedHeaderValue(row, ["currency", "moeda"]) || "EUR",
+      })).filter((a: any) => a.name);
       result.importMode = "FullBackup";
     }
   }
@@ -66,7 +83,12 @@ function parseExcelWorkbook(wb: XLSX.WorkBook): StructuredImportResult {
     const ws = wb.Sheets["Investments"];
     const data = XLSX.utils.sheet_to_json(ws);
     if (data.length > 0) {
-      result.investments = data;
+      result.investments = data.map((row: any) => ({
+        name: getNormalizedHeaderValue(row, ["name", "nome"]),
+        type: getNormalizedHeaderValue(row, ["type", "tipo"]),
+        costBasis: parseNumber(getNormalizedHeaderValue(row, ["costbasis", "cost basis"])),
+        marketValue: parseNumber(getNormalizedHeaderValue(row, ["marketvalue", "market value"])),
+      })).filter((i: any) => i.name);
     }
   }
 
@@ -75,7 +97,12 @@ function parseExcelWorkbook(wb: XLSX.WorkBook): StructuredImportResult {
     const ws = wb.Sheets["Goals"];
     const data = XLSX.utils.sheet_to_json(ws);
     if (data.length > 0) {
-      result.goals = data;
+      result.goals = data.map((row: any) => ({
+        name: getNormalizedHeaderValue(row, ["name", "objetivo", "nome"]),
+        type: getNormalizedHeaderValue(row, ["type", "tipo"]),
+        targetAmount: parseNumber(getNormalizedHeaderValue(row, ["targetamount", "target"])),
+        currentAmount: parseNumber(getNormalizedHeaderValue(row, ["currentamount", "current"])),
+      })).filter((g: any) => g.name);
     }
   }
 
@@ -84,7 +111,25 @@ function parseExcelWorkbook(wb: XLSX.WorkBook): StructuredImportResult {
     const ws = wb.Sheets["Snapshots"];
     const data = XLSX.utils.sheet_to_json(ws);
     if (data.length > 0) {
-      result.snapshots = data;
+      result.snapshots = data.map((row: any) => {
+        const year = parseNumber(getNormalizedHeaderValue(row, ["year", "ano"]));
+        const month = parseNumber(getNormalizedHeaderValue(row, ["month", "mês", "mes"]));
+        const netWorth = parseNumber(getNormalizedHeaderValue(row, ["networth", "net worth"]));
+        const liquidAssets = parseNumber(getNormalizedHeaderValue(row, ["liquidassets", "liquid assets"]));
+        const investmentsValue = parseNumber(getNormalizedHeaderValue(row, ["investments", "investmentsvalue", "investments value"]));
+        const savingsRate = parseNumber(getNormalizedHeaderValue(row, ["savingsrate", "savings rate"]));
+        
+        if (!year || !month) return null;
+        
+        return {
+          year,
+          month,
+          netWorth,
+          liquidAssets,
+          investmentsValue,
+          savingsRate,
+        };
+      }).filter((s: any) => s !== null);
     }
   }
 
@@ -187,7 +232,7 @@ function parseTransactionRow(row: any, formatVersion: number) {
     date: parseDate(rawDate),
     description: rawDesc || "Imported Entry",
     direction: finalDirection,
-    amount: parseNumber(rawAmount),
+    amount: Math.abs(parseNumber(rawAmount)),
     accountName: rawAccount || "Bank",
     destinationAccountName: rawDestAccount || null,
     categoryName: finalCategory,

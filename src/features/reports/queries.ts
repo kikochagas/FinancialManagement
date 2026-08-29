@@ -1,5 +1,7 @@
 import { db } from "@/lib/db";
 import { getUserId } from "@/lib/auth";
+import { ensureDefaultCategories } from "@/features/categories/default-categories";
+
 
 export async function getReportsData() {
   const userId = await getUserId();
@@ -19,7 +21,7 @@ export async function getReportsData() {
     where: { userId },
     include: { externalMappings: true }
   });
-  const categories = await db.category.findMany({ where: { userId } });
+  const categories = await ensureDefaultCategories(userId);
   const investments = await db.investment.findMany({ where: { userId } });
   const goals = await db.goal.findMany({ where: { userId } });
   const taxReservations = await db.taxReservation.findMany({ where: { userId } });
@@ -47,6 +49,7 @@ export async function getReportsData() {
     categories: categories.map((c) => ({
       id: c.id,
       name: c.name,
+      systemKey: c.systemKey,
     })),
     investments: investments.map((i) => ({
       name: i.name,

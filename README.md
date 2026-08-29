@@ -1,286 +1,149 @@
-# FinancialManagement
+<div align="center">
+  <h1>✨ FinancialManagement Dashboard</h1>
+  <p><strong>A unified personal finance and wealth management platform for the modern era.</strong></p>
+</div>
 
-FinancialManagement is a modern personal finance and wealth-management platform designed to provide a comprehensive and consolidated view of your financial life. It goes beyond simple expense tracking by offering unified insights into your assets, cash flow, investments, and long-term financial goals.
+<br />
 
-The platform provides a consolidated view of:
-- **Accounts**
-- **Transactions**
-- **Income / Expenses**
-- **Internal Transfers**
-- **Investments**
-- **Goals**
-- **Dashboard / Net Worth**
-- **Bank Statement Importing**
-- **Open Banking Integrations**
-- **Reports / Backup & Restore**
+FinancialManagement provides a comprehensive and consolidated view of your financial life. It goes beyond simple expense tracking by offering unified insights into your assets, cash flow, investments, and long-term financial goals - all wrapped in a beautiful, responsive interface.
 
 ---
 
-## Current Tech Stack
+## 🌟 What can I do with FinancialManagement?
 
-The application is built using a modern, robust TypeScript ecosystem:
-- **Next.js** (App Router, Server Actions)
-- **React**
-- **TypeScript**
-- **Prisma** (ORM)
-- **SQLite** (for local development `dev.db`)
-- **Turso / libSQL** (for the hosted remote database)
-- **Tailwind CSS** (for styling)
-- **TanStack** (Query and Table libraries)
-- **Zod** (for schema validation)
-- **Vitest** (for automated testing)
-- **Enable Banking** (for Open Banking synchronization)
-- **OpenAI API** (Optional, for AI-assisted bank statement column mapping)
+### 🏦 Manage Your Wealth
+- **Track all accounts in one place:** Manage bank accounts, credit cards, cash, and crypto wallets.
+- **Sync with real banks:** Connect supported bank accounts securely via Open Banking (powered by Enable Banking) and sync balances and transactions from FinancialManagement.
+- **Monitor Investments & Goals:** Track your stocks, crypto, and savings goals with automated progress calculations.
+- **Visualize your Net Worth:** Watch your wealth grow over time with interactive charts and historical monthly snapshots.
+
+### 💸 Master Your Cash Flow
+- **Smart Categorization:** Organize your income and expenses using intuitive categories like *Salary, Groceries, Travel, and Investments*.
+- **Internal Transfers:** Moving money from your Bank to your Broker? We handle it cleanly as a single transfer transaction, so your income and expenses aren't artificially inflated.
+- **Bank Statement Import:** Upload Excel or CSV bank statements. Our intelligent parser automatically maps columns, detects duplicates, and suggests categories using deterministic transaction-description rules. (AI-assisted column mapping is also available!)
+- **Printable Reports:** Generate instant PDF-ready vector wealth statements for your records or tax purposes.
 
 ---
 
-## Architecture Overview
+## 🚀 How do I...? (User Journeys)
 
-FinancialManagement is designed to work seamlessly both on a local machine and in a hosted deployment.
+### Record an expense or income
+1. Navigate to the **Transactions** page.
+2. Click **Add Record**.
+3. Set the Direction to **Debit** (expense) or **Credit** (income).
+4. Enter the Amount, Description, and select a Category.
 
-### Local Development
-Locally, the application runs directly on your machine and uses a local SQLite file (`dev.db`).
+### Move money between accounts
+1. On the **Transactions** page, click **Add Record**.
+2. Set the Direction to **Internal Transfer**.
+3. Select your Source Account and Destination Account.
+4. The system will cleanly balance the books without inflating your spending.
 
-```text
-FinancialManagement
-        |
-        v
-      Prisma
-        |
-        v
-  SQLite dev.db
+### Import a Bank Statement
+1. Go to **Reports** and click on **Bank Statement Import**.
+2. Upload your bank's Excel or CSV file.
+3. Review the column mapping (our AI can help if headers are confusing).
+4. Review the parsed transactions, confirm the suggested categories, and click **Import**.
+
+### Connect a Real Bank Account
+1. Navigate to **Accounts**.
+2. Click **Connect Bank**.
+3. Select your institution from the list (via Enable Banking).
+4. Authenticate securely with your bank's portal.
+5. Your account balances and transactions can now be updated by clicking **Sync Bank**.
+
+### Backup or Restore my data
+1. Go to **Reports**.
+2. Use the **Excel / CSV Data Operations** panel to download a full structured backup of your entire ecosystem.
+3. You can restore this exact file later using the **FinancialManagement Structured Backup / Import** workflow.
+
+---
+
+## 📦 Backup & Restore
+
+Use the **Excel / CSV Data Operations** panel to download a full structured backup of your entire ecosystem.
+
+### Advanced: Structured Spreadsheet Format
+
+XLSX / structured export is preferred for full backup/restore. Your structured Excel workbook can contain the following sheets:
+
+**1. Accounts**
+- Name
+- Type
+- Balance
+- Currency
+
+**2. Transactions**
+- Date
+- Description
+- Direction (Must be: Debit, Credit, or InternalTransfer)
+- Amount
+- Account
+- DestinationAccount (Required if InternalTransfer)
+- Category
+- Tags
+- Notes
+
+**3. Investments**
+- Name
+- Type
+- CostBasis
+- MarketValue
+
+**4. Goals**
+- Name
+- Type
+- TargetAmount
+- CurrentAmount
+
+**5. Snapshots**
+- Year
+- Month
+- NetWorth / Net Worth
+- LiquidAssets / Liquid Assets
+- Investments / InvestmentsValue
+- SavingsRate / Savings Rate
+
+*Legacy V1 Compatibility: Type values such as Income/Expense/etc. are still supported for old files, but new backups strictly use the Direction model.*
+
+---
+
+## 🏗️ Architecture Overview
+
+FinancialManagement is built on a modern, robust TypeScript stack:
+- **Frontend & API:** Next.js (App Router, Server Actions), React, Tailwind CSS, shadcn/ui
+- **Database (Local):** SQLite with Prisma ORM
+- **Database (Production):** Turso / libSQL
+- **Open Banking:** Enable Banking API
+
+### Deployment vs Local Development
+
+**💻 Local Development**
+Designed for speed and simplicity. The app runs on your machine and stores all data in a local SQLite file (dev.db).
+
+**☁️ Hosted Demo**
+Deployed securely on Render, connecting to a remote Turso database and live Open Banking APIs.
+
+---
+
+## 🛠️ For Developers
+
+Are you a developer looking to set up the project, run tests, or deploy to production? We have comprehensive guides for you:
+
+- 🚀 **[Deployment Guide](docs/DEPLOYMENT.md)** - Learn how to deploy to Render and Turso.
+- 🧪 **[Manual Test Guide](docs/MANUAL_TEST_GUIDE.md)** - Comprehensive regression flows for testing features.
+
+**Quick Start (Local):**
+```bash
+# Install dependencies
+npm install
+
+# Initialize your local SQLite database
+npx prisma generate
+npx prisma db push
+
+# Start the development server
+npm run dev
 ```
 
-### Hosted Demo
-In the deployed environment, the application is hosted on Render, pointing to a secure Turso database. The deployed environment does NOT depend on Render's local filesystem.
-
-```text
-       Browser
-          |
-          v
-       Render
- (Next.js Application)
-          |
-          +------> Turso / libSQL (Remote Database)
-          |
-          +------> Enable Banking (Open Banking Provider)
-          |
-          +------> OpenAI API (Optional Column Mapping)
-```
-
----
-
-## Transaction Model
-
-The application uses a strict Direction-based transaction model:
-- **Debit:** Money leaves an account.
-- **Credit:** Money enters an account.
-- **Internal Transfer:** Money moves between two FinancialManagement accounts.
-
-Transactions are organized using a **Category** to represent the purpose of the movement (e.g., *Salary, Purchase, Withdrawal, Transfer, Investment, Interest, Tax, Fees, Groceries, Travel, Entertainment, Uncategorized*).
-
-**Important:** The Category does NOT determine balance behavior or cash flow semantics. Only the **Direction** determines if money is entering, leaving, or moving within your ecosystem.
-
----
-
-## Internal Transfers
-
-An Internal Transfer is correctly represented and stored as **ONE single database Transaction**. 
-
-For example, a €200 transfer from your Main Account to Trade Republic has a source account and a destination account.
-This exact same event:
-- Appears as an outgoing movement in the Main Account history.
-- Appears as an incoming movement in the Trade Republic history.
-- Appears only once in the global Transactions ledger.
-- Is strictly excluded from global Income and Expense calculations so your cash flow is not artificially inflated.
-
----
-
-## Accounts
-
-FinancialManagement tracks both manual Accounts and bank-connected Accounts. 
-You can view balances, filter recent transactions, and manage connected Open Banking lifecycles (linking, syncing, or disconnecting).
-Actively connected Open Banking Accounts have provider-controlled financial data, ensuring that your system remains mathematically synchronized with your real bank.
-
----
-
-## Bank Statement Import
-
-For manual accounts or historical data, the application includes a robust Bank Statement Import workflow supporting **XLSX**, **XLS**, and **CSV** files.
-
-**Workflow:** Upload -> Mapping -> Account -> Review -> Import
-
-The importer features:
-- Intelligent header detection
-- Strict date and money parsing
-- Debit / Credit semantic detection
-- Currency validation
-- Duplicate detection
-- Deterministic Category suggestions
-- Manual review before committing imports
-- Optional ending-balance updates
-- Active Open Banking Accounts are protected from manual statement import conflicts where appropriate.
-
----
-
-## AI-Assisted Mapping
-
-The bank statement importer uses deterministic, rule-based mapping by default. If column semantics are highly ambiguous, you can optionally utilize the OpenAI API to help correctly identify columns.
-
-**Privacy Boundary:** 
-- AI is strictly used for *column semantic mapping*.
-- Raw financial transaction values are **never** sent to OpenAI.
-- Transaction categorization exclusively uses local deterministic rules, not AI.
-
-The `OPENAI_API_KEY` is completely optional. Without it, the importer seamlessly falls back to standard deterministic or manual column mapping.
-
----
-
-## Category Suggestions
-
-During bank statement imports, FinancialManagement applies deterministic rules to suggest transaction categories.
-Examples:
-- `salary` / `payroll` -> **Salary**
-- `ATM` / `withdrawal` -> **Withdrawal**
-- `transfer` / `SEPA` -> **Transfer**
-- `fee` / `commission` -> **Fees**
-- `IRS` / `tax` -> **Tax**
-- `interest` / `juros` -> **Interest**
-- `investment` / `broker` -> **Investment**
-- `purchase` / `card payment` -> **Purchase**
-- unknown -> **Uncategorized**
-
----
-
-## Open Banking
-
-Open Banking is integrated using **Enable Banking**. 
-
-**Normal Workflow:** Accounts -> Connect Bank -> Select Institution -> Provider Authorization -> Return to FinancialManagement -> Link/Create Account -> Sync.
-
-Features include:
-- Balance and transaction synchronization
-- Duplicate protection
-- Disconnect / Reconnect capability
-- Shared-session / account-level lifecycle support
-
-Provider transactions normalize strictly to **Credit** (incoming) or **Debit** (outgoing). Open Banking syncing does NOT automatically infer or create Internal Transfers to avoid erroneous assumptions.
-
----
-
-## Backup / Restore
-
-FinancialManagement supports a structured **V2 Backup** system. 
-You can Export a full snapshot of your data and Import it later to perfectly restore your setup. 
-It preserves:
-- Accounts and balances
-- Transactions (including Internal Transfer source/destination mapping)
-- Categories
-- Investments
-- Goals
-
-**Important:** Full backup restoration safely preserves your snapshot Account balances and does not attempt to replay historical transactions on top of them, preventing doubled balances.
-*(Legacy V1 import functionality is also supported for backward compatibility).*
-
----
-
-## Dashboard / Reporting
-
-The Dashboard provides visual analytics and reporting tools.
-Key metrics include:
-- **Net Worth** (Evolution area chart)
-- **Income** & **Expenses** (Cash flow bar chart)
-- **Savings**
-- **Category Breakdowns** (Expense pie chart)
-- **Investments & Goals**
-
-As noted, Internal Transfers perfectly reconcile and do not inflate Income or Expenses.
-
----
-
-## Local Development
-
-Setting up FinancialManagement locally strictly relies on local SQLite for ease of use. 
-
-1. Clone the repository
-2. Install dependencies: `npm install`
-3. Configure your local environment (`.env`)
-4. Generate Prisma client and initialize your local database: `npx prisma generate` and `npx prisma db push`
-5. Start the development server: `npm run dev`
-
-*Do not use or configure Turso for normal local development. The local database remains standard SQLite (`dev.db`).*
-
----
-
-## Environment Variables
-
-Configure these variables via `.env` files locally or in your deployment dashboard. **Never commit real values or PEM files.**
-
-**LOCAL / CORE**
-- `DATABASE_URL`
-- `JWT_SECRET`
-
-**OPEN BANKING**
-- `ENABLE_BANKING_APPLICATION_ID`
-- `ENABLE_BANKING_PRIVATE_KEY_PATH` *(convenient locally)*
-- `ENABLE_BANKING_PRIVATE_KEY` *(suitable for hosted environments)*
-- `APP_URL`
-
-**TURSO / HOSTED**
-- `TURSO_DATABASE_URL`
-- `TURSO_AUTH_TOKEN` *(Only needed for hosted/remote DB usage)*
-
-**OPTIONAL AI**
-- `OPENAI_API_KEY` *(Optional)*
-- `OPENAI_MODEL` *(Optional)*
-
----
-
-## Deployment
-
-FinancialManagement's hosted architecture runs on **Render** (for the web application) and **Turso** (for the remote database).
-
-For complete deployment instructions, including Turso bootstrap commands, Render configuration, and Enable Banking callback setups, refer exactly to:
-**[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**
-
----
-
-## Security / Data Safety
-
-- **Secrets:** Handled entirely via environment variables. `.env` and PEM files are Git-ignored and must never be committed.
-- **Local Data:** Your local `dev.db` contains private financial data and must not be deployed. The deployed database starts entirely independently in Turso.
-- **Authentication:** `JWT_SECRET` is strictly enforced in production. 
-- **Test Isolation:** Automated Vitest tests are hard-isolated to the local `test.db` and must never connect to Turso.
-
----
-
-## Testing
-
-**Automated Testing**
-The repository uses Vitest and contains a robust test suite (~193 automated tests).
-
-**Manual Testing**
-Refer to **[docs/MANUAL_TEST_GUIDE.md](docs/MANUAL_TEST_GUIDE.md)**. 
-It covers normal-user regression flows encompassing Accounts, Transactions, Internal Transfers, Dashboards, Bank Statement Imports, Open Banking, Backup/Restore, and Settings.
-
----
-
-## Current Status
-
-FinancialManagement is currently intended as a functional demo and testing environment. 
-- Core personal finance functionality is fully implemented.
-- Open Banking integration is live.
-- Intelligent Bank Statement Importing is operational.
-- The remote Render + Turso deployment architecture is actively tested and robust.
-- The platform features extensive automated and manual regression coverage.
-
----
-
-## Future Roadmap
-
-Potential future features include:
-- Brokerage aggregation / `BrokerageProvider` infrastructure
-- Multi-broker integration
-- Investment position and transaction synchronization
-- Broker deposit / Internal Transfer reconciliation
-- Expanded analytics and further AI assistance
+*Note: Automated tests (Vitest) run strictly against a local `test.db` and are completely isolated from your production or development data.*

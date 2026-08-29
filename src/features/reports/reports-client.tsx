@@ -25,6 +25,7 @@ interface ReportsClientProps {
     categories: {
       id: string;
       name: string;
+      systemKey: string | null;
     }[];
     investments: any[];
     goals: any[];
@@ -488,10 +489,10 @@ export function ReportsClient({ data }: ReportsClientProps) {
                       {importedPreview.snapshots.map((s, index) => (
                         <tr key={index}>
                           <td className="p-2 font-semibold text-foreground">{s.year}-{String(s.month).padStart(2, '0')}</td>
-                          <td className="p-2 text-right font-mono text-foreground">{formatCurrency(s.netWorth)}</td>
-                          <td className="p-2 text-right font-mono text-foreground">{formatCurrency(s.liquidAssets)}</td>
-                          <td className="p-2 text-right font-mono text-foreground">{formatCurrency(s.investmentsValue)}</td>
-                          <td className="p-2 text-right font-bold text-emerald-600">{s.savingsRate.toFixed(1)}%</td>
+                          <td className="p-2 text-right font-mono text-foreground">{formatCurrency(s.netWorth || 0)}</td>
+                          <td className="p-2 text-right font-mono text-foreground">{formatCurrency(s.liquidAssets || 0)}</td>
+                          <td className="p-2 text-right font-mono text-foreground">{formatCurrency(s.investmentsValue || 0)}</td>
+                          <td className="p-2 text-right font-bold text-emerald-600">{Number(s.savingsRate || 0).toFixed(1)}%</td>
                         </tr>
                       ))}
                     </tbody>

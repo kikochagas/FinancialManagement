@@ -10,6 +10,8 @@ import { sampleColumnShapes } from "../shape-inference";
 import { ColumnMapping, ParsedBankTransaction, AISanitizedColumnInfo } from "../types";
 import { buildTransactions } from "../transaction-builder";
 import { validateTransaction } from "../validation";
+import { applyCategorySuggestionsAndFallbacks } from "../category-fallback";
+
 import { parseMoneyStrict } from "../money-parser";
 import { buildImportPayload } from "../payload-builder";
 import { importBankStatementAction, mapBankStatementColumnsWithAIAction, previewBankStatementDuplicatesAction } from "../actions";
@@ -39,6 +41,9 @@ export function BankImportWizard({ accounts, categories }: { accounts: any[], ca
   const [statementCurrency, setStatementCurrency] = useState<string | null>(null);
   const [statementCurrencyStatus, setStatementCurrencyStatus] = useState<string>("unknown");
   const [headerInputRaw, setHeaderInputRaw] = useState<string>("");
+    const [aiWarnings, setAiWarnings] = useState<string[]>([]);
+    const [generalWarnings, setGeneralWarnings] = useState<string[]>([]);
+    const [aiAttempted, setAiAttempted] = useState<boolean>(false);
 
   const [isCreatingAccount, setIsCreatingAccount] = useState(false);
   const [newAccName, setNewAccName] = useState("");
@@ -134,10 +139,13 @@ export function BankImportWizard({ accounts, categories }: { accounts: any[], ca
       }
     );
     
-    const { mapping: newMapping, aiUsed, warnings } = await orchestrateColumnMapping(headers, fileData, aiMapper, headerRowIdx);
+    const { mapping: newMapping, aiSucceeded, aiAttempted: attempted, aiError, warnings } = await orchestrateColumnMapping(headers, fileData, aiMapper, headerRowIdx);
+      setAiWarnings(aiError ? [aiError] : []);
+      setGeneralWarnings(warnings);
+      setAiAttempted(attempted);
     
     setMapping(newMapping);
-    setStatus(aiUsed ? "AI assisted mapping." : "Deterministic mapping.");
+    setStatus(aiSucceeded ? "AI assisted mapping." : "Deterministic mapping.");
     setStep(3); // Column Mapping
   };
 
@@ -187,19 +195,15 @@ export function BankImportWizard({ accounts, categories }: { accounts: any[], ca
       });
       
       if (res?.data?.success) {
-        const duplicates = res.data.duplicateIndices;
-        const categoriesMap = res.data.categories;
-        setTransactions(prev => prev.map((t, i) => {
-          let updated = { ...t };
-          if (duplicates.includes(i)) {
-            updated = { ...updated, isProbableDuplicate: true, import: false };
-          }
-          if (categoriesMap && categoriesMap[i] && !updated.categoryId) {
-            updated.categoryId = categoriesMap[i];
-            (updated as any).isCategorySuggested = true;
-          }
-          return updated;
-        }));
+          const duplicates = res.data.duplicateIndices;
+          const categoriesMap = res.data.categories;
+          
+          setTransactions(prev => applyCategorySuggestionsAndFallbacks(
+            prev,
+            duplicates,
+            categoriesMap,
+            categories
+          ) as any);
       }
     } catch (err) {
       console.error(err);
@@ -338,6 +342,19 @@ export function BankImportWizard({ accounts, categories }: { accounts: any[], ca
         {step === 3 && (
           <div className="space-y-4">
             <h3 className="font-semibold">Column Mapping</h3>
+            {aiAttempted && aiWarnings.length > 0 && (
+              <div className="p-3 bg-yellow-50 text-yellow-800 border border-yellow-200 rounded-md text-sm">
+                <p className="font-medium mb-1">AI-assisted mapping is currently unavailable.</p>
+                <p>You can continue by reviewing the column mapping manually.</p>
+              </div>
+            )}
+            {generalWarnings.length > 0 && (
+              <div className="p-3 bg-blue-50 text-blue-800 border border-blue-200 rounded-md text-sm">
+                <ul className="list-disc pl-5">
+                  {generalWarnings.map((w, i) => <li key={i}>{w}</li>)}
+                </ul>
+              </div>
+            )}
             <div className="space-y-2">
               {Object.values(mapping).map((m, i) => (
                 <div key={i} className="flex justify-between items-center border-b pb-2 text-sm">
@@ -499,6 +516,11 @@ export function BankImportWizard({ accounts, categories }: { accounts: any[], ca
         {step === 5 && (
           <div className="space-y-4">
             <h3 className="font-semibold">Review Transactions</h3>
+            {categories.length === 0 && (
+              <div className="p-4 border border-red-200 bg-red-50 text-red-600 rounded-md text-sm font-medium">
+                Categories could not be loaded. Please reload the page and try again.
+              </div>
+            )}
             <p className="text-sm text-muted-foreground">{transactions.filter(t => t.import && t.valid).length} ready to import.</p>
             
             <div className="max-h-[500px] overflow-y-auto border rounded-md">
@@ -581,7 +603,7 @@ export function BankImportWizard({ accounts, categories }: { accounts: any[], ca
               </table>
             </div>
 
-            <Button onClick={handleImport} disabled={isPending || transactions.filter(t => t.import && t.valid).length === 0}>
+            <Button onClick={handleImport} disabled={isPending || transactions.filter(t => t.import && t.valid).length === 0 || categories.length === 0}>
               Confirm & Import
             </Button>
           </div>

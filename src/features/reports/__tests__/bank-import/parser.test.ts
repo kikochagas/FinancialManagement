@@ -13,9 +13,9 @@ describe("parser orchestration", () => {
     const headers = ["Data Movimento", "Descrição", "Valor"];
     const dataRows = [[]]; // not actually used deeply in mock
 
-    const { mapping, aiUsed, warnings } = await orchestrateColumnMapping(headers, dataRows, mapper);
+    const { mapping, aiSucceeded, warnings } = await orchestrateColumnMapping(headers, dataRows, mapper);
 
-    expect(aiUsed).toBe(false); // No AI fallback required
+    expect(aiSucceeded).toBe(false); // No AI fallback required
     expect(mapping[0].semantic).toBe("BOOKING_DATE");
     expect(mapping[1].semantic).toBe("DESCRIPTION");
     expect(mapping[2].semantic).toBe("AMOUNT");
@@ -42,9 +42,9 @@ describe("parser orchestration", () => {
     };
     const mapper = new BankStatementAIMapper(mockProvider);
 
-    const { mapping, aiUsed, warnings } = await orchestrateColumnMapping(headers, [[]], mapper);
+    const { mapping, aiSucceeded, warnings } = await orchestrateColumnMapping(headers, [[]], mapper);
 
-    expect(aiUsed).toBe(true);
+    expect(aiSucceeded).toBe(true);
     expect(mockProvider.generateStructured).toHaveBeenCalled();
     
     // Check that AI mapping was applied

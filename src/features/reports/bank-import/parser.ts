@@ -11,7 +11,7 @@ export async function orchestrateColumnMapping(
   dataRows: any[][],
   aiMapper: BankStatementAIMapper,
   headerRowIndex: number = 0
-): Promise<{ mapping: Record<number, ColumnMapping>; aiUsed: boolean; warnings: string[] }> {
+): Promise<{ mapping: Record<number, ColumnMapping>; aiSucceeded: boolean; aiAttempted: boolean; aiError: string | null; warnings: string[] }> {
   const warnings: string[] = [];
   const mapping: Record<number, ColumnMapping> = {};
 
@@ -38,10 +38,12 @@ export async function orchestrateColumnMapping(
 
   const evalResult = evaluateMappingConfidence(mapping);
 
-  let aiUsed = false;
+  let aiAttempted = false;
+  let aiSucceeded = false;
+  let aiError: string | null = null;
 
   if (evalResult.needsAI) {
-    aiUsed = true;
+    aiAttempted = true;
     try {
       const transactionDataRows = dataRows.slice(headerRowIndex + 1);
       const sanitizedCols: AISanitizedColumnInfo[] = headers.map((header, idx) => ({
@@ -51,6 +53,7 @@ export async function orchestrateColumnMapping(
       }));
 
       const aiResult = await aiMapper.mapColumns(sanitizedCols);
+      aiSucceeded = true;
       
       // Merge AI Results where AI is more confident or deterministic is unsure
       aiResult.mappings.forEach((aiMapping) => {
@@ -75,9 +78,9 @@ export async function orchestrateColumnMapping(
       });
       warnings.push(...aiResult.warnings);
     } catch (e: any) {
-      warnings.push(e.message || "AI Mapping failed. Using deterministic fallback.");
+      aiError = e.message || "AI Mapping failed. Using deterministic fallback.";
     }
   }
 
-  return { mapping, aiUsed, warnings };
+  return { mapping, aiAttempted, aiSucceeded, aiError, warnings };
 }
