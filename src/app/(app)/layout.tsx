@@ -31,7 +31,7 @@ export default async function AppLayout({
     <QueryProvider>
       <Sidebar user={user} />
       <div className="flex-1 flex flex-col min-h-screen overflow-x-hidden">
-        <Header netWorth={netWorth} />
+        <Header netWorth={netWorth} user={user} />
         <main className="flex-1 p-6 md:p-8 overflow-y-auto">
           {children}
         </main>

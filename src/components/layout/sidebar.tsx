@@ -16,15 +16,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 
-const links = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/transactions", label: "Transactions", icon: ArrowLeftRight },
-  { href: "/accounts", label: "Accounts", icon: Landmark },
-  { href: "/investments", label: "Investments", icon: TrendingUp },
-  { href: "/goals", label: "Goals", icon: Target },
-  { href: "/reports", label: "Reports", icon: BarChart3 },
-  { href: "/settings", label: "Settings", icon: Settings },
-];
+import { navLinks } from "./nav-links";
 
 import { logout } from "@/features/auth/actions";
 
@@ -61,7 +53,7 @@ export function Sidebar({ user }: { user: { name: string | null; email: string }
 
       {/* Navigation Links */}
       <nav className="flex-1 py-6 px-4 space-y-1.5">
-        {links.map((link) => {
+        {navLinks.map((link) => {
           const Icon = link.icon;
           const isActive = pathname === link.href;
           return (

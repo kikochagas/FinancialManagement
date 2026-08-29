@@ -2,9 +2,10 @@
 
 import { usePathname } from "next/navigation";
 import { format } from "date-fns";
-import { Bell, TrendingUp, Calendar, Menu } from "lucide-react";
+import { Bell, TrendingUp, Calendar } from "lucide-react";
+import { MobileNav } from "./mobile-nav";
 
-export function Header({ netWorth = 0 }: { netWorth?: number }) {
+export function Header({ netWorth = 0, user }: { netWorth?: number; user?: { name: string | null; email: string } }) {
   const pathname = usePathname();
 
   const getPageTitle = () => {
@@ -32,9 +33,7 @@ export function Header({ netWorth = 0 }: { netWorth?: number }) {
     <header className="h-16 border-b border-border bg-card/25 backdrop-blur-md flex items-center justify-between px-6 sticky top-0 z-40">
       <div className="flex items-center gap-4">
         {/* Mobile menu trigger */}
-        <button className="md:hidden text-muted-foreground hover:text-foreground">
-          <Menu className="h-5 w-5" />
-        </button>
+        <MobileNav user={user} />
         <div>
           <h1 className="text-lg font-semibold tracking-tight text-foreground">{getPageTitle()}</h1>
         </div>
