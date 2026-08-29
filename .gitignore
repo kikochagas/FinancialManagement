@@ -43,3 +43,6 @@ test.db-wal
 
 # open banking secrets
 /secrets
+
+# typescript
+*.tsbuildinfo

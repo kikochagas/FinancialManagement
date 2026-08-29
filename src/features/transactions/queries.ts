@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { getUserId } from "@/lib/auth";
+import { ensureDefaultCategories } from "@/features/categories/default-categories";
 
 export async function getTransactionsData() {
   const userId = await getUserId();
@@ -16,7 +17,7 @@ export async function getTransactionsData() {
   });
 
   const accounts = await db.account.findMany({ where: { userId } });
-  const categories = await db.category.findMany({ where: { userId } });
+  const categories = await ensureDefaultCategories(userId);
 
   return {
     transactions: transactions.map((t) => ({

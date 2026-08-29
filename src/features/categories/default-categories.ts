@@ -1,4 +1,4 @@
-import { db } from "@/lib/db";
+import { Category, Prisma } from "@prisma/client";
 
 export const DEFAULT_CATEGORIES = [
   { name: "Salary", directionHint: "Credit", systemKey: "salary", color: "#22C55E", },
@@ -15,18 +15,28 @@ export const DEFAULT_CATEGORIES = [
   { name: "Uncategorized", directionHint: "Both", systemKey: "uncategorized", color: "#9CA3AF", },
 ];
 
+export interface CategoryClient {
+  category: {
+    findMany(args?: Prisma.CategoryFindManyArgs): Promise<Category[]>;
+    create(args: Prisma.CategoryCreateArgs): Promise<Category>;
+    update(args: Prisma.CategoryUpdateArgs): Promise<Category>;
+  };
+}
+
 /**
  * Idempotently creates default categories for a user.
  * Avoids duplicates by checking existing systemKeys or names.
  */
-export async function ensureDefaultCategories(userId: string) {
-  const existingCategories = await db.category.findMany({
+export async function ensureDefaultCategories(userId: string, client?: CategoryClient): Promise<Category[]> {
+  const resolvedClient = client ?? (await import("@/lib/db")).db;
+
+  const existingCategories = await resolvedClient.category.findMany({
     where: { userId }
   });
 
-  const existingKeys = new Set(existingCategories.map(c => c.systemKey).filter(Boolean));
-  const existingNames = new Map<string, any>(
-    existingCategories.map(c => [c.name.toLowerCase(), c])
+  const existingKeys = new Set(existingCategories.map((c) => c.systemKey).filter(Boolean));
+  const existingNames = new Map<string, Category>(
+    existingCategories.map((c) => [c.name.toLowerCase(), c])
   );
 
   for (const cat of DEFAULT_CATEGORIES) {
@@ -39,7 +49,7 @@ export async function ensureDefaultCategories(userId: string) {
     const existingByName = existingNames.get(cat.name.toLowerCase());
     if (existingByName) {
       if (!existingByName.systemKey || existingByName.systemKey === cat.systemKey) {
-        await db.category.update({
+        await resolvedClient.category.update({
           where: { id: existingByName.id },
           data: {
             systemKey: cat.systemKey,
@@ -55,7 +65,7 @@ export async function ensureDefaultCategories(userId: string) {
     }
 
     // 3. Otherwise, create a new one
-    await db.category.create({
+    await resolvedClient.category.create({
       data: {
         userId,
         name: cat.name,
@@ -66,7 +76,7 @@ export async function ensureDefaultCategories(userId: string) {
     });
   }
 
-  return await db.category.findMany({
+  return await resolvedClient.category.findMany({
     where: { userId }
   });
 }

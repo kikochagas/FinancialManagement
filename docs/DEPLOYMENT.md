@@ -21,6 +21,10 @@ Both variables must be configured together:
 *   `TURSO_DATABASE_URL` (e.g., `libsql://financial-management-xxx.turso.io`)
 *   `TURSO_AUTH_TOKEN` (The corresponding secure access token)
 
+You must also set the following variable for Prisma tooling compatibility:
+*   `DATABASE_URL` (Set to `file:./unused.db`)
+    *   *Note:* This is ONLY a Prisma schema placeholder required in the hosted environment. It is NOT the production/runtime database. The actual hosted runtime database is Turso when `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` are configured. The Render safety guard prevents the application from silently falling back to local SQLite if Turso credentials are missing, and `unused.db` does not contain any application data.
+
 ### Authentication
 *   `JWT_SECRET`: A secure random string (e.g., generated via `openssl rand -base64 32`). This is strictly required in production runtime; the server will throw an error if missing.
 
@@ -70,6 +74,17 @@ Prisma's standard `db push` is not supported for remote Turso databases using th
    ```
 5. Enter all the required environment variables listed above. 
 6. Click **Deploy**.
+
+
+## Fresh Deployments vs Legacy Migration
+
+**Fresh Turso deployment:**
+- The schema is created fresh from the current Prisma schema.
+- New users receive the current Categories automatically.
+- The backfill-existing-users.ts script is **NOT** run.
+
+**Legacy Migration (scripts/backfill-existing-users.ts):**
+- This script is strictly a one-off utility for migrating *old, pre-refactor local SQLite databases* to the modern transaction domain. It contains an environmental safety guard preventing execution against Turso.
 
 ## Populating Production Data
 Once deployed, **do not upload your personal `dev.db`**.

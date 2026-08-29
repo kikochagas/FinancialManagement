@@ -44,6 +44,8 @@ export async function orchestrateColumnMapping(
 
   if (evalResult.needsAI) {
     aiAttempted = true;
+    let aiResult: any = null;
+
     try {
       const transactionDataRows = dataRows.slice(headerRowIndex + 1);
       const sanitizedCols: AISanitizedColumnInfo[] = headers.map((header, idx) => ({
@@ -52,33 +54,46 @@ export async function orchestrateColumnMapping(
         valueShapes: sampleColumnShapes(transactionDataRows, idx),
       }));
 
-      const aiResult = await aiMapper.mapColumns(sanitizedCols);
-      aiSucceeded = true;
-      
-      // Merge AI Results where AI is more confident or deterministic is unsure
-      aiResult.mappings.forEach((aiMapping) => {
-        const existing = mapping[aiMapping.columnIndex];
-        if (existing) {
-          // If deterministic was low confidence (<0.8), trust AI, but mark source="ai"
-          // If deterministic was strong (>= 0.8), keep deterministic unless AI is identical
-          if (existing.confidence < 0.8 || !existing.semantic) {
-            mapping[aiMapping.columnIndex] = {
-              columnIndex: aiMapping.columnIndex,
-              header: aiMapping.header,
-              semantic: aiMapping.semantic === "IGNORE" ? null : aiMapping.semantic,
-              confidence: aiMapping.confidence,
-              source: "ai",
-            };
-          } else if (existing.semantic !== aiMapping.semantic) {
-            // Disagreement on strong deterministic: Flag for user review by lowering confidence
-            mapping[aiMapping.columnIndex].confidence = 0.5; // Flagged
-            warnings.push(`AI disagreed with strong deterministic match for column: ${existing.header}`);
-          }
-        }
-      });
-      warnings.push(...aiResult.warnings);
+      aiResult = await aiMapper.mapColumns(sanitizedCols);
     } catch (e: any) {
-      aiError = e.message || "AI Mapping failed. Using deterministic fallback.";
+      aiError = e.message || "AI_MAPPING_UNAVAILABLE";
+    }
+
+    if (aiResult) {
+      try {
+        if (!aiResult.mappings || !Array.isArray(aiResult.mappings)) {
+            throw new Error("Invalid mappings returned from AI");
+        }
+
+        aiResult.mappings.forEach((aiMapping: any) => {
+          const existing = mapping[aiMapping.columnIndex];
+          if (existing) {
+            if (existing.confidence < 0.8 || !existing.semantic) {
+              mapping[aiMapping.columnIndex] = {
+                columnIndex: aiMapping.columnIndex,
+                header: aiMapping.header,
+                semantic: aiMapping.semantic === "IGNORE" ? null : aiMapping.semantic,
+                confidence: aiMapping.confidence,
+                source: "ai",
+              };
+            } else if (existing.semantic !== aiMapping.semantic) {
+              mapping[aiMapping.columnIndex].confidence = 0.5; // Flagged
+              warnings.push(`AI disagreed with strong deterministic match for column: ${existing.header}`);
+            }
+          }
+        });
+
+        const aiWarnings = Array.isArray(aiResult.warnings) ? aiResult.warnings : [];
+        warnings.push(...aiWarnings);
+
+        // Explicit invariant: If we get here successfully, it succeeded.
+        aiSucceeded = true;
+        aiError = null;
+      } catch (e: any) {
+        warnings.push(`Local AI merge failed: ${e.message}`);
+        aiSucceeded = false;
+        // Do not set aiError here, as the AI itself didn't fail availability, just post-processing.
+      }
     }
   }
 

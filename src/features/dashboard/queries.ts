@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { getUserId } from "@/lib/auth";
+import { ensureDefaultCategories } from "@/features/categories/default-categories";
 import { startOfMonth, endOfMonth, subMonths } from "date-fns";
 
 export async function getDashboardData() {
@@ -10,7 +11,7 @@ export async function getDashboardData() {
   const investments = await db.investment.findMany({ where: { userId } });
   const goals = await db.goal.findMany({ where: { userId } });
   const taxReservations = await db.taxReservation.findMany({ where: { userId } });
-  const categories = await db.category.findMany({ where: { userId } });
+  const categories = await ensureDefaultCategories(userId);
 
   // Use current date
   const now = new Date(); 

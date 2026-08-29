@@ -34,10 +34,6 @@ describe('Default Categories', () => {
 
     await ensureDefaultCategories('user-1');
 
-    // We expect it to SKIP creating "Salary" because a same-named one exists but conflicts.
-    // We expect it to NOT update it either.
-    // It should create the other missing canonicals.
-
     // Salary shouldn't be created or updated
     expect(mockDb.category.update).not.toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: 'existing-1' } })
@@ -71,5 +67,29 @@ describe('Default Categories', () => {
     const createCalls = mockDb.category.create.mock.calls;
     const createdNames = createCalls.map((c: any) => c[0].data.name);
     expect(createdNames).not.toContain('Salary'); // adopted, not created
+  });
+
+  it('uses default db when client is not injected', async () => {
+    mockDb.category.findMany.mockResolvedValue([]);
+    await ensureDefaultCategories('user-1');
+    expect(mockDb.category.findMany).toHaveBeenCalled();
+  });
+
+  it('uses injected client when provided', async () => {
+    const customClient = {
+      category: {
+        findMany: vi.fn().mockResolvedValue([]),
+        create: vi.fn(),
+        update: vi.fn(),
+      }
+    };
+    
+    await ensureDefaultCategories('user-1', customClient);
+    
+    // Default DB should not be called
+    expect(mockDb.category.findMany).not.toHaveBeenCalled();
+    // Injected client should be called
+    expect(customClient.category.findMany).toHaveBeenCalled();
+    expect(customClient.category.create).toHaveBeenCalled();
   });
 });
