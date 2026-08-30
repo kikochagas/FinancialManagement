@@ -10,6 +10,7 @@ import * as XLSX from "xlsx";
 import { FileDown, FileUp, Calculator, ShieldCheck, Printer, FileText, CheckCircle2 } from "lucide-react";
 import { parseStructuredImport } from "./structured-import-parser";
 import { BankImportWizard } from "./bank-import/components/BankImportWizard";
+import { BrokerTransactionImportWizard } from "./broker-import/components/BrokerTransactionImportWizard";
 
 interface ReportsClientProps {
   data: {
@@ -330,6 +331,11 @@ export function ReportsClient({ data }: ReportsClientProps) {
             <div className="pt-2 border-t border-border mt-4">
                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block mb-2">Unstructured Bank Statement Import</span>
                <BankImportWizard accounts={data.accounts} categories={data.categories} />
+            </div>
+
+            <div className="pt-2 border-t border-border mt-4">
+               <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block mb-2">Broker Transaction Import</span>
+               <BrokerTransactionImportWizard accounts={data.accounts} />
             </div>
 
             {/* Print trigger */}

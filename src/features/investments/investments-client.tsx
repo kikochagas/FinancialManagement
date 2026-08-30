@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useTransition, useEffect } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +11,7 @@ import { formatCurrency, formatPercentage, cn } from "@/lib/utils";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { Coins, TrendingUp, TrendingDown, Edit2, AlertCircle, Plus, Trash2 } from "lucide-react";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { InvestmentActivityTab, type InvestmentEventUI } from "./activity-tab";
 
 interface Investment {
   id: string;
@@ -26,12 +28,28 @@ interface Investment {
 interface InvestmentsClientProps {
   data: {
     investments: Investment[];
+    events?: InvestmentEventUI[];
+    accounts?: { id: string; name: string }[];
   };
 }
 
 export function InvestmentsClient({ data }: InvestmentsClientProps) {
   const [isPending, startTransition] = useTransition();
   const [mounted, setMounted] = useState(false);
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const queryTab = searchParams.get("tab");
+  const defaultTab = queryTab === "activity" ? "activity" : "portfolio";
+  const [activeTab, setActiveTab] = useState<"portfolio" | "activity">(defaultTab);
+
+  const handleTabChange = (val: "portfolio" | "activity") => {
+    setActiveTab(val);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", val);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  };
 
   // Dialog State
   const [isOpen, setIsOpen] = useState(false);
@@ -148,7 +166,26 @@ export function InvestmentsClient({ data }: InvestmentsClientProps) {
 
   return (
     <div className="space-y-8 pb-10">
-      {/* Metrics Row */}
+      <div className="flex space-x-1 p-1 bg-muted rounded-lg w-max mb-6">
+          <button 
+            className={cn("px-4 py-2 text-sm font-medium rounded-md transition-colors", activeTab === "portfolio" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:bg-muted-foreground/10")} 
+            onClick={() => handleTabChange('portfolio')}
+          >
+            Portfolio
+          </button>
+          <button 
+            className={cn("px-4 py-2 text-sm font-medium rounded-md transition-colors", activeTab === "activity" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:bg-muted-foreground/10")} 
+            onClick={() => handleTabChange('activity')}
+          >
+            Activity
+          </button>
+      </div>
+
+      {activeTab === "activity" ? (
+        <InvestmentActivityTab events={data.events || []} accounts={data.accounts || []} />
+      ) : (
+        <>
+          {/* Metrics Row */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="border-border bg-card/50 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
@@ -413,7 +450,6 @@ export function InvestmentsClient({ data }: InvestmentsClientProps) {
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Trade Republic Cash">Trade Republic Cash</SelectItem>
                       <SelectItem value="Stocks">Stocks</SelectItem>
                       <SelectItem value="Bitcoin">Bitcoin</SelectItem>
                       <SelectItem value="Ethereum">Ethereum</SelectItem>
@@ -480,6 +516,8 @@ export function InvestmentsClient({ data }: InvestmentsClientProps) {
           </form>
         </DialogContent>
       </Dialog>
+        </>
+      )}
     </div>
   );
 }

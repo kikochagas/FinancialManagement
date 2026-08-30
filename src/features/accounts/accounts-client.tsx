@@ -18,6 +18,7 @@ interface Account {
   type: string;
   balance: number;
   currency: string;
+  investmentEventsCount?: number;
   recentTransactions: Array<{
     id: string;
     date: string;
@@ -449,7 +450,15 @@ export function AccountsClient({ data }: AccountsClientProps) {
                         </div>
                       ))}
                       {acc.recentTransactions.length === 0 && (
-                        <p className="text-[11px] text-muted-foreground italic py-2">No transaction history found.</p>
+                        <p className="text-[11px] text-muted-foreground italic py-2">
+                          {acc.type === "Broker" ? (
+                            (acc.investmentEventsCount ?? 0) > 0 
+                              ? `${acc.investmentEventsCount} activities. View in Investments -> Activity.` 
+                              : "No transaction history found."
+                          ) : (
+                            "No transaction history found."
+                          )}
+                        </p>
                       )}
                     </div>
                   </div>

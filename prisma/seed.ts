@@ -58,7 +58,7 @@ async function main() {
       userId: user.id,
       name: "Trade Republic",
       type: "Trade Republic",
-      balance: 35326.96,
+      balance: 0.0,
       currency: "EUR",
     },
   });
@@ -98,7 +98,7 @@ async function main() {
       userId: user.id,
       name: "Hardware Wallet",
       type: "Crypto Wallet",
-      balance: 1925.0, // Bitcoin 1000 + Other Crypto 925
+      balance: 0.0, // Crypto is represented by Investments
       currency: "EUR",
     },
   });
@@ -108,7 +108,7 @@ async function main() {
       userId: user.id,
       name: "Broker Account",
       type: "Broker",
-      balance: 850.0, // Stocks
+      balance: 0.0, // Stocks are represented by Investments
       currency: "EUR",
     },
   });
@@ -262,20 +262,6 @@ async function main() {
     },
   });
 
-  const trCash = await prisma.investment.create({
-    data: {
-      userId: user.id,
-      name: "Trade Republic Uninvested Cash",
-      type: "Trade Republic Cash",
-      symbol: "CASH.TR",
-      quantity: 35326.96,
-      costBasis: 35326.96,
-      marketValue: 35326.96,
-      profit: 0.0,
-      allocation: 88.0,
-    },
-  });
-
   console.log("Investments seeded.");
 
   // 7. Create Goals
@@ -332,7 +318,7 @@ async function main() {
 
   // 9. Asset Allocation
   const assetTypes = [
-    { type: "Trade Republic Cash", target: 50, current: 87.5 },
+    
     { type: "Stocks", target: 30, current: 2.1 },
     { type: "Bitcoin", target: 10, current: 2.5 },
     { type: "Other Crypto", target: 5, current: 2.3 },

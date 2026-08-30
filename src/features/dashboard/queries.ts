@@ -39,17 +39,17 @@ export async function getDashboardData() {
     },
   });
 
-  // Calculate Net Worth
-  const totalAccountBalance = accounts.reduce((acc, a) => acc + a.balance, 0);
-  const netWorth = totalAccountBalance;
-
-  // Liquid Assets: Bank, Trade Republic, Cash
-  const liquidAssets = accounts
-    .filter((a) => ["Bank", "Trade Republic", "Cash"].includes(a.type))
-    .reduce((acc, a) => acc + a.balance, 0);
-
   // Investments: Total market value of all tracked investments
   const investmentsValue = investments.reduce((acc, inv) => acc + inv.marketValue, 0);
+
+  // Calculate Net Worth
+  const totalAccountBalance = accounts.reduce((acc, a) => acc + a.balance, 0);
+  const netWorth = totalAccountBalance + investmentsValue;
+
+  // Liquid Assets: Bank, Trade Republic, Cash, Broker
+  const liquidAssets = accounts
+    .filter((a) => ["Bank", "Trade Republic", "Cash", "Broker"].includes(a.type))
+    .reduce((acc, a) => acc + a.balance, 0);
 
   // Trade Republic Balance
   const trAccount = accounts.find((a) => a.type === "Trade Republic");

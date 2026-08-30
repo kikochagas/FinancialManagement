@@ -75,7 +75,7 @@ export const resetAndSeedDatabase = authActionClient.action(async ({ ctx: { user
         userId,
         name: "Trade Republic",
         type: "Trade Republic",
-        balance: 35326.96,
+        balance: 0.0,
         currency: "EUR",
       },
     });
@@ -115,7 +115,7 @@ export const resetAndSeedDatabase = authActionClient.action(async ({ ctx: { user
         userId,
         name: "Hardware Wallet",
         type: "Crypto Wallet",
-        balance: 1925.0,
+        balance: 0.0,
         currency: "EUR",
       },
     });
@@ -125,7 +125,7 @@ export const resetAndSeedDatabase = authActionClient.action(async ({ ctx: { user
         userId,
         name: "Broker Account",
         type: "Broker",
-        balance: 850.0,
+        balance: 0.0,
         currency: "EUR",
       },
     });
@@ -238,19 +238,7 @@ export const resetAndSeedDatabase = authActionClient.action(async ({ ctx: { user
       },
     });
 
-    await db.investment.create({
-      data: {
-        userId,
-        name: "Trade Republic Uninvested Cash",
-        type: "Trade Republic Cash",
-        symbol: "CASH.TR",
-        quantity: 35326.96,
-        costBasis: 35326.96,
-        marketValue: 35326.96,
-        profit: 0.0,
-        allocation: 88.0,
-      },
-    });
+    
 
     // Seed Goals
     await db.goal.create({
@@ -303,7 +291,7 @@ export const resetAndSeedDatabase = authActionClient.action(async ({ ctx: { user
 
     // Asset Allocation
     const assetTypes = [
-      { type: "Trade Republic Cash", target: 50, current: 87.5 },
+      
       { type: "Stocks", target: 30, current: 2.1 },
       { type: "Bitcoin", target: 10, current: 2.5 },
       { type: "Other Crypto", target: 5, current: 2.3 },

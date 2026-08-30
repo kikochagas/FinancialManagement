@@ -15,6 +15,7 @@ FinancialManagement provides a comprehensive and consolidated view of your finan
 - **Track all accounts in one place:** Manage bank accounts, credit cards, cash, and crypto wallets.
 - **Sync with real banks:** Connect supported bank accounts securely via Open Banking (powered by Enable Banking) and sync balances and transactions from FinancialManagement.
 - **Monitor Investments & Goals:** Track your stocks, crypto, and savings goals with automated progress calculations.
+- **Broker Transaction Import:** Upload CSV activity statements from your brokers (e.g., Trade Republic). Our generic parser smartly maps columns, normalizes trading events (Buys, Sells, Dividends, Transfers), prevents duplicates, and safely updates your uninvested cash balances.
 - **Visualize your Net Worth:** Watch your wealth grow over time with interactive charts and historical monthly snapshots.
 
 ### 💸 Master Your Cash Flow
@@ -44,6 +45,13 @@ FinancialManagement provides a comprehensive and consolidated view of your finan
 2. Upload your bank's Excel or CSV file.
 3. Review the column mapping (our AI can help if headers are confusing).
 4. Review the parsed transactions, confirm the suggested categories, and click **Import**.
+
+### Import a Broker Statement
+1. Go to **Reports** and click on **Broker Transaction Import**.
+2. Upload your broker's CSV file (e.g., Trade Republic).
+3. Confirm the intelligent column mapping and event type normalization.
+4. Review the derived uninvested cash balance and confirm the import.
+5. Your activity is safely deduped and securely visible under **Investments > Activity**.
 
 ### Connect a Real Bank Account
 1. Navigate to **Accounts**.

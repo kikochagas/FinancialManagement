@@ -23,7 +23,6 @@ export const CategoryType = {
 } as const;
 
 export const InvestmentType = {
-  TRADE_REPUBLIC_CASH: "Trade Republic Cash",
   STOCKS: "Stocks",
   BITCOIN: "Bitcoin",
   ETHEREUM: "Ethereum",

@@ -23,6 +23,9 @@ export async function getAccountsData() {
           bankConnection: true
         }
       },
+      _count: {
+        select: { investmentEvents: true }
+      }
     },
   });
 
@@ -37,6 +40,7 @@ export async function getAccountsData() {
         type: a.type,
         balance: a.balance,
         currency: a.currency,
+        investmentEventsCount: a._count.investmentEvents,
         recentTransactions: [...a.transactions, ...a.transferTransactions]
           .sort((x, y) => {
              const diff = y.date.getTime() - x.date.getTime();

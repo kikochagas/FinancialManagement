@@ -19,6 +19,7 @@ model User {
   categories              Category[]
   transactions            Transaction[]
   investments             Investment[]
+  investmentEvents        InvestmentEvent[]
   goals                   Goal[]
   snapshots               MonthlySnapshot[]
   budgets                 Budget[]
@@ -42,6 +43,7 @@ model Account {
   transactions         Transaction[]            @relation("AccountTransactions")
   transferTransactions Transaction[]            @relation("TransferDestination")
   externalMappings     ExternalAccountMapping[]
+  investmentEvents     InvestmentEvent[]
 }
 
 model Category {
@@ -84,7 +86,7 @@ model Investment {
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   name        String
-  type        String // Trade Republic Cash, Stocks, Bitcoin, Ethereum, Other Crypto
+  type        String // Stocks, Bitcoin, Ethereum, Other Crypto
   symbol      String?
   quantity    Float    @default(0)
   costBasis   Float // Total cost basis in EUR
@@ -148,7 +150,7 @@ model AssetAllocation {
   id                String   @id @default(uuid())
   userId            String
   user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  assetType         String // Trade Republic Cash, Stocks, Bitcoin, Ethereum, Other Crypto, Bank Cash
+  assetType         String // Stocks, Bitcoin, Ethereum, Other Crypto, Bank Cash
   targetPercentage  Float
   currentPercentage Float
   updatedAt         DateTime @updatedAt
@@ -251,4 +253,44 @@ model ExternalTransactionMapping {
   createdAt             DateTime @default(now())
 
   @@unique([externalAccountMappingId, dedupKey])
+}
+
+model InvestmentEvent {
+  id                   String   @id @default(uuid())
+  userId               String
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountId            String
+  account              Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  
+  occurredAt           DateTime
+  
+  eventType            String
+  rawEventType         String?
+  rawCategory          String?
+  assetClass           String?
+  instrumentName       String?
+  instrumentIdentifier String?
+  isin                 String?
+  ticker               String?
+  
+  quantity             Float?
+  unitPrice            Float?
+  amount               Float?
+  fee                  Float?
+  tax                  Float?
+  currency             String?
+  
+  originalAmount       Float?
+  originalCurrency     String?
+  fxRate               Float?
+  
+  description          String?
+  
+  externalId           String?
+  dedupKey             String
+  sourceRow            Int?
+  
+  createdAt            DateTime @default(now())
+
+  @@unique([accountId, dedupKey])
 }
