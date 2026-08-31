@@ -57,7 +57,7 @@ async function main() {
     data: {
       userId: user.id,
       name: "Trade Republic",
-      type: "Trade Republic",
+        type: "Broker",
       balance: 0.0,
       currency: "EUR",
     },
@@ -265,7 +265,7 @@ async function main() {
   console.log("Investments seeded.");
 
   // 7. Create Goals
-  // IRS = 11000, Emergency Fund = 10000, House = Remaining Trade Republic balance
+  // IRS = 11000, Emergency Fund = 10000, House = Remaining Broker balance
   const irsGoal = await prisma.goal.create({
     data: {
       userId: user.id,

@@ -188,8 +188,7 @@ export function AccountsClient({ data }: AccountsClientProps) {
     switch (type) {
       case AccountType.BANK:
         return Landmark;
-      case AccountType.TRADE_REPUBLIC:
-        return Wallet;
+      
 
       case AccountType.BENEFITS:
         return CreditCard;
@@ -204,8 +203,7 @@ export function AccountsClient({ data }: AccountsClientProps) {
     switch (type) {
       case AccountType.BANK:
         return "bg-blue-500/10 border-blue-500/20 text-blue-400";
-      case AccountType.TRADE_REPUBLIC:
-        return "bg-violet-500/10 border-violet-500/20 text-violet-400";
+      
 
       case AccountType.BENEFITS:
         return "bg-pink-500/10 border-pink-500/20 text-pink-400";
@@ -313,7 +311,6 @@ export function AccountsClient({ data }: AccountsClientProps) {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="Bank">Bank</SelectItem>
-                        <SelectItem value="Trade Republic">Trade Republic</SelectItem>
                         <SelectItem value={AccountType.BENEFITS}>Benefits (Meal, Flex, etc.)</SelectItem>
                         <SelectItem value="Cash">Cash</SelectItem>
                         <SelectItem value="Crypto Wallet">Crypto Wallet</SelectItem>
@@ -558,7 +555,6 @@ export function AccountsClient({ data }: AccountsClientProps) {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Bank">Bank</SelectItem>
-                      <SelectItem value="Trade Republic">Trade Republic</SelectItem>
                       <SelectItem value={AccountType.BENEFITS}>Benefits (Meal, Flex, etc.)</SelectItem>
                       <SelectItem value="Cash">Cash</SelectItem>
                       <SelectItem value="Crypto Wallet">Crypto Wallet</SelectItem>

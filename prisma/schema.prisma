@@ -35,7 +35,7 @@ model Account {
   userId               String
   user                 User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
   name                 String
-  type                 String // Bank, Trade Republic, Benefits, Cash, Crypto Wallet, Broker
+  type                 String // Bank, Benefits, Cash, Crypto Wallet, Broker
   balance              Float
   currency             String                   @default("EUR")
   createdAt            DateTime                 @default(now())

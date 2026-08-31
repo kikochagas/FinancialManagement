@@ -25,7 +25,11 @@ export default async function AppLayout({
   }
 
   const accounts = await db.account.findMany({ where: { userId } });
-  const netWorth = accounts.reduce((acc, a) => acc + a.balance, 0);
+  const investments = await db.investment.findMany({ where: { userId } });
+  
+  const totalAccountBalance = accounts.reduce((acc, a) => acc + a.balance, 0);
+  const investmentsValue = investments.reduce((acc, inv) => acc + inv.marketValue, 0);
+  const netWorth = totalAccountBalance + investmentsValue;
 
   return (
     <QueryProvider>

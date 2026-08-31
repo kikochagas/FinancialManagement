@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { getUserId } from "@/lib/auth";
 import { ensureDefaultCategories } from "@/features/categories/default-categories";
+import { isLiquidAccountType } from "@/lib/constants";
 import { startOfMonth, endOfMonth, subMonths } from "date-fns";
 
 export async function getDashboardData() {
@@ -46,14 +47,10 @@ export async function getDashboardData() {
   const totalAccountBalance = accounts.reduce((acc, a) => acc + a.balance, 0);
   const netWorth = totalAccountBalance + investmentsValue;
 
-  // Liquid Assets: Bank, Trade Republic, Cash, Broker
+    // Liquid Assets: generic liquid account classification
   const liquidAssets = accounts
-    .filter((a) => ["Bank", "Trade Republic", "Cash", "Broker"].includes(a.type))
+    .filter((a) => isLiquidAccountType(a.type))
     .reduce((acc, a) => acc + a.balance, 0);
-
-  // Trade Republic Balance
-  const trAccount = accounts.find((a) => a.type === "Trade Republic");
-  const trBalance = trAccount ? trAccount.balance : 0;
 
   // Monthly stats
   const currentIncome = currentMonthTransactions

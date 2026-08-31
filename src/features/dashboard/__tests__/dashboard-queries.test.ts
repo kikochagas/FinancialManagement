@@ -67,7 +67,7 @@ describe("Dashboard queries", () => {
       data: {
         id: "broker-account-1",
         userId: testUserId,
-        name: "Trade Republic",
+        name: "Any Broker",
         type: "Broker",
         balance: 500, // Broker cash
         currency: "EUR"

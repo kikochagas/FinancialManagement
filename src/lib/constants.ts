@@ -1,6 +1,5 @@
 export const AccountType = {
   BANK: "Bank",
-  TRADE_REPUBLIC: "Trade Republic",
   BENEFITS: "Benefits",
   CASH: "Cash",
   CRYPTO_WALLET: "Crypto Wallet",
@@ -62,3 +61,8 @@ export type TGoalType = typeof GoalType[keyof typeof GoalType];
 export type TBankConnectionStatus = typeof BankConnectionStatus[keyof typeof BankConnectionStatus];
 export type TOpenBankingCashAccountType = typeof OpenBankingCashAccountType[keyof typeof OpenBankingCashAccountType];
 export type TLinkAction = typeof LinkAction[keyof typeof LinkAction];
+
+export const LIQUID_ACCOUNT_TYPES = new Set<TAccountType>([AccountType.BANK, AccountType.CASH, AccountType.BROKER]);
+export function isLiquidAccountType(type: string): boolean {
+  return LIQUID_ACCOUNT_TYPES.has(type as TAccountType);
+}

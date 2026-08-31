@@ -74,7 +74,7 @@ export const resetAndSeedDatabase = authActionClient.action(async ({ ctx: { user
       data: {
         userId,
         name: "Trade Republic",
-        type: "Trade Republic",
+          type: "Broker",
         balance: 0.0,
         currency: "EUR",
       },
