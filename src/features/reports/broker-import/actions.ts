@@ -4,7 +4,6 @@ import { db } from "@/lib/db";
 import { authActionClient } from "@/lib/safe-action";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { generateDedupKey } from "./dedup";
 
 const brokerShapeSchema = z.enum([
   "EMPTY",
@@ -105,6 +104,14 @@ export const previewBrokerDuplicatesAction = authActionClient
       where: {
         userId,
         accountId,
+      },
+      select: {
+        eventType: true,
+        amount: true,
+        fee: true,
+        tax: true,
+        currency: true,
+        dedupKey: true
       }
     });
 
@@ -166,97 +173,134 @@ export async function importBrokerTransactionsForUser(userId: string, accountId:
 
   const { validateBrokerTransaction } = await import("./validation");
   const { parseBrokerDatetimeStrict } = await import("./date-parser");
+  const { generateDedupKey } = await import("./dedup");
 
-  await db.$transaction(async (txDb) => {
-    for (const tx of transactions) {
-      if (tx.eventType === "IGNORE") {
-        skippedCount++;
-        continue;
-      }
+  const candidates: any[] = [];
+  
+  for (const tx of transactions) {
+    if (tx.eventType === "IGNORE") {
+      skippedCount++;
+      continue;
+    }
 
-      const txForValidation = { ...tx, valid: true, warnings: [] };
-      validateBrokerTransaction(txForValidation as any);
-      if (!txForValidation.valid) {
-        throw new Error(`Server-side validation failed for transaction at row ${tx.sourceRow}: ${txForValidation.warnings.join(", ")}`);
-      }
+    const txForValidation = { ...tx, valid: true, warnings: [] };
+    validateBrokerTransaction(txForValidation as any);
+    if (!txForValidation.valid) {
+      throw new Error(`Server-side validation failed for transaction at row ${tx.sourceRow}: ${txForValidation.warnings.join(", ")}`);
+    }
+    
+    const parsedDate = parseBrokerDatetimeStrict(tx.occurredAt);
+    if (!parsedDate.valid || !parsedDate.value) {
+      throw new Error(`Strict server validation failed for occurredAt date at row ${tx.sourceRow}: ${parsedDate.warning || 'Invalid'}`);
+    }
+    const dateObj = new Date(parsedDate.value);
+    if (isNaN(dateObj.getTime())) {
+      throw new Error(`Invalid occurredAt Date object at row ${tx.sourceRow}`);
+    }
+
+    const dedupKey = generateDedupKey(accountId, tx as any);
+
+    candidates.push({
+      userId,
+      accountId,
+      occurredAt: dateObj,
+      eventType: tx.eventType!,
+      rawEventType: tx.rawEventType,
+      rawCategory: tx.rawCategory,
+      assetClass: tx.assetClass,
+      instrumentName: tx.instrumentName,
+      instrumentIdentifier: tx.instrumentIdentifier,
+      isin: tx.isin,
+      ticker: tx.ticker,
+      quantity: tx.quantity,
+      unitPrice: tx.unitPrice,
+      amount: tx.amount,
+      fee: tx.fee,
+      tax: tx.tax,
+      currency: tx.currency,
+      originalAmount: tx.originalAmount,
+      originalCurrency: tx.originalCurrency,
+      fxRate: tx.fxRate,
+      description: tx.description,
+      externalId: tx.externalId,
+      sourceRow: tx.sourceRow,
+      dedupKey,
+    });
+  }
+
+  if (candidates.length === 0 && !updateCashBalance) {
+    return { success: true, insertedCount, skippedCount, balanceUpdated, resultingBalance };
+  }
+
+  try {
+    await db.$transaction(async (txDb) => {
+      let newEvents = [];
       
-      const parsedDate = parseBrokerDatetimeStrict(tx.occurredAt);
-      if (!parsedDate.valid || !parsedDate.value) {
-        throw new Error(`Strict server validation failed for occurredAt date at row ${tx.sourceRow}: ${parsedDate.warning || 'Invalid'}`);
-      }
-      const dateObj = new Date(parsedDate.value);
-      if (isNaN(dateObj.getTime())) {
-        throw new Error(`Invalid occurredAt Date object at row ${tx.sourceRow}`);
-      }
-
-      const { generateDedupKey } = await import("./dedup");
-      const dedupKey = generateDedupKey(accountId, tx as any);
-
-      const existing = await txDb.investmentEvent.findUnique({
-        where: {
-          accountId_dedupKey: {
+      if (candidates.length > 0) {
+        const dedupKeys = candidates.map(c => c.dedupKey);
+        const existing = await txDb.investmentEvent.findMany({
+          where: {
             accountId,
-            dedupKey
+            userId,
+            dedupKey: { in: dedupKeys }
+          },
+          select: { dedupKey: true }
+        });
+        
+        const existingSet = new Set(existing.map(e => e.dedupKey));
+        newEvents = [];
+        for (const c of candidates) {
+          if (existingSet.has(c.dedupKey)) {
+            skippedCount++;
+          } else {
+            existingSet.add(c.dedupKey);
+            newEvents.push(c);
           }
         }
-      });
 
-      if (existing) {
-        skippedCount++;
-        continue;
-      }
-
-      await txDb.investmentEvent.create({
-        data: {
-          userId,
-          accountId,
-          occurredAt: dateObj,
-          eventType: tx.eventType!,
-          rawEventType: tx.rawEventType,
-          rawCategory: tx.rawCategory,
-          assetClass: tx.assetClass,
-          instrumentName: tx.instrumentName,
-          instrumentIdentifier: tx.instrumentIdentifier,
-          isin: tx.isin,
-          ticker: tx.ticker,
-          quantity: tx.quantity,
-          unitPrice: tx.unitPrice,
-          amount: tx.amount,
-          fee: tx.fee,
-          tax: tx.tax,
-          currency: tx.currency,
-          originalAmount: tx.originalAmount,
-          originalCurrency: tx.originalCurrency,
-          fxRate: tx.fxRate,
-          description: tx.description,
-          externalId: tx.externalId,
-          sourceRow: tx.sourceRow,
-          dedupKey,
+        if (newEvents.length > 0) {
+          await txDb.investmentEvent.createMany({
+            data: newEvents
+          });
+          insertedCount += newEvents.length;
         }
-      });
-
-      insertedCount++;
-    }
+      }
 
       if (updateCashBalance) {
         const allEvents = await txDb.investmentEvent.findMany({
-          where: { accountId, userId }
+          where: { accountId, userId },
+          select: {
+            eventType: true,
+            amount: true,
+            fee: true,
+            tax: true,
+            currency: true
+          }
         });
-      const { calculateAccountBalance } = await import("./cash-balance");
-      const balanceCalculation = calculateAccountBalance(allEvents as any, account.currency);
-      
-      if (balanceCalculation.isSafe) {
-        await txDb.account.update({
-          where: { id: accountId },
-          data: { balance: balanceCalculation.balance }
-        });
-        balanceUpdated = true;
-        resultingBalance = balanceCalculation.balance;
-      } else {
-        throw new Error("Cash balance calculation was unsafe (e.g. multi-currency events without FX conversion). Transaction aborted.");
+        const { calculateAccountBalance } = await import("./cash-balance");
+        const balanceCalculation = calculateAccountBalance(allEvents as any, account.currency);
+        
+        if (balanceCalculation.isSafe) {
+          await txDb.account.update({
+            where: { id: accountId },
+            data: { balance: balanceCalculation.balance }
+          });
+          balanceUpdated = true;
+          resultingBalance = balanceCalculation.balance;
+        } else {
+          throw new Error("Cash balance calculation was unsafe (e.g. multi-currency events without FX conversion). Transaction aborted.");
+        }
       }
+    }, {
+      maxWait: 5000,
+      timeout: 30000
+    });
+  } catch (err: any) {
+    if (err.code === 'P2002' || err.message?.includes('Unique constraint')) {
+      throw new Error("A concurrent import was detected and safely aborted to prevent duplicates. Please try again.");
     }
-  });
+    throw err;
+  }
 
   return { success: true, insertedCount, skippedCount, balanceUpdated, resultingBalance };
 }
