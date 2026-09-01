@@ -46,7 +46,7 @@ describe("Dashboard queries", () => {
         name: "Apple Inc.",
         type: "Stock",
         quantity: 10,
-        costBasis: 1000,
+        costBasis: 1000, isin: null, instrumentIdentifier: null, instrumentIdentifierType: null,
         marketValue: 1500,
         profit: 500,
         allocation: 0
@@ -80,7 +80,7 @@ describe("Dashboard queries", () => {
         name: "Apple Inc.",
         type: "Stock",
         quantity: 10,
-        costBasis: 1000,
+        costBasis: 1000, isin: null, instrumentIdentifier: null, instrumentIdentifierType: null,
         marketValue: 1500,
         profit: 500,
         allocation: 0

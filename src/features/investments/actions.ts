@@ -9,8 +9,10 @@ const updateInvestmentSchema = z.object({
   id: z.string(),
   name: z.string().optional(),
   symbol: z.string().optional().nullable(),
+  isin: z.string().optional().nullable(),
+  accountId: z.string().optional().nullable(),
   quantity: z.number().optional(),
-  costBasis: z.number().optional(),
+  costBasis: z.number().optional().nullable(),
   marketValue: z.number().optional(),
 });
 
@@ -21,10 +23,14 @@ export const updateInvestment = authActionClient
 
     const original = await db.investment.findUnique({ where: { id } });
     if (!original || original.userId !== userId) throw new Error("Investment not found");
+    if (data.accountId) {
+      const acc = await db.account.findUnique({ where: { id: data.accountId } });
+      if (!acc || acc.userId !== userId) throw new Error("Unauthorized account");
+    }
 
     const costBasis = data.costBasis !== undefined ? data.costBasis : original.costBasis;
     const marketValue = data.marketValue !== undefined ? data.marketValue : original.marketValue;
-    const profit = marketValue - costBasis;
+    const profit = costBasis != null ? marketValue - costBasis : null;
 
     const updated = await db.investment.update({
       where: { id },
@@ -58,15 +64,21 @@ const createInvestmentSchema = z.object({
   name: z.string().min(1),
   type: z.string(),
   symbol: z.string().optional().nullable(),
+  isin: z.string().optional().nullable(),
+  accountId: z.string().optional().nullable(),
   quantity: z.number().nonnegative(),
-  costBasis: z.number().nonnegative(),
+  costBasis: z.number().nonnegative().optional().nullable(),
   marketValue: z.number().nonnegative(),
 });
 
 export const createInvestment = authActionClient
   .schema(createInvestmentSchema)
   .action(async ({ parsedInput, ctx: { userId } }) => {
-    const profit = parsedInput.marketValue - parsedInput.costBasis;
+    if (parsedInput.accountId) {
+      const acc = await db.account.findUnique({ where: { id: parsedInput.accountId } });
+      if (!acc || acc.userId !== userId) throw new Error('Unauthorized account');
+    }
+    const profit = parsedInput.costBasis != null ? parsedInput.marketValue - parsedInput.costBasis : null;
 
     const created = await db.investment.create({
       data: {
@@ -126,3 +138,7 @@ export const deleteInvestment = authActionClient
     revalidatePath("/investments");
     return { success: true };
   });
+
+
+
+

@@ -4,54 +4,57 @@ datasource db {
 }
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
   previewFeatures = ["driverAdapters"]
 }
 
 model User {
-  id                      String                   @id @default(uuid())
-  email                   String                   @unique
-  passwordHash            String
-  name                    String?
-  createdAt               DateTime                 @default(now())
-  updatedAt               DateTime                 @updatedAt
-  accounts                Account[]
-  categories              Category[]
-  transactions            Transaction[]
-  investments             Investment[]
-  investmentEvents        InvestmentEvent[]
-  goals                   Goal[]
-  snapshots               MonthlySnapshot[]
-  budgets                 Budget[]
-  taxReservations         TaxReservation[]
-  assetAllocations        AssetAllocation[]
-  settings                Settings?
-  bankAuthorizationStates BankAuthorizationState[]
-  bankConnections         BankConnection[]
+  id                        String                      @id @default(uuid())
+  email                     String                      @unique
+  passwordHash              String
+  name                      String?
+  createdAt                 DateTime                    @default(now())
+  updatedAt                 DateTime                    @updatedAt
+  accounts                  Account[]
+  categories                Category[]
+  transactions              Transaction[]
+  investments               Investment[]
+  investmentEvents          InvestmentEvent[]
+  goals                     Goal[]
+  snapshots                 MonthlySnapshot[]
+  budgets                   Budget[]
+  taxReservations           TaxReservation[]
+  assetAllocations          AssetAllocation[]
+  settings                  Settings?
+  bankAuthorizationStates   BankAuthorizationState[]
+  bankConnections           BankConnection[]
+  InvestmentAccountSnapshot InvestmentAccountSnapshot[]
 }
 
 model Account {
-  id                   String                   @id @default(uuid())
-  userId               String
-  user                 User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name                 String
-  type                 String // Bank, Benefits, Cash, Crypto Wallet, Broker
-  balance              Float
-  currency             String                   @default("EUR")
-  createdAt            DateTime                 @default(now())
-  updatedAt            DateTime                 @updatedAt
-  transactions         Transaction[]            @relation("AccountTransactions")
-  transferTransactions Transaction[]            @relation("TransferDestination")
-  externalMappings     ExternalAccountMapping[]
-  investmentEvents     InvestmentEvent[]
+  id                        String                      @id @default(uuid())
+  userId                    String
+  user                      User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name                      String
+  type                      String // Bank, Benefits, Cash, Crypto Wallet, Broker
+  balance                   Float
+  currency                  String                      @default("EUR")
+  createdAt                 DateTime                    @default(now())
+  updatedAt                 DateTime                    @updatedAt
+  transactions              Transaction[]               @relation("AccountTransactions")
+  transferTransactions      Transaction[]               @relation("TransferDestination")
+  externalMappings          ExternalAccountMapping[]
+  investmentEvents          InvestmentEvent[]
+  InvestmentAccountSnapshot InvestmentAccountSnapshot[]
+  Investment                Investment[]
 }
 
 model Category {
-  id            String  @id @default(uuid())
+  id            String        @id @default(uuid())
   userId        String
-  user          User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   name          String
-  directionHint String  @default("Both") // Debit, Credit, Both
+  directionHint String        @default("Both") // Debit, Credit, Both
   systemKey     String? // Stable key for defaults, e.g. "salary", "groceries"
   color         String? // Hex color or Tailwind class name
   transactions  Transaction[]
@@ -89,11 +92,20 @@ model Investment {
   type        String // Stocks, Bitcoin, Ethereum, Other Crypto
   symbol      String?
   quantity    Float    @default(0)
-  costBasis   Float // Total cost basis in EUR
-  marketValue Float // Total market value in EUR
-  profit      Float // marketValue - costBasis
-  allocation  Float // percentage (computed or stored)
+  costBasis   Float?
+  marketValue Float
+  profit      Float?
+  allocation  Float
   updatedAt   DateTime @updatedAt
+
+  accountId                String?
+  account                  Account? @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  isin                     String?
+  instrumentIdentifier     String?
+  instrumentIdentifierType String?
+
+  @@unique([accountId, isin])
+  @@unique([accountId, instrumentIdentifierType, instrumentIdentifier])
 }
 
 model Goal {
@@ -193,24 +205,24 @@ model BankConnection {
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
-  mappings           ExternalAccountMapping[]
-  pendingAccounts    PendingExternalAccount[]
+  mappings        ExternalAccountMapping[]
+  pendingAccounts PendingExternalAccount[]
 }
 
 model PendingExternalAccount {
-  id                 String         @id @default(uuid())
-  bankConnectionId   String
-  bankConnection     BankConnection @relation(fields: [bankConnectionId], references: [id], onDelete: Cascade)
-  
+  id               String         @id @default(uuid())
+  bankConnectionId String
+  bankConnection   BankConnection @relation(fields: [bankConnectionId], references: [id], onDelete: Cascade)
+
   providerAccountUid String
   identificationHash String
   displayName        String
   currency           String
   cashAccountType    String?
   maskedIdentifier   String?
-  
-  expiresAt          DateTime
-  createdAt          DateTime       @default(now())
+
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 
   @@unique([bankConnectionId, identificationHash])
 }
@@ -249,21 +261,21 @@ model ExternalTransactionMapping {
   dedupKey              String // entry_reference OR deterministic fallback (NOT transaction_id)
   entryReference        String?
   providerTransactionId String?
-  
-  createdAt             DateTime @default(now())
+
+  createdAt DateTime @default(now())
 
   @@unique([externalAccountMappingId, dedupKey])
 }
 
 model InvestmentEvent {
-  id                   String   @id @default(uuid())
-  userId               String
-  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  accountId            String
-  account              Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  
-  occurredAt           DateTime
-  
+  id        String  @id @default(uuid())
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountId String
+  account   Account @relation(fields: [accountId], references: [id], onDelete: Restrict)
+
+  occurredAt DateTime
+
   eventType            String
   rawEventType         String?
   rawCategory          String?
@@ -272,25 +284,94 @@ model InvestmentEvent {
   instrumentIdentifier String?
   isin                 String?
   ticker               String?
-  
-  quantity             Float?
-  unitPrice            Float?
-  amount               Float?
-  fee                  Float?
-  tax                  Float?
-  currency             String?
-  
-  originalAmount       Float?
-  originalCurrency     String?
-  fxRate               Float?
-  
-  description          String?
-  
-  externalId           String?
-  dedupKey             String
-  sourceRow            Int?
-  
-  createdAt            DateTime @default(now())
+
+  quantity  Float?
+  unitPrice Float?
+  amount    Float?
+  fee       Float?
+  tax       Float?
+  currency  String?
+
+  originalAmount   Float?
+  originalCurrency String?
+  fxRate           Float?
+
+  description String?
+
+  externalId String?
+  dedupKey   String
+  sourceRow  Int?
+
+  createdAt DateTime @default(now())
 
   @@unique([accountId, dedupKey])
+}
+
+model InvestmentAccountSnapshot {
+  id        String  @id @default(uuid())
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountId String
+  account   Account @relation(fields: [accountId], references: [id], onDelete: Restrict)
+
+  statementDate       DateTime
+  statementDateSource String
+  importedAt          DateTime @default(now())
+
+  documentFingerprint String
+  completeness        String
+
+  positions    InvestmentPositionSnapshot[]
+  cashBalances InvestmentCashSnapshot[]
+  totals       InvestmentSnapshotTotal[]
+
+  @@unique([accountId, documentFingerprint])
+  @@index([accountId, statementDate])
+}
+
+model InvestmentPositionSnapshot {
+  id         String                    @id @default(uuid())
+  snapshotId String
+  snapshot   InvestmentAccountSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+
+  name                     String?
+  sourceSection            String?
+  assetClass               String?
+  isin                     String?
+  ticker                   String?
+  instrumentIdentifier     String?
+  instrumentIdentifierType String?
+
+  quantity    Float?
+  unitPrice   Float?
+  marketValue Float?
+  currency    String?
+
+  valuationDate DateTime?
+
+  @@index([snapshotId])
+}
+
+model InvestmentCashSnapshot {
+  id         String                    @id @default(uuid())
+  snapshotId String
+  snapshot   InvestmentAccountSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+  type       String?
+  label      String?
+  currency   String
+  amount     Float
+
+  @@index([snapshotId])
+}
+
+model InvestmentSnapshotTotal {
+  id         String                    @id @default(uuid())
+  snapshotId String
+  snapshot   InvestmentAccountSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+  type       String
+  label      String?
+  currency   String
+  amount     Float
+
+  @@index([snapshotId])
 }

@@ -27,7 +27,7 @@ const importDataSchema = z.object({
   investments: z.array(z.object({
     name: z.string(),
     type: z.string(),
-    costBasis: z.number(),
+    costBasis: z.number().nullable().optional(),
     marketValue: z.number(),
   })).optional(),
   goals: z.array(z.object({
@@ -209,7 +209,7 @@ export const importDataAction = authActionClient
       if (investments && investments.length > 0) {
         for (const inv of investments) {
           const existing = await txDb.investment.findFirst({ where: { userId, name: inv.name } });
-          const profit = inv.marketValue - inv.costBasis;
+          const profit = inv.costBasis != null ? inv.marketValue - inv.costBasis : null;
           if (existing) {
             await txDb.investment.update({
               where: { id: existing.id },
@@ -317,3 +317,4 @@ export const importDataAction = authActionClient
     revalidatePath("/reports");
     return { success: true };
   });
+

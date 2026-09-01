@@ -100,12 +100,83 @@ describe('Accounts Actions', () => {
   describe('deleteAccount', () => {
     it('should delete an account', async () => {
       mockDb.account.findUnique.mockResolvedValue({ id: 'acc-1', userId: 'test-user-id', externalMappings: [] });
+      // No financial deps
+      mockDb.investmentEvent.count.mockResolvedValue(0);
+      mockDb.investment.count.mockResolvedValue(0);
+      mockDb.investmentAccountSnapshot.count.mockResolvedValue(0);
       const res = await deleteAccount({ id: 'acc-1' });
       console.log("Delete Account Res:", res);
 
       expect(mockDb.account.delete).toHaveBeenCalledWith({
         where: { id: 'acc-1' }
       });
+    });
+
+    it('blocks deletion when InvestmentEvents exist', async () => {
+      mockDb.account.findUnique.mockResolvedValue({ id: 'acc-1', userId: 'test-user-id', externalMappings: [] });
+      mockDb.investmentEvent.count.mockResolvedValue(5);
+      mockDb.investment.count.mockResolvedValue(0);
+      mockDb.investmentAccountSnapshot.count.mockResolvedValue(0);
+      const res = await deleteAccount({ id: 'acc-1' });
+      expect(res?.serverError).toContain('financial history');
+      expect(mockDb.account.delete).not.toHaveBeenCalled();
+    });
+
+    it('blocks deletion when Investments exist', async () => {
+      mockDb.account.findUnique.mockResolvedValue({ id: 'acc-1', userId: 'test-user-id', externalMappings: [] });
+      mockDb.investmentEvent.count.mockResolvedValue(0);
+      mockDb.investment.count.mockResolvedValue(2);
+      mockDb.investmentAccountSnapshot.count.mockResolvedValue(0);
+      const res = await deleteAccount({ id: 'acc-1' });
+      expect(res?.serverError).toContain('financial history');
+      expect(mockDb.account.delete).not.toHaveBeenCalled();
+    });
+
+    it('blocks deletion when broker snapshots exist', async () => {
+      mockDb.account.findUnique.mockResolvedValue({
+        id: 'acc-1',
+        userId: 'test-user-id',
+        externalMappings: [],
+      });
+
+      mockDb.investmentEvent.count.mockResolvedValue(0);
+      mockDb.investment.count.mockResolvedValue(0);
+      mockDb.investmentAccountSnapshot.count.mockResolvedValue(1);
+
+      const res = await deleteAccount({ id: 'acc-1' });
+
+      expect(res?.serverError).toContain('financial history');
+      expect(mockDb.account.delete).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('updateAccount — accounts with financial history remain editable', () => {
+    it('allows name update on account that has InvestmentEvents', async () => {
+      mockDb.account.findUnique.mockResolvedValue({
+        id: 'acc-broker', name: 'My Broker', userId: 'test-user-id',
+        externalMappings: []
+      });
+      mockDb.account.update.mockResolvedValue({ id: 'acc-broker', name: 'Renamed Broker' });
+
+      const res = await updateAccount({ id: 'acc-broker', name: 'Renamed Broker' });
+      // Must succeed — the deletion guard must NOT be present in updateAccount
+      expect(res?.data?.success).toBe(true);
+      expect(mockDb.account.update).toHaveBeenCalledWith({
+        where: { id: 'acc-broker' },
+        data: { name: 'Renamed Broker' },
+      });
+    });
+
+    it('allows balance update on account that has Investments (unlinked)', async () => {
+      mockDb.account.findUnique.mockResolvedValue({
+        id: 'acc-broker', name: 'My Broker', userId: 'test-user-id',
+        balance: 1000, currency: 'EUR', type: 'Broker',
+        externalMappings: [] // not bank-linked, so balance update is allowed
+      });
+      mockDb.account.update.mockResolvedValue({ id: 'acc-broker', balance: 2000 });
+
+      const res = await updateAccount({ id: 'acc-broker', balance: 2000 });
+      expect(res?.data?.success).toBe(true);
     });
   });
 });

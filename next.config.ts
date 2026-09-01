@@ -2,10 +2,16 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  // Ensure server actions are enabled
+
   experimental: {
     serverActions: {},
   },
+
+  serverExternalPackages: [
+    "pdf-parse",
+    "@napi-rs/canvas",
+  ],
+
   eslint: {
     ignoreDuringBuilds: true,
   },

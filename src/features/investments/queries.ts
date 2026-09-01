@@ -26,6 +26,8 @@ export async function getInvestmentsData() {
       name: inv.name,
       type: inv.type, // Stocks, Bitcoin, Ethereum, Other Crypto
       symbol: inv.symbol || "",
+      isin: inv.isin || "",
+      accountId: inv.accountId,
       quantity: inv.quantity,
       costBasis: inv.costBasis,
       marketValue: inv.marketValue,

@@ -24,7 +24,12 @@ export async function getAccountsData() {
         }
       },
       _count: {
-        select: { investmentEvents: true }
+        select: {
+          transactions: true,
+          investmentEvents: true,
+          Investment: true,
+          InvestmentAccountSnapshot: true,
+        },
       }
     },
   });
@@ -40,7 +45,10 @@ export async function getAccountsData() {
         type: a.type,
         balance: a.balance,
         currency: a.currency,
+        transactionsCount: a._count.transactions,
         investmentEventsCount: a._count.investmentEvents,
+        investmentsCount: a._count.Investment,
+        snapshotsCount: a._count.InvestmentAccountSnapshot,
         recentTransactions: [...a.transactions, ...a.transferTransactions]
           .sort((x, y) => {
              const diff = y.date.getTime() - x.date.getTime();

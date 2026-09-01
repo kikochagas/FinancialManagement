@@ -86,7 +86,7 @@ function parseExcelWorkbook(wb: XLSX.WorkBook): StructuredImportResult {
       result.investments = data.map((row: any) => ({
         name: getNormalizedHeaderValue(row, ["name", "nome"]),
         type: getNormalizedHeaderValue(row, ["type", "tipo"]),
-        costBasis: parseNumber(getNormalizedHeaderValue(row, ["costbasis", "cost basis"])),
+        costBasis: (() => { const v = getNormalizedHeaderValue(row, ['costbasis', 'cost basis']); return v === undefined || v === null || v === '' ? null : parseNumber(v); })(),
         marketValue: parseNumber(getNormalizedHeaderValue(row, ["marketvalue", "market value"])),
       })).filter((i: any) => i.name);
     }
@@ -240,3 +240,4 @@ function parseTransactionRow(row: any, formatVersion: number) {
     notes: rawNotes || "",
   };
 }
+

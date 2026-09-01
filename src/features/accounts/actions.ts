@@ -50,6 +50,8 @@ export const updateAccount = authActionClient
     const existing = await db.account.findUnique({ where: { id }, include: { externalMappings: true } });
     if (!existing || existing.userId !== userId) throw new Error("Unauthorized");
 
+    // Note: accounts with financial history (events/holdings/snapshots) are still editable.
+    // Only deleteAccount enforces the financial-history guard.
     const hasActiveMapping = existing.externalMappings.some(m => m.disconnectedAt === null);
     if (hasActiveMapping) {
       if (data.balance !== undefined && data.balance !== existing.balance) {
@@ -83,6 +85,12 @@ export const deleteAccount = authActionClient
     if (!account) throw new Error("Account not found");
     if (account.userId !== userId) throw new Error("Unauthorized");
 
+    const evCount = await db.investmentEvent.count({ where: { accountId: parsedInput.id } });
+    const invCount = await db.investment.count({ where: { accountId: parsedInput.id } });
+    const snapCount = await db.investmentAccountSnapshot.count({ where: { accountId: parsedInput.id } });
+    if (evCount > 0 || invCount > 0 || snapCount > 0) {
+      throw new Error('Account contains financial history or holdings and cannot be deleted.');
+    }
     const hasActiveMapping = account.externalMappings && account.externalMappings.some(m => m.disconnectedAt === null);
     if (hasActiveMapping) {
       throw new Error("Disconnect the bank account before deleting it.");
@@ -95,6 +103,113 @@ export const deleteAccount = authActionClient
     revalidatePath("/accounts");
     revalidatePath("/transactions");
     return { success: true };
+  });
+
+  export const deleteAccountWithFinancialData = authActionClient
+  .schema(deleteAccountSchema)
+  .action(async ({ parsedInput, ctx: { userId } }) => {
+    const { id } = parsedInput;
+
+    const result = await db.$transaction(async (tx) => {
+      const account = await tx.account.findUnique({
+        where: { id },
+        include: { externalMappings: true },
+      });
+
+      if (!account) {
+        throw new Error("Account not found");
+      }
+
+      if (account.userId !== userId) {
+        throw new Error("Unauthorized");
+      }
+
+      const hasActiveMapping = account.externalMappings.some(
+        (mapping) => mapping.disconnectedAt === null
+      );
+
+      if (hasActiveMapping) {
+        throw new Error("Disconnect the bank account before deleting it.");
+      }
+
+      const transactionCount = await tx.transaction.count({
+        where: { accountId: id },
+      });
+
+      const investmentEventCount = await tx.investmentEvent.count({
+        where: { accountId: id },
+      });
+
+      const investmentCount = await tx.investment.count({
+        where: { accountId: id },
+      });
+
+      const snapshotCount = await tx.investmentAccountSnapshot.count({
+        where: { accountId: id },
+      });
+
+      // These relations use RESTRICT, so explicitly remove them
+      // before deleting the Account.
+      await tx.investmentEvent.deleteMany({
+        where: { accountId: id },
+      });
+
+      await tx.investment.deleteMany({
+        where: { accountId: id },
+      });
+
+      // Snapshot child rows are deleted through the snapshot CASCADE relations.
+      await tx.investmentAccountSnapshot.deleteMany({
+        where: { accountId: id },
+      });
+
+      // Account-owned Transactions and disconnected external mappings
+      // are removed according to their existing cascade rules.
+      await tx.account.delete({
+        where: { id },
+      });
+
+      // Removing account-linked Investments changes portfolio allocation.
+      const remainingInvestments = await tx.investment.findMany({
+        where: { userId },
+      });
+
+      const totalMarketValue = remainingInvestments.reduce(
+        (sum, investment) => sum + investment.marketValue,
+        0
+      );
+
+      for (const investment of remainingInvestments) {
+        const allocation =
+          totalMarketValue > 0
+            ? (investment.marketValue / totalMarketValue) * 100
+            : 0;
+
+        await tx.investment.update({
+          where: { id: investment.id },
+          data: { allocation },
+        });
+      }
+
+      return {
+        accountName: account.name,
+        transactionCount,
+        investmentEventCount,
+        investmentCount,
+        snapshotCount,
+      };
+    });
+
+    revalidatePath("/");
+    revalidatePath("/accounts");
+    revalidatePath("/transactions");
+    revalidatePath("/investments");
+    revalidatePath("/reports");
+
+    return {
+      success: true,
+      deleted: result,
+    };
   });
 
 const linkAccountsSchema = z.object({
@@ -390,3 +505,4 @@ export const disconnectBank = authActionClient
     
     return { success: true, institutionName: connection.institutionName };
   });
+

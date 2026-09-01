@@ -10,7 +10,7 @@ import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, Dialog
 import { Landmark, CreditCard, Wallet, Coins, Plus, Building, MoreVertical, Link2, RefreshCw, Unlink, Trash2, ShieldCheck, HelpCircle, Edit2, ArrowRightLeft } from "lucide-react";
 import { formatCurrency, cn } from "@/lib/utils";
 import { AccountType } from "@/lib/constants";
-import { createAccount, updateAccount, deleteAccount, syncBankAccount, disconnectBank } from "./actions";
+import { createAccount, updateAccount, deleteAccount, deleteAccountWithFinancialData, syncBankAccount, disconnectBank } from "./actions";
 
 interface Account {
   id: string;
@@ -18,7 +18,10 @@ interface Account {
   type: string;
   balance: number;
   currency: string;
+  transactionsCount?: number;
   investmentEventsCount?: number;
+  investmentsCount?: number;
+  snapshotsCount?: number;
   recentTransactions: Array<{
     id: string;
     date: string;
@@ -54,6 +57,8 @@ export function AccountsClient({ data }: AccountsClientProps) {
   const [isAddManualOpen, setIsAddManualOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [accountToDelete, setAccountToDelete] = useState<Account | null>(null);
 
   // New Account state
   const [newAcc, setNewAcc] = useState({
@@ -113,12 +118,38 @@ export function AccountsClient({ data }: AccountsClientProps) {
     });
   };
 
-  const handleDeleteTrigger = (id: string) => {
-    if (confirm("Are you sure you want to delete this account? This will delete all its transactions.")) {
-      startTransition(async () => {
-        await deleteAccount({ id });
-      });
-    }
+  const handleDeleteTrigger = (account: Account) => {
+    setAccountToDelete(account);
+    setIsDeleteOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (!accountToDelete) return;
+
+    const account = accountToDelete;
+
+    const hasFinancialData =
+      (account.investmentEventsCount ?? 0) > 0 ||
+      (account.investmentsCount ?? 0) > 0 ||
+      (account.snapshotsCount ?? 0) > 0;
+
+    startTransition(async () => {
+      const res = hasFinancialData
+        ? await deleteAccountWithFinancialData({ id: account.id })
+        : await deleteAccount({ id: account.id });
+
+      if (res?.data?.success) {
+        setIsDeleteOpen(false);
+        setAccountToDelete(null);
+        setSuccessToast(`${account.name} was deleted.`);
+        router.refresh();
+        return;
+      }
+
+      if (res?.serverError) {
+        setErrorToast(res.serverError);
+      }
+    });
   };
 
   const [syncingAccountId, setSyncingAccountId] = useState<string | null>(null);
@@ -492,7 +523,7 @@ export function AccountsClient({ data }: AccountsClientProps) {
                 {(() => {
                   if (!acc.isBankConnected) {
                     return (
-                      <Button variant="ghost" size="sm" className="h-7 px-2.5 text-xs text-muted-foreground hover:text-destructive" onClick={() => handleDeleteTrigger(acc.id)}>
+                      <Button variant="ghost" size="sm" className="h-7 px-2.5 text-xs text-muted-foreground hover:text-destructive" onClick={() => handleDeleteTrigger(acc)}>
                         <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
                       </Button>
                     );
@@ -516,6 +547,89 @@ export function AccountsClient({ data }: AccountsClientProps) {
           );
         })}
       </div>
+
+      <Dialog
+        open={isDeleteOpen}
+        onOpenChange={(open) => {
+          setIsDeleteOpen(open);
+
+          if (!open) {
+            setAccountToDelete(null);
+          }
+        }}
+      >
+        <DialogContent className="border-border bg-background sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete {accountToDelete?.name}?</DialogTitle>
+
+            <DialogDescription>
+              This action permanently deletes this account and the financial data
+              associated with it. It cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+
+          {accountToDelete && (
+            <div className="space-y-4 py-2">
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4">
+                <div className="flex items-start gap-3">
+                  <Trash2 className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
+
+                  <div className="space-y-2">
+                    <p className="text-sm font-semibold text-foreground">
+                      The following data will be permanently removed:
+                    </p>
+
+                    <ul className="space-y-1 text-sm text-muted-foreground">
+                      <li>
+                        • {accountToDelete.transactionsCount ?? 0} transaction(s)
+                      </li>
+
+                      <li>
+                        • {accountToDelete.investmentEventsCount ?? 0} investment
+                        activit{(accountToDelete.investmentEventsCount ?? 0) === 1
+                          ? "y"
+                          : "ies"}
+                      </li>
+
+                      <li>
+                        • {accountToDelete.investmentsCount ?? 0} investment
+                        position(s)
+                      </li>
+
+                      <li>
+                        • {accountToDelete.snapshotsCount ?? 0} broker snapshot(s)
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <p className="text-xs text-muted-foreground">
+                Imported broker activity and historical broker snapshots cannot be
+                recovered after deletion.
+              </p>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteOpen(false)}
+              disabled={isPending}
+            >
+              Cancel
+            </Button>
+
+            <Button
+              variant="destructive"
+              onClick={handleConfirmDelete}
+              disabled={isPending}
+            >
+              {isPending ? "Deleting..." : "Delete account and all data"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Dialog */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>

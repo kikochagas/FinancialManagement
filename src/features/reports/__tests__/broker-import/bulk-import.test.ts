@@ -15,7 +15,7 @@ describe("broker-import bulk deduplication and insertion", () => {
   });
 
   beforeEach(async () => {
-    if (account) await db.account.delete({ where: { id: account.id } });
+    if (account) { await db.investmentEvent.deleteMany({ where: { accountId: account.id } }); await db.investment.deleteMany({ where: { accountId: account.id } }); await db.account.delete({ where: { id: account.id } }); }
     account = await db.account.create({
       data: {
         userId: user.id,

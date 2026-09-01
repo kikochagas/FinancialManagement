@@ -439,7 +439,7 @@ export function ReportsClient({ data }: ReportsClientProps) {
                         <tr key={index}>
                           <td className="p-2 font-semibold text-foreground">{inv.name}</td>
                           <td className="p-2 text-muted-foreground">{inv.type}</td>
-                          <td className="p-2 text-right font-mono text-foreground">{formatCurrency(inv.costBasis)}</td>
+                          <td className="p-2 text-right font-mono text-foreground">{inv.costBasis != null ? formatCurrency(inv.costBasis) : '-'}</td>
                           <td className="p-2 text-right font-mono font-bold text-foreground">{formatCurrency(inv.marketValue)}</td>
                         </tr>
                       ))}
@@ -565,3 +565,4 @@ export function ReportsClient({ data }: ReportsClientProps) {
     </div>
   );
 }
+

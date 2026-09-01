@@ -19,9 +19,9 @@ interface Investment {
   type: string;
   symbol: string;
   quantity: number;
-  costBasis: number;
+  costBasis: number | null;
   marketValue: number;
-  profit: number;
+  profit: number | null;
   allocation: number;
 }
 
@@ -84,7 +84,7 @@ export function InvestmentsClient({ data }: InvestmentsClientProps) {
       id: inv.id,
       name: inv.name,
       quantity: String(inv.quantity),
-      costBasis: String(inv.costBasis),
+      costBasis: inv.costBasis == null ? '' : String(inv.costBasis),
       marketValue: String(inv.marketValue),
     });
     setIsOpen(true);
@@ -97,7 +97,7 @@ export function InvestmentsClient({ data }: InvestmentsClientProps) {
         id: form.id,
         name: form.name,
         quantity: Number(form.quantity),
-        costBasis: Number(form.costBasis),
+        costBasis: form.costBasis === '' ? null : Number(form.costBasis),
         marketValue: Number(form.marketValue),
       });
       if (res?.data?.success) {
@@ -114,7 +114,7 @@ export function InvestmentsClient({ data }: InvestmentsClientProps) {
         type: addForm.type,
         symbol: addForm.symbol,
         quantity: Number(addForm.quantity),
-        costBasis: Number(addForm.costBasis),
+        costBasis: addForm.costBasis === '' ? null : Number(addForm.costBasis),
         marketValue: Number(addForm.marketValue),
       });
       if (res?.data?.success) {
@@ -140,9 +140,10 @@ export function InvestmentsClient({ data }: InvestmentsClientProps) {
   };
 
   const totalValue = data.investments.reduce((sum, inv) => sum + inv.marketValue, 0);
-  const totalCost = data.investments.reduce((sum, inv) => sum + inv.costBasis, 0);
-  const totalProfit = totalValue - totalCost;
-  const profitPercentage = totalCost > 0 ? (totalProfit / totalCost) * 100 : 0;
+  const totalKnownCost = data.investments.reduce((sum, inv) => sum + (inv.costBasis != null ? inv.costBasis : 0), 0);
+  const unknownCostCount = data.investments.filter(inv => inv.costBasis == null).length;
+  const totalProfit = unknownCostCount === 0 ? totalValue - totalKnownCost : null;
+  const profitPercentage = totalKnownCost > 0 && totalProfit != null ? (totalProfit / totalKnownCost) * 100 : 0;
 
   // Chart data
   const comparisonData = data.investments.map((inv) => ({
@@ -204,28 +205,44 @@ export function InvestmentsClient({ data }: InvestmentsClientProps) {
             <AlertCircle className="h-4.5 w-4.5 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-extrabold text-card-foreground tracking-tight">{formatCurrency(totalCost)}</div>
-            <p className="text-[10px] text-muted-foreground mt-1 font-semibold">Total capital invested across all categories</p>
+             <div
+                  className={cn(
+                    "text-3xl font-extrabold tracking-tight",
+                    unknownCostCount > 0
+                      ? "text-muted-foreground"
+                      : "text-card-foreground"
+                  )}
+                >
+                  {unknownCostCount > 0
+                    ? "Incomplete"
+                    : formatCurrency(totalKnownCost)}
+                </div>
+
+                <p className="text-[10px] text-muted-foreground mt-1 font-semibold">
+                  {unknownCostCount > 0
+                    ? `${unknownCostCount} holding${unknownCostCount === 1 ? "" : "s"} with unknown cost basis`
+                    : "Total capital invested across all categories"}
+                </p>
           </CardContent>
         </Card>
 
         <Card className="border-border bg-card/50 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Unrealized P&L</CardTitle>
-            {totalProfit >= 0 ? (
+            <CardTitle className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Unrealized P&amp;L</CardTitle>
+            {totalProfit == null ? (
+              <AlertCircle className="h-4.5 w-4.5 text-muted-foreground" />
+            ) : totalProfit >= 0 ? (
               <TrendingUp className="h-4.5 w-4.5 text-emerald-500 dark:text-emerald-400" />
             ) : (
               <TrendingDown className="h-4.5 w-4.5 text-destructive" />
             )}
           </CardHeader>
           <CardContent>
-            <div className={cn("text-3xl font-extrabold tracking-tight", totalProfit >= 0 ? "text-emerald-500 dark:text-emerald-400" : "text-destructive")}>
-              {totalProfit >= 0 ? "+" : ""}
-              {formatCurrency(totalProfit)}
+            <div className={cn("text-3xl font-extrabold tracking-tight", totalProfit == null ? "text-muted-foreground" : totalProfit >= 0 ? "text-emerald-500 dark:text-emerald-400" : "text-destructive")}>
+              {totalProfit == null ? 'Incomplete' : <>{totalProfit >= 0 ? "+" : ""}{formatCurrency(totalProfit)}</>}
             </div>
-            <p className={cn("text-[10px] mt-1 font-bold", totalProfit >= 0 ? "text-emerald-600 dark:text-emerald-500" : "text-destructive")}>
-              {totalProfit >= 0 ? "+" : ""}
-              {profitPercentage.toFixed(2)}% net returns
+            <p className={cn("text-[10px] mt-1 font-bold", totalProfit == null ? "text-muted-foreground" : totalProfit >= 0 ? "text-emerald-600 dark:text-emerald-500" : "text-destructive")}>
+              {totalProfit == null ? 'Some cost bases are unknown' : <>{totalProfit >= 0 ? "+" : ""}{profitPercentage.toFixed(2)}% net returns</>}
             </p>
           </CardContent>
         </Card>
@@ -320,18 +337,26 @@ export function InvestmentsClient({ data }: InvestmentsClientProps) {
               </thead>
               <tbody className="divide-y divide-border">
                 {data.investments.map((inv) => {
-                  const isProfit = inv.profit >= 0;
                   return (
                     <tr key={inv.id} className="hover:bg-accent/40 transition-colors">
                       <td className="p-4 text-xs font-bold text-muted-foreground uppercase tracking-wider">{inv.type}</td>
                       <td className="p-4 font-semibold text-foreground">{inv.name}</td>
                       <td className="p-4 font-mono text-xs text-muted-foreground">{inv.symbol}</td>
                       <td className="p-4 text-right font-mono text-xs">{inv.quantity.toLocaleString()}</td>
-                      <td className="p-4 text-right font-mono">{formatCurrency(inv.costBasis)}</td>
+                      <td className="p-4 text-right font-mono">{inv.costBasis != null ? formatCurrency(inv.costBasis) : '-'}</td>
                       <td className="p-4 text-right font-mono font-bold text-foreground">{formatCurrency(inv.marketValue)}</td>
-                      <td className={cn("p-4 text-right font-mono font-bold", isProfit ? "text-emerald-500 dark:text-emerald-400" : "text-destructive")}>
-                        {isProfit ? "+" : ""}
-                        {formatCurrency(inv.profit)}
+                      <td
+                          className={cn(
+                            "p-4 text-right font-mono font-bold",
+                            inv.profit == null
+                              ? "text-muted-foreground"
+                              : inv.profit >= 0
+                                ? "text-emerald-500 dark:text-emerald-400"
+                                : "text-destructive"
+                          )}
+                        >
+                          {inv.profit != null && inv.profit >= 0 ? "+" : ""}
+                          {inv.profit != null ? formatCurrency(inv.profit) : "-"}
                       </td>
                       <td className="p-4 text-right font-mono text-xs font-semibold text-primary">
                         {formatPercentage(inv.allocation)}
@@ -394,7 +419,6 @@ export function InvestmentsClient({ data }: InvestmentsClientProps) {
                     step="0.01"
                     value={form.costBasis}
                     onChange={(e) => setForm({ ...form, costBasis: e.target.value })}
-                    required
                   />
                 </div>
 
@@ -488,7 +512,6 @@ export function InvestmentsClient({ data }: InvestmentsClientProps) {
                     step="0.01"
                     value={addForm.costBasis}
                     onChange={(e) => setAddForm({ ...addForm, costBasis: e.target.value })}
-                    required
                   />
                 </div>
 
