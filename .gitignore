@@ -37,7 +37,10 @@ test.db
 test.db-journal
 test.db-shm
 test.db-wal
-
+phase2-test.db
+phase2-test.db-journal
+phase2-test.db-shm
+phase2-test.db-wal
 
 # vercel
 .vercel
