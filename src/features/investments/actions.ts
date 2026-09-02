@@ -4,6 +4,27 @@ import { db } from "@/lib/db";
 import { authActionClient } from "@/lib/safe-action";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
+import { canHoldInvestments } from "@/lib/constants";
+
+async function validateInvestmentAccount(accountId: string, userId: string) {
+  const account = await db.account.findUnique({
+    where: { id: accountId },
+    select: {
+      userId: true,
+      type: true,
+    },
+  });
+
+  if (!account || account.userId !== userId) {
+    throw new Error("Unauthorized account");
+  }
+
+  if (!canHoldInvestments(account.type)) {
+    throw new Error("Account cannot hold investments");
+  }
+
+  return account;
+}
 
 const updateInvestmentSchema = z.object({
   id: z.string(),
@@ -23,9 +44,16 @@ export const updateInvestment = authActionClient
 
     const original = await db.investment.findUnique({ where: { id } });
     if (!original || original.userId !== userId) throw new Error("Investment not found");
-    if (data.accountId) {
-      const acc = await db.account.findUnique({ where: { id: data.accountId } });
-      if (!acc || acc.userId !== userId) throw new Error("Unauthorized account");
+    if (data.accountId !== undefined) {
+      if (data.accountId === null) {
+        // Legacy unassigned Investments may remain unassigned,
+        // but an already assigned Investment cannot be unassigned again.
+        if (original.accountId !== null) {
+          throw new Error("Investment account cannot be removed");
+        }
+      } else {
+        await validateInvestmentAccount(data.accountId, userId);
+      }
     }
 
     const costBasis = data.costBasis !== undefined ? data.costBasis : original.costBasis;
@@ -65,7 +93,7 @@ const createInvestmentSchema = z.object({
   type: z.string(),
   symbol: z.string().optional().nullable(),
   isin: z.string().optional().nullable(),
-  accountId: z.string().optional().nullable(),
+  accountId: z.string().min(1, "Investment account is required"),
   quantity: z.number().nonnegative(),
   costBasis: z.number().nonnegative().optional().nullable(),
   marketValue: z.number().nonnegative(),
@@ -74,10 +102,7 @@ const createInvestmentSchema = z.object({
 export const createInvestment = authActionClient
   .schema(createInvestmentSchema)
   .action(async ({ parsedInput, ctx: { userId } }) => {
-    if (parsedInput.accountId) {
-      const acc = await db.account.findUnique({ where: { id: parsedInput.accountId } });
-      if (!acc || acc.userId !== userId) throw new Error('Unauthorized account');
-    }
+    await validateInvestmentAccount(parsedInput.accountId, userId);
     const profit = parsedInput.costBasis != null ? parsedInput.marketValue - parsedInput.costBasis : null;
 
     const created = await db.investment.create({

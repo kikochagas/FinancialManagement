@@ -6,7 +6,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { EnableBankingClient } from "@/lib/banking/enable-banking-client";
 import { internalSyncBalance, internalSyncTransactions } from "./services/sync";
-import { AccountType, OpenBankingCashAccountType, LinkAction } from "@/lib/constants";
+import { AccountType, OpenBankingCashAccountType, LinkAction, canHoldInvestments } from "@/lib/constants";
 
 const accountTypeValues = Object.values(AccountType) as [string, ...string[]];
 const linkActionValues = Object.values(LinkAction) as [string, ...string[]];
@@ -64,6 +64,22 @@ export const updateAccount = authActionClient
          throw new Error("Cannot manually modify the type of a bank-connected account.");
       }
     }
+
+    if (data.type !== undefined && data.type !== existing.type && !canHoldInvestments(data.type)) {
+  const [linkedInvestmentCount, investmentEventCount, snapshotCount,] = await Promise.all([
+    db.investment.count({where: { accountId: id },}),
+    db.investmentEvent.count({where: { accountId: id },}),
+    db.investmentAccountSnapshot.count({where: { accountId: id },}),
+  ]);
+
+  if (
+    linkedInvestmentCount > 0 || investmentEventCount > 0 || snapshotCount > 0
+  ) {
+    throw new Error(
+      "Cannot change this account type because it contains investment data."
+    );
+  }
+}
 
     const account = await db.account.update({
       where: { id },

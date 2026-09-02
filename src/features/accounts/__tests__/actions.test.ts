@@ -167,6 +167,76 @@ describe('Accounts Actions', () => {
       });
     });
 
+    it("blocks changing an investment account to a non-investment type when holdings exist", async () => {
+      mockDb.account.findUnique.mockResolvedValue({
+        id: "acc-1",
+        userId: "test-user-id",
+        type: "Broker",
+        externalMappings: [],
+      });
+
+      mockDb.investment.count.mockResolvedValue(1);
+
+      const res = await updateAccount({
+        id: "acc-1",
+        type: "Bank",
+      });
+
+      expect(res?.serverError).toContain(
+        "Cannot change this account type because it contains investment data"
+      );
+
+      expect(mockDb.account.update).not.toHaveBeenCalled();
+    });
+
+    it("blocks changing an investment account type when InvestmentEvents exist", async () => {
+      mockDb.account.findUnique.mockResolvedValue({
+        id: "acc-1",
+        userId: "test-user-id",
+        type: "Broker",
+        externalMappings: [],
+      });
+
+      mockDb.investment.count.mockResolvedValue(0);
+      mockDb.investmentEvent.count.mockResolvedValue(73);
+      mockDb.investmentAccountSnapshot.count.mockResolvedValue(0);
+
+      const res = await updateAccount({
+        id: "acc-1",
+        type: "Bank",
+      });
+
+      expect(res?.serverError).toContain(
+        "Cannot change this account type because it contains investment data"
+      );
+
+      expect(mockDb.account.update).not.toHaveBeenCalled();
+    });
+
+    it("allows changing Broker to Crypto Wallet when holdings exist", async () => {
+      mockDb.account.findUnique.mockResolvedValue({
+        id: "acc-1",
+        userId: "test-user-id",
+        type: "Broker",
+        externalMappings: [],
+      });
+
+      mockDb.account.update.mockResolvedValue({
+        id: "acc-1",
+        userId: "test-user-id",
+        type: "Crypto Wallet",
+      });
+
+      const res = await updateAccount({
+        id: "acc-1",
+        type: "Crypto Wallet",
+      });
+
+      expect(res?.data?.success).toBe(true);
+
+      expect(mockDb.account.update).toHaveBeenCalled();
+    });
+
     it('allows balance update on account that has Investments (unlinked)', async () => {
       mockDb.account.findUnique.mockResolvedValue({
         id: 'acc-broker', name: 'My Broker', userId: 'test-user-id',

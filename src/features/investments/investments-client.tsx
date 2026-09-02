@@ -18,6 +18,9 @@ interface Investment {
   name: string;
   type: string;
   symbol: string;
+  accountId: string | null;
+  accountName: string | null;
+  accountType: string | null;
   quantity: number;
   costBasis: number | null;
   marketValue: number;
@@ -30,6 +33,11 @@ interface InvestmentsClientProps {
     investments: Investment[];
     events?: InvestmentEventUI[];
     accounts?: { id: string; name: string }[];
+    investmentAccounts?: {
+      id: string;
+      name: string;
+      type: string;
+    }[];
   };
 }
 
@@ -39,6 +47,7 @@ export function InvestmentsClient({ data }: InvestmentsClientProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
+  const investmentAccounts = data.investmentAccounts ?? [];
 
   const queryTab = searchParams.get("tab");
   const defaultTab = queryTab === "activity" ? "activity" : "portfolio";
@@ -60,6 +69,7 @@ export function InvestmentsClient({ data }: InvestmentsClientProps) {
   const [form, setForm] = useState({
     id: "",
     name: "",
+    accountId: "unassigned",
     quantity: "",
     costBasis: "",
     marketValue: "",
@@ -69,6 +79,7 @@ export function InvestmentsClient({ data }: InvestmentsClientProps) {
     name: "",
     type: "Stocks",
     symbol: "",
+    accountId: "",
     quantity: "",
     costBasis: "",
     marketValue: "",
@@ -83,6 +94,7 @@ export function InvestmentsClient({ data }: InvestmentsClientProps) {
     setForm({
       id: inv.id,
       name: inv.name,
+      accountId: inv.accountId ?? "unassigned",
       quantity: String(inv.quantity),
       costBasis: inv.costBasis == null ? '' : String(inv.costBasis),
       marketValue: String(inv.marketValue),
@@ -96,6 +108,7 @@ export function InvestmentsClient({ data }: InvestmentsClientProps) {
       const res = await updateInvestment({
         id: form.id,
         name: form.name,
+        accountId: form.accountId === "unassigned" ? null : form.accountId,
         quantity: Number(form.quantity),
         costBasis: form.costBasis === '' ? null : Number(form.costBasis),
         marketValue: Number(form.marketValue),
@@ -113,6 +126,7 @@ export function InvestmentsClient({ data }: InvestmentsClientProps) {
         name: addForm.name,
         type: addForm.type,
         symbol: addForm.symbol,
+        accountId: addForm.accountId,
         quantity: Number(addForm.quantity),
         costBasis: addForm.costBasis === '' ? null : Number(addForm.costBasis),
         marketValue: Number(addForm.marketValue),
@@ -123,6 +137,7 @@ export function InvestmentsClient({ data }: InvestmentsClientProps) {
           name: "",
           type: "Stocks",
           symbol: "",
+          accountId: "",
           quantity: "",
           costBasis: "",
           marketValue: "",
@@ -326,6 +341,7 @@ export function InvestmentsClient({ data }: InvestmentsClientProps) {
                 <tr className="border-b border-border bg-muted/50 text-muted-foreground font-semibold">
                   <th className="p-4">Asset Type</th>
                   <th className="p-4">Name</th>
+                  <th className="p-4">Account</th>
                   <th className="p-4">Symbol</th>
                   <th className="p-4 text-right">Quantity</th>
                   <th className="p-4 text-right">Cost Basis</th>
@@ -341,6 +357,23 @@ export function InvestmentsClient({ data }: InvestmentsClientProps) {
                     <tr key={inv.id} className="hover:bg-accent/40 transition-colors">
                       <td className="p-4 text-xs font-bold text-muted-foreground uppercase tracking-wider">{inv.type}</td>
                       <td className="p-4 font-semibold text-foreground">{inv.name}</td>
+                      <td className="p-4 text-xs">
+                        {inv.accountName ? (
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-foreground">
+                              {inv.accountName}
+                            </span>
+
+                            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                              {inv.accountType}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">
+                            Unassigned
+                          </span>
+                        )}
+                      </td>
                       <td className="p-4 font-mono text-xs text-muted-foreground">{inv.symbol}</td>
                       <td className="p-4 text-right font-mono text-xs">{inv.quantity.toLocaleString()}</td>
                       <td className="p-4 text-right font-mono">{inv.costBasis != null ? formatCurrency(inv.costBasis) : '-'}</td>
@@ -399,7 +432,43 @@ export function InvestmentsClient({ data }: InvestmentsClientProps) {
                   required
                 />
               </div>
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-semibold text-muted-foreground uppercase">
+                  Account
+                </label>
 
+                <Select
+                  value={form.accountId}
+                  onValueChange={(value) =>
+                    setForm({ ...form, accountId: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select account" />
+                  </SelectTrigger>
+
+                  <SelectContent>
+                    {selectedInv?.accountId == null && (
+                      <SelectItem value="unassigned">
+                        Unassigned (legacy)
+                      </SelectItem>
+                    )}
+
+                    {investmentAccounts.map((account) => (
+                      <SelectItem key={account.id} value={account.id}>
+                        {account.name} · {account.type}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {selectedInv?.accountId == null &&
+                  form.accountId === "unassigned" && (
+                    <p className="text-[10px] text-muted-foreground">
+                      This is a legacy holding. Assign it to a Broker or Crypto Wallet when known.
+                    </p>
+                  )}
+              </div>
               <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-semibold text-muted-foreground uppercase">Quantity</label>
@@ -457,6 +526,36 @@ export function InvestmentsClient({ data }: InvestmentsClientProps) {
             </DialogHeader>
 
             <div className="space-y-4 py-4">
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-semibold text-muted-foreground uppercase">
+                  Account
+                </label>
+
+                <Select
+                  value={addForm.accountId}
+                  onValueChange={(value) =>
+                    setAddForm({ ...addForm, accountId: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Broker or Crypto Wallet" />
+                  </SelectTrigger>
+
+                  <SelectContent>
+                    {investmentAccounts.map((account) => (
+                      <SelectItem key={account.id} value={account.id}>
+                        {account.name} · {account.type}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {investmentAccounts.length === 0 && (
+                  <p className="text-[10px] text-destructive">
+                    Create a Broker or Crypto Wallet account before adding an investment.
+                  </p>
+                )}
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-semibold text-muted-foreground uppercase">Asset Name</label>
@@ -532,7 +631,7 @@ export function InvestmentsClient({ data }: InvestmentsClientProps) {
               <DialogClose asChild>
                 <Button type="button" variant="outline" size="sm">Cancel</Button>
               </DialogClose>
-              <Button type="submit" size="sm" disabled={isPending}>
+              <Button type="submit" size="sm" disabled={isPending || !addForm.accountId}>
                 {isPending ? "Adding..." : "Add Asset"}
               </Button>
             </DialogFooter>

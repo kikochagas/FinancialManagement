@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { getUserId } from "@/lib/auth";
+import { canHoldInvestments } from "@/lib/constants";
 
 export async function getInvestmentsData() {
   const userId = await getUserId();
@@ -8,6 +9,15 @@ export async function getInvestmentsData() {
   const investments = await db.investment.findMany({
     where: { userId },
     orderBy: { marketValue: "desc" },
+    include: {
+      account: {
+        select: {
+          id: true,
+          name: true,
+          type: true,
+        },
+      },
+    },
   });
 
   const events = await db.investmentEvent.findMany({
@@ -17,23 +27,31 @@ export async function getInvestmentsData() {
   });
 
   const accounts = await db.account.findMany({
-    where: { userId }
+    where: { userId },
+    select: {
+      id: true,
+      name: true,
+      type: true,
+    },
   });
 
   return {
     investments: investments.map((inv) => ({
       id: inv.id,
       name: inv.name,
-      type: inv.type, // Stocks, Bitcoin, Ethereum, Other Crypto
+      type: inv.type,
       symbol: inv.symbol || "",
       isin: inv.isin || "",
       accountId: inv.accountId,
+      accountName: inv.account?.name ?? null,
+      accountType: inv.account?.type ?? null,
       quantity: inv.quantity,
       costBasis: inv.costBasis,
       marketValue: inv.marketValue,
       profit: inv.profit,
       allocation: inv.allocation,
     })),
+
     events: events.map((ev) => ({
       id: ev.id,
       accountId: ev.accountId,
@@ -54,6 +72,20 @@ export async function getInvestmentsData() {
       rawEventType: ev.rawEventType,
       rawCategory: ev.rawCategory,
     })),
-    accounts: accounts.map(a => ({ id: a.id, name: a.name }))
+
+    // Existing Activity-tab account list stays unchanged.
+    accounts: accounts.map((a) => ({
+      id: a.id,
+      name: a.name,
+    })),
+
+    // Used only when creating/editing current holdings.
+    investmentAccounts: accounts
+      .filter((account) => canHoldInvestments(account.type))
+      .map((account) => ({
+        id: account.id,
+        name: account.name,
+        type: account.type,
+      })),
   };
 }

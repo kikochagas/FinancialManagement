@@ -66,3 +66,11 @@ export const LIQUID_ACCOUNT_TYPES = new Set<TAccountType>([AccountType.BANK, Acc
 export function isLiquidAccountType(type: string): boolean {
   return LIQUID_ACCOUNT_TYPES.has(type as TAccountType);
 }
+export const INVESTMENT_ACCOUNT_TYPES = new Set<TAccountType>([
+  AccountType.BROKER,
+  AccountType.CRYPTO_WALLET,
+]);
+
+export function canHoldInvestments(type: string): boolean {
+  return INVESTMENT_ACCOUNT_TYPES.has(type as TAccountType);
+}

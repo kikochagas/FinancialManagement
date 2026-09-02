@@ -57,6 +57,7 @@ export function AccountsClient({ data }: AccountsClientProps) {
   const [isAddManualOpen, setIsAddManualOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
+  const [editError, setEditError] = useState<string | null>(null);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [accountToDelete, setAccountToDelete] = useState<Account | null>(null);
 
@@ -91,8 +92,9 @@ export function AccountsClient({ data }: AccountsClientProps) {
   };
 
   const handleEditTrigger = (acc: Account) => {
-    setSelectedAccount(acc);
-    setEditAcc({
+  setEditError(null);
+  setSelectedAccount(acc);
+  setEditAcc({
       id: acc.id,
       name: acc.name,
       type: acc.type,
@@ -104,6 +106,8 @@ export function AccountsClient({ data }: AccountsClientProps) {
 
   const handleUpdate = (e: React.FormEvent) => {
     e.preventDefault();
+    setEditError(null);
+
     startTransition(async () => {
       const res = await updateAccount({
         id: editAcc.id,
@@ -112,8 +116,14 @@ export function AccountsClient({ data }: AccountsClientProps) {
         balance: Number(editAcc.balance) || 0,
         currency: editAcc.currency,
       });
+
       if (res?.data?.success) {
         setIsEditOpen(false);
+        return;
+      }
+
+      if (res?.serverError) {
+        setEditError(res.serverError);
       }
     });
   };
@@ -639,7 +649,11 @@ export function AccountsClient({ data }: AccountsClientProps) {
               <DialogTitle>Edit Account details</DialogTitle>
               <DialogDescription>Modify parameters for {selectedAccount?.name}.</DialogDescription>
             </DialogHeader>
-
+            {editError && (
+              <div className="mt-4 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+                {editError}
+              </div>
+            )}
             <div className="space-y-4 py-4">
               {selectedAccount?.isBankConnected && (
                 <div className="bg-muted/50 p-3 rounded-md text-sm text-muted-foreground border border-border flex items-start gap-2">
