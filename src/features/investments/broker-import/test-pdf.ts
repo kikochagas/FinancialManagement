@@ -24,14 +24,15 @@ async function run() {
     console.log(`Pages: ${result.pages}`);
     console.log(`Fingerprint (SHA-256): ${result.fingerprint}`);
     console.log('------------------------------------');
+    const { extractDeterministic } = require('./deterministic-extractor');
+    const snapshot = extractDeterministic(result.rawText);
     
     if (isRaw) {
       console.log('RAW TEXT (First 1000 chars):');
       console.log(result.rawText.substring(0, 1000));
-    } else {
-      console.log('SANITIZED / STRUCTURAL TEXT (First 1000 chars):');
-      console.log(result.sanitizedText.substring(0, 1000));
     }
+    console.log('BROKER SNAPSHOT:');
+    console.log(JSON.stringify(snapshot, null, 2));
   } catch (error: any) {
     console.error('Error during extraction spike:', error.message);
   }
