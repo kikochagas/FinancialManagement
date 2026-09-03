@@ -43,7 +43,8 @@ export const updateInvestment = authActionClient
     const { id, ...data } = parsedInput;
 
     const original = await db.investment.findUnique({ where: { id } });
-    if (!original || original.userId !== userId) throw new Error("Investment not found");
+    if (!original || original.userId !== userId)
+      throw new Error("Investment not found");
     if (data.accountId !== undefined) {
       if (data.accountId === null) {
         // Legacy unassigned Investments may remain unassigned,
@@ -56,8 +57,10 @@ export const updateInvestment = authActionClient
       }
     }
 
-    const costBasis = data.costBasis !== undefined ? data.costBasis : original.costBasis;
-    const marketValue = data.marketValue !== undefined ? data.marketValue : original.marketValue;
+    const costBasis =
+      data.costBasis !== undefined ? data.costBasis : original.costBasis;
+    const marketValue =
+      data.marketValue !== undefined ? data.marketValue : original.marketValue;
     const profit = costBasis != null ? marketValue - costBasis : null;
 
     const updated = await db.investment.update({
@@ -70,7 +73,10 @@ export const updateInvestment = authActionClient
 
     // Recompute allocations across all investments
     const allInvestments = await db.investment.findMany({ where: { userId } });
-    const totalMarketValue = allInvestments.reduce((sum, inv) => sum + inv.marketValue, 0);
+    const totalMarketValue = allInvestments.reduce(
+      (sum, inv) => sum + inv.marketValue,
+      0,
+    );
 
     if (totalMarketValue > 0) {
       for (const inv of allInvestments) {
@@ -103,7 +109,10 @@ export const createInvestment = authActionClient
   .schema(createInvestmentSchema)
   .action(async ({ parsedInput, ctx: { userId } }) => {
     await validateInvestmentAccount(parsedInput.accountId, userId);
-    const profit = parsedInput.costBasis != null ? parsedInput.marketValue - parsedInput.costBasis : null;
+    const profit =
+      parsedInput.costBasis != null
+        ? parsedInput.marketValue - parsedInput.costBasis
+        : null;
 
     const created = await db.investment.create({
       data: {
@@ -116,7 +125,10 @@ export const createInvestment = authActionClient
 
     // Recompute allocations across all investments
     const allInvestments = await db.investment.findMany({ where: { userId } });
-    const totalMarketValue = allInvestments.reduce((sum, inv) => sum + inv.marketValue, 0);
+    const totalMarketValue = allInvestments.reduce(
+      (sum, inv) => sum + inv.marketValue,
+      0,
+    );
 
     if (totalMarketValue > 0) {
       for (const inv of allInvestments) {
@@ -143,16 +155,21 @@ export const deleteInvestment = authActionClient
     const { id } = parsedInput;
 
     const original = await db.investment.findUnique({ where: { id } });
-    if (!original || original.userId !== userId) throw new Error("Investment not found");
+    if (!original || original.userId !== userId)
+      throw new Error("Investment not found");
 
     await db.investment.delete({ where: { id } });
 
     // Recompute allocations across all investments
     const allInvestments = await db.investment.findMany({ where: { userId } });
-    const totalMarketValue = allInvestments.reduce((sum, inv) => sum + inv.marketValue, 0);
+    const totalMarketValue = allInvestments.reduce(
+      (sum, inv) => sum + inv.marketValue,
+      0,
+    );
 
     for (const inv of allInvestments) {
-      let newAllocation = totalMarketValue > 0 ? (inv.marketValue / totalMarketValue) * 100 : 0;
+      let newAllocation =
+        totalMarketValue > 0 ? (inv.marketValue / totalMarketValue) * 100 : 0;
       await db.investment.update({
         where: { id: inv.id },
         data: { allocation: newAllocation },
@@ -164,6 +181,34 @@ export const deleteInvestment = authActionClient
     return { success: true };
   });
 
+import { BrokerSnapshotSchema } from "./broker-import/schema";
+import { reconcileSnapshot } from "./broker-import/reconciliation";
 
+const reconcileSnapshotSchema = z.object({
+  accountId: z.string(),
+  snapshot: BrokerSnapshotSchema,
+});
 
+export const getSnapshotReconciliation = authActionClient
+  .schema(reconcileSnapshotSchema)
+  .action(async ({ parsedInput: { accountId, snapshot }, ctx: { userId } }) => {
+    await validateInvestmentAccount(accountId, userId);
 
+    const investments = await db.investment.findMany({
+      where: { accountId, userId },
+      select: {
+        id: true,
+        accountId: true,
+        name: true,
+        type: true,
+        symbol: true,
+        quantity: true,
+        marketValue: true,
+        isin: true,
+        instrumentIdentifier: true,
+        instrumentIdentifierType: true,
+      },
+    });
+
+    return reconcileSnapshot(snapshot, accountId, investments);
+  });

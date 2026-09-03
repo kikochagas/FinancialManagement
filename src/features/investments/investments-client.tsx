@@ -12,6 +12,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import { Coins, TrendingUp, TrendingDown, Edit2, AlertCircle, Plus, Trash2 } from "lucide-react";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { InvestmentActivityTab, type InvestmentEventUI } from "./activity-tab";
+import { BrokerSnapshotWizard } from "./components/BrokerSnapshotWizard";
 
 interface Investment {
   id: string;
@@ -50,10 +51,11 @@ export function InvestmentsClient({ data }: InvestmentsClientProps) {
   const investmentAccounts = data.investmentAccounts ?? [];
 
   const queryTab = searchParams.get("tab");
-  const defaultTab = queryTab === "activity" ? "activity" : "portfolio";
-  const [activeTab, setActiveTab] = useState<"portfolio" | "activity">(defaultTab);
+  const validTabs = ["portfolio", "activity", "import"];
+  const defaultTab = validTabs.includes(queryTab || "") ? queryTab as any : "portfolio";
+  const [activeTab, setActiveTab] = useState<"portfolio" | "activity" | "import">(defaultTab);
 
-  const handleTabChange = (val: "portfolio" | "activity") => {
+  const handleTabChange = (val: "portfolio" | "activity" | "import") => {
     setActiveTab(val);
     const params = new URLSearchParams(searchParams.toString());
     params.set("tab", val);
@@ -195,9 +197,17 @@ export function InvestmentsClient({ data }: InvestmentsClientProps) {
           >
             Activity
           </button>
+          <button 
+            className={cn("px-4 py-2 text-sm font-medium rounded-md transition-colors", activeTab === "import" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:bg-muted-foreground/10")} 
+            onClick={() => handleTabChange('import')}
+          >
+            Import PDF
+          </button>
       </div>
 
-      {activeTab === "activity" ? (
+      {activeTab === "import" ? (
+        <BrokerSnapshotWizard investmentAccounts={investmentAccounts} />
+      ) : activeTab === "activity" ? (
         <InvestmentActivityTab events={data.events || []} accounts={data.accounts || []} />
       ) : (
         <>
