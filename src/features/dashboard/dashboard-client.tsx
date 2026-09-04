@@ -183,10 +183,10 @@ export function DashboardClient({ data }: DashboardClientProps) {
     <div className="space-y-8 pb-10">
       {/* Upper Metrics Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        {allCards.map((card) => {
+        {allCards.map((card, index) => {
           const Icon = card.icon;
           return (
-            <Card key={card.title} className={cn("bg-card/50 backdrop-blur-md border border-border hover:bg-accent/40 duration-200 shadow-sm", card.glow)}>
+            <Card key={`${card.title}-${index}`} className={cn("bg-card/50 backdrop-blur-md border border-border hover:bg-accent/40 duration-200 shadow-sm", card.glow)}>
               <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
                 <CardTitle className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">{card.title}</CardTitle>
                 <Icon className={cn("h-4.5 w-4.5", card.color)} />

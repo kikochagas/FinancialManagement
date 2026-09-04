@@ -12,7 +12,8 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import { Coins, TrendingUp, TrendingDown, Edit2, AlertCircle, Plus, Trash2 } from "lucide-react";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { InvestmentActivityTab, type InvestmentEventUI } from "./activity-tab";
-import { BrokerSnapshotWizard } from "./components/BrokerSnapshotWizard";
+import Link from "next/link";
+import { FileText, ArrowRight } from "lucide-react";
 
 interface Investment {
   id: string;
@@ -51,11 +52,11 @@ export function InvestmentsClient({ data }: InvestmentsClientProps) {
   const investmentAccounts = data.investmentAccounts ?? [];
 
   const queryTab = searchParams.get("tab");
-  const validTabs = ["portfolio", "activity", "import"];
+  const validTabs = ["portfolio", "activity"];
   const defaultTab = validTabs.includes(queryTab || "") ? queryTab as any : "portfolio";
-  const [activeTab, setActiveTab] = useState<"portfolio" | "activity" | "import">(defaultTab);
+  const [activeTab, setActiveTab] = useState<"portfolio" | "activity">(defaultTab);
 
-  const handleTabChange = (val: "portfolio" | "activity" | "import") => {
+  const handleTabChange = (val: "portfolio" | "activity") => {
     setActiveTab(val);
     const params = new URLSearchParams(searchParams.toString());
     params.set("tab", val);
@@ -184,30 +185,29 @@ export function InvestmentsClient({ data }: InvestmentsClientProps) {
 
   return (
     <div className="space-y-8 pb-10">
-      <div className="flex space-x-1 p-1 bg-muted rounded-lg w-max mb-6">
-          <button 
-            className={cn("px-4 py-2 text-sm font-medium rounded-md transition-colors", activeTab === "portfolio" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:bg-muted-foreground/10")} 
-            onClick={() => handleTabChange('portfolio')}
-          >
-            Portfolio
-          </button>
-          <button 
-            className={cn("px-4 py-2 text-sm font-medium rounded-md transition-colors", activeTab === "activity" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:bg-muted-foreground/10")} 
-            onClick={() => handleTabChange('activity')}
-          >
-            Activity
-          </button>
-          <button 
-            className={cn("px-4 py-2 text-sm font-medium rounded-md transition-colors", activeTab === "import" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:bg-muted-foreground/10")} 
-            onClick={() => handleTabChange('import')}
-          >
-            Import PDF
-          </button>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex space-x-1 p-1 bg-muted rounded-lg w-max">
+            <button 
+              className={cn("px-4 py-2 text-sm font-medium rounded-md transition-colors", activeTab === "portfolio" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:bg-muted-foreground/10")} 
+              onClick={() => handleTabChange('portfolio')}
+            >
+              Portfolio
+            </button>
+            <button 
+              className={cn("px-4 py-2 text-sm font-medium rounded-md transition-colors", activeTab === "activity" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:bg-muted-foreground/10")} 
+              onClick={() => handleTabChange('activity')}
+            >
+              Activity
+            </button>
+        </div>
+        <Link href="/reports?tab=broker" className="flex items-center gap-2 text-sm text-violet-500 hover:text-violet-600 dark:text-violet-400 dark:hover:text-violet-300 font-medium transition-colors">
+          <FileText className="h-4 w-4" />
+          Import broker report
+          <ArrowRight className="h-4 w-4" />
+        </Link>
       </div>
 
-      {activeTab === "import" ? (
-        <BrokerSnapshotWizard investmentAccounts={investmentAccounts} />
-      ) : activeTab === "activity" ? (
+      {activeTab === "activity" ? (
         <InvestmentActivityTab events={data.events || []} accounts={data.accounts || []} />
       ) : (
         <>
