@@ -4,13 +4,12 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
 
   experimental: {
-    serverActions: {},
+    serverActions: {
+      bodySizeLimit: "8mb",
+    },
   },
 
-  serverExternalPackages: [
-    "pdf-parse",
-    "@napi-rs/canvas",
-  ],
+  serverExternalPackages: ["pdf-parse", "@napi-rs/canvas"],
 
   eslint: {
     ignoreDuringBuilds: true,

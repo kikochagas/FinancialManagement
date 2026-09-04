@@ -6,5 +6,7 @@ export async function extractBrokerSnapshot(buffer: Buffer): Promise<BrokerSnaps
   const parsed = await parseBrokerPdf(buffer);
   
   // Use deterministic extraction
-  return extractDeterministic(parsed.rawText);
+  const snapshot = extractDeterministic(parsed.rawText);
+  snapshot.documentFingerprint = parsed.fingerprint;
+  return snapshot;
 }

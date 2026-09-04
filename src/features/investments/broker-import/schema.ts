@@ -117,6 +117,8 @@ export const BrokerSnapshotSchema = z.object({
   // from the statement date, record it here; prefer per-position valuationDate for heterogeneous docs)
   valuationDate: z.string().nullable().optional(),
 
+  documentFingerprint: z.string().optional(),
+
   completeness: CompletenessEnum,
   capabilities: z.array(CapabilityEnum).optional(),
 
