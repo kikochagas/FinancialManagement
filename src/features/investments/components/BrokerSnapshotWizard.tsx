@@ -31,8 +31,14 @@ import {
   SnapshotReconciliation,
   PositionReconciliation,
 } from "../broker-import/reconciliation";
-import { getSnapshotReconciliation } from "../actions";
-import { applyBrokerSnapshot } from "../actions-apply";
+import {
+  getSnapshotReconciliation,
+  getExistingSnapshotReconciliation,
+} from "../actions";
+import {
+  applyBrokerSnapshot,
+  applyExistingBrokerSnapshot,
+} from "../actions-apply";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 
@@ -44,6 +50,7 @@ type DuplicateFingerprintResult = {
   success: false;
   error: "DUPLICATE_FINGERPRINT";
   warning?: string;
+  existingSnapshotId?: string;
 };
 
 function isDuplicateFingerprintResult(
@@ -60,6 +67,9 @@ export function BrokerSnapshotWizard({
   investmentAccounts,
 }: BrokerSnapshotWizardProps) {
   const [selectedAccountId, setSelectedAccountId] = useState<string>("");
+  const [existingSnapshotId, setExistingSnapshotId] = useState<string | null>(
+    null,
+  );
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -76,18 +86,57 @@ export function BrokerSnapshotWizard({
   const [updateCashBalance, setUpdateCashBalance] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
   const [isApplying, setIsApplying] = useState(false);
+  const [warning, setWarning] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleUseExistingSnapshot = async () => {
+    if (!existingSnapshotId) return;
+    setIsApplying(true);
+    setError(null);
+    setWarning(null);
+    try {
+      const res = await getExistingSnapshotReconciliation({
+        snapshotId: existingSnapshotId,
+      });
+      if (res?.data) {
+        setSnapshot(res.data.snapshot as BrokerSnapshot);
+        setReconciliation(res.data.reconciliation as any);
+
+        const initialIntents: Record<number, IntentAction> = {};
+        res.data.reconciliation.positions.forEach((p: any, idx: number) => {
+          initialIntents[idx] =
+            p.status === "AMBIGUOUS" || p.status === "CONFLICT"
+              ? "SKIP"
+              : p.status === "NEW"
+                ? "CREATE"
+                : p.status === "MATCHED"
+                  ? "UPDATE"
+                  : "SKIP";
+        });
+        setPositionIntents(initialIntents);
+      } else {
+        setError(res?.serverError || "Failed to load existing snapshot.");
+      }
+    } catch (e: any) {
+      setError(e.message || "Failed to load existing snapshot.");
+    } finally {
+      setIsApplying(false);
+    }
+  };
 
   const handleImportAnother = () => {
     setFile(null);
     setSnapshot(null);
     setReconciliation(null);
-    setApplyResult(null);
-    setError(null);
-    setIsConfirming(false);
     setPositionIntents({});
     setUpdateCashBalance(false);
+    setApplyResult(null);
+    setError(null);
+    setWarning(null);
+    setExistingSnapshotId(null);
+    setIsConfirming(false);
+    setIsApplying(false);
 
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -102,8 +151,9 @@ export function BrokerSnapshotWizard({
     warnings: string[];
   } | null>(null);
 
-  const handleAccountChange = (accountId: string) => {
-    setSelectedAccountId(accountId);
+  const handleAccountChange = (val: string) => {
+    setExistingSnapshotId(null);
+    setSelectedAccountId(val);
     setSnapshot(null);
     setReconciliation(null);
     setError(null);
@@ -113,8 +163,9 @@ export function BrokerSnapshotWizard({
     setUpdateCashBalance(false);
   };
 
-  const handleFileChange = (newFile: File | null) => {
-    setFile(newFile);
+  const handleFileChange = (file: File | null) => {
+    setExistingSnapshotId(null);
+    setFile(file);
     setSnapshot(null);
     setReconciliation(null);
     setError(null);
@@ -176,7 +227,9 @@ export function BrokerSnapshotWizard({
   };
 
   const handleApply = async () => {
-    if (!file || !selectedAccountId || !reconciliation) return;
+    if (!selectedAccountId || !reconciliation) return;
+    if (!existingSnapshotId && !file) return;
+
     setIsApplying(true);
     setError(null);
     try {
@@ -192,23 +245,36 @@ export function BrokerSnapshotWizard({
           reader.onerror = (e) => rej(e);
         });
 
-      const base64 = await getBase64(file);
+      const base64 = !existingSnapshotId && file ? await getBase64(file) : "";
       const intents = Object.entries(positionIntents).map(([idx, action]) => ({
         candidateIndex: Number(idx),
         action,
       }));
 
-      const res = await applyBrokerSnapshot({
-        accountId: selectedAccountId,
-        fileBase64: base64,
-        positionIntents: intents,
-        updateCashBalance,
-      });
+      let res;
+      if (existingSnapshotId) {
+        res = await applyExistingBrokerSnapshot({
+          snapshotId: existingSnapshotId,
+          positionIntents: intents,
+          updateCashBalance,
+        });
+      } else {
+        res = await applyBrokerSnapshot({
+          accountId: selectedAccountId,
+          fileBase64: base64,
+          positionIntents: intents,
+          updateCashBalance,
+        });
+      }
 
       if (isDuplicateFingerprintResult(res?.data)) {
-        setError(
-          res.data.warning || "This snapshot has already been imported.",
+        setError("DUPLICATE_FINGERPRINT");
+        setWarning(
+          res.data.warning || "This document has already been applied.",
         );
+        if (res.data.existingSnapshotId) {
+          setExistingSnapshotId(res.data.existingSnapshotId);
+        }
         setIsConfirming(false);
       } else if (res?.data?.success) {
         let created = 0;
@@ -308,7 +374,7 @@ export function BrokerSnapshotWizard({
               <Button
                 onClick={handleUpload}
                 disabled={
-                  !file ||
+                  (!existingSnapshotId && !file) ||
                   !selectedAccountId ||
                   isUploading ||
                   isPending ||
@@ -322,12 +388,35 @@ export function BrokerSnapshotWizard({
             </div>
           </div>
 
-          {error && (
+          {error === "DUPLICATE_FINGERPRINT" ? (
+            <div className="flex flex-col gap-3 text-sm text-amber-600 p-4 bg-amber-500/10 rounded-md border border-amber-500/20">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="h-4 w-4 mt-0.5" />
+                <div>
+                  <p className="font-medium">Duplicate Statement</p>
+                  <p className="text-amber-600/80 mt-1">
+                    {warning || "This document has already been applied."}
+                  </p>
+                </div>
+              </div>
+              {existingSnapshotId && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-fit border-amber-500/30 hover:bg-amber-500/10 text-amber-700"
+                  onClick={handleUseExistingSnapshot}
+                  disabled={isApplying}
+                >
+                  Use existing snapshot
+                </Button>
+              )}
+            </div>
+          ) : error ? (
             <div className="flex items-center gap-2 text-sm text-destructive p-3 bg-destructive/10 rounded-md">
-              <AlertCircle className="h-4 w-4" />
+              <AlertCircle className="h-4 w-4 shrink-0" />
               {error}
             </div>
-          )}
+          ) : null}
         </CardContent>
       </Card>
 
@@ -677,6 +766,11 @@ export function BrokerSnapshotWizard({
             <Card className="border-primary/50 shadow-sm bg-card mt-6">
               <CardHeader>
                 <CardTitle>Confirm Snapshot Application</CardTitle>
+                {existingSnapshotId && (
+                  <p className="text-xs text-amber-500 mt-1 font-normal tracking-normal">
+                    Applying projection changes to existing snapshot.
+                  </p>
+                )}
                 <CardDescription>
                   Please review the final actions before applying to your
                   account.

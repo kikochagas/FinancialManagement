@@ -7,10 +7,12 @@ import * as actionsApply from "../actions-apply";
 
 vi.mock("../actions", () => ({
   getSnapshotReconciliation: vi.fn(),
+  getExistingSnapshotReconciliation: vi.fn(),
 }));
 
 vi.mock("../actions-apply", () => ({
   applyBrokerSnapshot: vi.fn(),
+    applyExistingBrokerSnapshot: vi.fn(),
 }));
 
 describe("BrokerSnapshotWizard", () => {
@@ -38,7 +40,12 @@ describe("BrokerSnapshotWizard", () => {
       accountId: "acc-1",
       positions: [
         {
-          importedPosition: { name: "Apple", quantity: 10, marketValue: 1500, currency: "USD" },
+          importedPosition: {
+            name: "Apple",
+            quantity: 10,
+            marketValue: 1500,
+            currency: "USD",
+          },
           status: "MATCHED",
           matchMethod: "ISIN",
           matchedInvestmentId: "inv-1",
@@ -46,7 +53,11 @@ describe("BrokerSnapshotWizard", () => {
           reason: null,
         },
         {
-          importedPosition: { name: "Unknown Corp", quantity: 5, marketValue: 50 },
+          importedPosition: {
+            name: "Unknown Corp",
+            quantity: 5,
+            marketValue: 50,
+          },
           status: "NEW",
           matchMethod: "NONE",
           matchedInvestmentId: null,
@@ -62,7 +73,11 @@ describe("BrokerSnapshotWizard", () => {
           reason: null,
         },
         {
-          importedPosition: { name: "Ambig Corp", quantity: 100, marketValue: 500 },
+          importedPosition: {
+            name: "Ambig Corp",
+            quantity: 100,
+            marketValue: 500,
+          },
           status: "AMBIGUOUS",
           matchMethod: "NAME",
           matchedInvestmentId: null,
@@ -70,14 +85,18 @@ describe("BrokerSnapshotWizard", () => {
           reason: "Weak match",
         },
         {
-          importedPosition: { name: "Conflict Corp", quantity: 100, marketValue: 500 },
+          importedPosition: {
+            name: "Conflict Corp",
+            quantity: 100,
+            marketValue: 500,
+          },
           status: "CONFLICT",
           matchMethod: "TICKER",
           matchedInvestmentId: "inv-conf",
           proposedChanges: null,
           reason: "Identifiers conflict.",
         },
-        ...((mockReconciliationOverrides as any).positions || [])
+        ...((mockReconciliationOverrides as any).positions || []),
       ],
     };
 
@@ -97,9 +116,13 @@ describe("BrokerSnapshotWizard", () => {
     fireEvent.click(option);
 
     const processButton = screen.getByRole("button", { name: /Process PDF/i });
-    const fileInput = processButton.parentElement?.querySelector('input[type="file"]') as HTMLInputElement;
+    const fileInput = processButton.parentElement?.querySelector(
+      'input[type="file"]',
+    ) as HTMLInputElement;
 
-    const file = new File(["dummy base64 content"], "test.pdf", { type: "application/pdf" });
+    const file = new File(["dummy base64 content"], "test.pdf", {
+      type: "application/pdf",
+    });
     fireEvent.change(fileInput, { target: { files: [file] } });
     fireEvent.click(processButton);
 
@@ -115,14 +138,16 @@ describe("BrokerSnapshotWizard", () => {
 
     // UNCHANGED
     expect(screen.getByText("No action needed")).toBeInTheDocument();
-    
+
     // AMBIGUOUS and CONFLICT
     expect(screen.getAllByText("SKIP (Manual review req)").length).toBe(2);
 
     // MATCHED and NEW
-    const selectTriggers = screen.getAllByRole("combobox").filter(el => !el.textContent?.includes("Trade Republic"));
+    const selectTriggers = screen
+      .getAllByRole("combobox")
+      .filter((el) => !el.textContent?.includes("Trade Republic"));
     expect(selectTriggers.length).toBe(2);
-    
+
     // Default to SKIP
     expect(selectTriggers[0]).toHaveTextContent("Skip");
     expect(selectTriggers[1]).toHaveTextContent("Skip");
@@ -132,7 +157,9 @@ describe("BrokerSnapshotWizard", () => {
     await setupPreview();
 
     // Select UPDATE for MATCHED (first select)
-    const selectTriggers = screen.getAllByRole("combobox").filter(el => !el.textContent?.includes("Trade Republic"));
+    const selectTriggers = screen
+      .getAllByRole("combobox")
+      .filter((el) => !el.textContent?.includes("Trade Republic"));
     fireEvent.click(selectTriggers[0]);
     fireEvent.click(screen.getByText("Update"));
 
@@ -146,30 +173,43 @@ describe("BrokerSnapshotWizard", () => {
     fireEvent.click(cashToggle);
 
     vi.mocked(actionsApply.applyBrokerSnapshot).mockResolvedValueOnce({
-      data: { success: true, warnings: ["Cash balance untouched (not enabled)"] },
+      data: {
+        success: true,
+        warnings: ["Cash balance untouched (not enabled)"],
+      },
     } as any);
 
     fireEvent.click(screen.getByRole("button", { name: /Review & Confirm/i }));
 
-    expect(screen.getByText("Confirm Snapshot Application")).toBeInTheDocument();
-    
+    expect(
+      screen.getByText("Confirm Snapshot Application"),
+    ).toBeInTheDocument();
+
     // Verify confirmation counts
     expect(screen.getByText("Positions to Create")).toBeInTheDocument();
-    expect(screen.getByText("Positions to Create").nextElementSibling).toHaveTextContent("1");
-    expect(screen.getByText("Positions to Update").nextElementSibling).toHaveTextContent("1");
-    expect(screen.getByText("Positions Skipped").nextElementSibling).toHaveTextContent("3");
-    expect(screen.getByText("Update Cash Balance").nextElementSibling).toHaveTextContent("Yes");
+    expect(
+      screen.getByText("Positions to Create").nextElementSibling,
+    ).toHaveTextContent("1");
+    expect(
+      screen.getByText("Positions to Update").nextElementSibling,
+    ).toHaveTextContent("1");
+    expect(
+      screen.getByText("Positions Skipped").nextElementSibling,
+    ).toHaveTextContent("3");
+    expect(
+      screen.getByText("Update Cash Balance").nextElementSibling,
+    ).toHaveTextContent("Yes");
 
     // Apply
     const applyBtn = screen.getByRole("button", { name: /Apply Snapshot/i });
     fireEvent.click(applyBtn);
-    
+
     // Verify locking logic during apply
     expect(applyBtn).toBeDisabled();
     expect(applyBtn).toHaveTextContent("Applying...");
     const accountCombo = screen.getAllByRole("combobox")[0];
     expect(accountCombo).toBeDisabled();
-    
+
     const fileInput = document.querySelector('input[type="file"]');
     expect(fileInput).toBeDisabled();
 
@@ -177,7 +217,8 @@ describe("BrokerSnapshotWizard", () => {
       expect(actionsApply.applyBrokerSnapshot).toHaveBeenCalledTimes(1);
     });
 
-    const callArgs = vi.mocked(actionsApply.applyBrokerSnapshot).mock.calls[0][0];
+    const callArgs = vi.mocked(actionsApply.applyBrokerSnapshot).mock
+      .calls[0][0];
     expect(callArgs).toEqual({
       accountId: "acc-1",
       fileBase64: expect.any(String),
@@ -190,15 +231,19 @@ describe("BrokerSnapshotWizard", () => {
         { candidateIndex: 4, action: "SKIP" },
       ],
     });
-    
+
     // Assert no quantity, marketValue etc leaked into payload
     expect((callArgs as any).positionIntents[0].quantity).toBeUndefined();
     expect((callArgs as any).positionIntents[1].marketValue).toBeUndefined();
 
     // Check success UI
-    expect(await screen.findByText("Snapshot Saved Successfully")).toBeInTheDocument();
-    expect(screen.getByText("• Cash balance untouched (not enabled)")).toBeInTheDocument();
-    
+    expect(
+      await screen.findByText("Snapshot Saved Successfully"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("• Cash balance untouched (not enabled)"),
+    ).toBeInTheDocument();
+
     // Preview Mode should disappear
     expect(screen.queryByText("Preview Mode Only")).not.toBeInTheDocument();
   });
@@ -207,14 +252,20 @@ describe("BrokerSnapshotWizard", () => {
     await setupPreview();
 
     vi.mocked(actionsApply.applyBrokerSnapshot).mockResolvedValueOnce({
-      data: { success: false, error: "DUPLICATE_FINGERPRINT", warning: "This document has already been applied." },
+      data: {
+        success: false,
+        error: "DUPLICATE_FINGERPRINT",
+        warning: "This document has already been applied.",
+      },
     } as any);
 
     fireEvent.click(screen.getByRole("button", { name: /Review & Confirm/i }));
     fireEvent.click(screen.getByRole("button", { name: /Apply Snapshot/i }));
 
     await waitFor(() => {
-      expect(screen.getByText("This document has already been applied.")).toBeInTheDocument();
+      expect(
+        screen.getByText("This document has already been applied."),
+      ).toBeInTheDocument();
     });
   });
 
@@ -229,7 +280,9 @@ describe("BrokerSnapshotWizard", () => {
     fireEvent.click(screen.getByRole("button", { name: /Apply Snapshot/i }));
 
     await waitFor(() => {
-      expect(screen.getByText("Simulated generic server failure")).toBeInTheDocument();
+      expect(
+        screen.getByText("Simulated generic server failure"),
+      ).toBeInTheDocument();
     });
   });
 
@@ -245,7 +298,7 @@ describe("BrokerSnapshotWizard", () => {
 
   it("clears state when changing account", async () => {
     await setupPreview();
-    
+
     expect(screen.getByText("Preview Mode Only")).toBeInTheDocument();
 
     const accountCombo = screen.getAllByRole("combobox")[0];
@@ -268,19 +321,100 @@ describe("BrokerSnapshotWizard", () => {
     fireEvent.click(screen.getByRole("button", { name: /Apply Snapshot/i }));
 
     await waitFor(() => {
-      expect(screen.getByText("Snapshot Saved Successfully")).toBeInTheDocument();
+      expect(
+        screen.getByText("Snapshot Saved Successfully"),
+      ).toBeInTheDocument();
     });
 
-    const importAnotherBtn = screen.getByRole("button", { name: /Import Another/i });
+    const importAnotherBtn = screen.getByRole("button", {
+      name: /Import Another/i,
+    });
     fireEvent.click(importAnotherBtn);
 
     // success screen gone
-    expect(screen.queryByText("Snapshot Saved Successfully")).not.toBeInTheDocument();
-    
+    expect(
+      screen.queryByText("Snapshot Saved Successfully"),
+    ).not.toBeInTheDocument();
+
     // file input empty
     expect(fileInput.value).toBe("");
-    
+
     // process button disabled
     expect(processButton).toBeDisabled();
+  });
+  it("handles DUPLICATE_FINGERPRINT with existing snapshot flow", async () => {
+    const { fileInput, processButton } = await setupPreview();
+
+    vi.mocked(actionsApply.applyBrokerSnapshot).mockResolvedValueOnce({
+      data: {
+        success: false,
+        error: "DUPLICATE_FINGERPRINT",
+        warning: "This document has already been applied.",
+        existingSnapshotId: "snap-123",
+      },
+    } as any);
+
+    fireEvent.click(screen.getByRole("button", { name: /Review & Confirm/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Apply Snapshot/i }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("This document has already been applied."),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /Use existing snapshot/i }),
+      ).toBeInTheDocument();
+    });
+
+    vi.mocked(actions.getExistingSnapshotReconciliation).mockResolvedValueOnce({
+      data: {
+        snapshot: {
+          statementDate: "2026-08-30",
+          completeness: "COMPLETE",
+          positions: [],
+          cashBalances: [],
+          totals: [],
+        },
+        reconciliation: {
+          accountId: "acc-1",
+          positions: [],
+        },
+        accountId: "acc-1",
+      },
+    } as any);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /Use existing snapshot/i }),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Preview Mode Only")).toBeInTheDocument();
+    });
+
+    vi.mocked(actionsApply.applyExistingBrokerSnapshot).mockResolvedValueOnce({
+      data: { success: true, warnings: [] },
+    } as any);
+
+    fireEvent.click(screen.getByRole("button", { name: /Review & Confirm/i }));
+
+    // Confirmation screen should show the amber text
+    expect(
+      screen.getByText("Applying projection changes to existing snapshot."),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Apply Snapshot/i }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Snapshot Saved Successfully"),
+      ).toBeInTheDocument();
+    });
+
+    expect(actionsApply.applyExistingBrokerSnapshot).toHaveBeenCalledWith(
+      expect.objectContaining({
+        snapshotId: "snap-123",
+        updateCashBalance: false,
+      }),
+    );
   });
 });
