@@ -1,6 +1,5 @@
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { BrokerSnapshotWizard } from "../components/BrokerSnapshotWizard";
 import * as actions from "../actions";
@@ -316,37 +315,41 @@ describe("BrokerSnapshotWizard", () => {
 
     expect(screen.getByText("Preview Mode Only")).toBeInTheDocument();
 
-    // Check that controls are present
     expect(screen.getByText("Document Overview")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /Review & Confirm/i }),
     ).toBeInTheDocument();
 
-    // Find the account combobox safely
     const accountCombo = screen
       .getAllByRole("combobox")
       .find((el) => el.textContent?.includes("Trade Republic"));
+
     expect(accountCombo).toBeInTheDocument();
 
-    // Change target account to Account B (Coinbase)
-    const user = userEvent.setup();
-    await user.click(accountCombo!);
-    const option = await screen.findByRole("option", { name: /Coinbase/i });
-    await user.click(option);
+    // The preview can render before startTransition has fully settled.
+    await waitFor(() => {
+      expect(accountCombo).not.toBeDisabled();
+    });
 
-    // Assert the previous preview disappears
-    expect(screen.queryByText("Preview Mode Only")).not.toBeInTheDocument();
+    // Change Account A -> Account B
+    fireEvent.click(accountCombo!);
 
-    // Assert previous reconciliation/action controls disappear
-    expect(screen.queryByText("Document Overview")).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: /Review & Confirm/i }),
-    ).not.toBeInTheDocument();
+    const option = await screen.findByText("Coinbase · Crypto Wallet");
+    fireEvent.click(option);
 
-    // Assert confirmation state is not present
-    expect(
-      screen.queryByText("Confirm Snapshot Application"),
-    ).not.toBeInTheDocument();
+    // Account change clears stale preview/reconciliation state.
+    await waitFor(() => {
+      expect(screen.queryByText("Preview Mode Only")).not.toBeInTheDocument();
+      expect(screen.queryByText("Document Overview")).not.toBeInTheDocument();
+
+      expect(
+        screen.queryByRole("button", { name: /Review & Confirm/i }),
+      ).not.toBeInTheDocument();
+
+      expect(
+        screen.queryByText("Confirm Snapshot Application"),
+      ).not.toBeInTheDocument();
+    });
   });
 
   it("resets file input on Import Another", async () => {
