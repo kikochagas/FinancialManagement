@@ -469,7 +469,13 @@ describe("applyBrokerSnapshot DB Engine", () => {
       ],
     });
 
-    expect(res?.validationErrors?.positionIntents?._errors).toContain(
+    const positionIntentErrors = res?.validationErrors?.positionIntents;
+
+    const duplicateIntentErrors = Array.isArray(positionIntentErrors)
+      ? positionIntentErrors.flatMap((error) => error?._errors ?? [])
+      : (positionIntentErrors?._errors ?? []);
+
+    expect(duplicateIntentErrors).toContain(
       "Duplicate position intents are not allowed",
     );
     const snaps = await db.investmentAccountSnapshot.count({

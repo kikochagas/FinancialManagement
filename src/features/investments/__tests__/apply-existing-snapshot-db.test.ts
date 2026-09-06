@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterAll, vi } from "vitest";
 import { db } from "@/lib/db";
 import {
   applyExistingBrokerSnapshot,
@@ -74,9 +74,12 @@ describe("applyExistingBrokerSnapshot DB Engine", () => {
       positions: [
         {
           name: "Apple",
+          sourceSection: "BROKERAGE",
           assetClass: "EQUITY",
           ticker: "AAPL",
           isin: "US0378331005",
+          instrumentIdentifier: "US0378331005",
+          instrumentIdentifierType: "ISIN",
           quantity: 10,
           unitPrice: 150,
           marketValue: 1500,
@@ -84,9 +87,12 @@ describe("applyExistingBrokerSnapshot DB Engine", () => {
         },
         {
           name: "Google",
+          sourceSection: "BROKERAGE",
           assetClass: "EQUITY",
           ticker: "GOOGL",
           isin: "US38259P5089",
+          instrumentIdentifier: "US38259P5089",
+          instrumentIdentifierType: "ISIN",
           quantity: 5,
           unitPrice: 200,
           marketValue: 1000,
