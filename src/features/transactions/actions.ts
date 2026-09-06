@@ -5,7 +5,6 @@ import { authActionClient } from "@/lib/safe-action";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 
-
 // Helper function to update account balance
 async function adjustBalances(
   txDb: any,
@@ -15,14 +14,21 @@ async function adjustBalances(
     accountId: string | null;
     destinationAccountId?: string | null;
   },
-  multiplier: number
+  multiplier: number,
 ) {
   // multiplier: 1 to apply transaction, -1 to reverse transaction
   const amount = tx.amount * multiplier;
 
   if (tx.accountId) {
-    const acc = await txDb.account.findUnique({ where: { id: tx.accountId }, include: { externalMappings: true } });
-    if (acc && (!acc.externalMappings || !acc.externalMappings.some((m: any) => m.disconnectedAt === null))) {
+    const acc = await txDb.account.findUnique({
+      where: { id: tx.accountId },
+      include: { externalMappings: true },
+    });
+    if (
+      acc &&
+      (!acc.externalMappings ||
+        !acc.externalMappings.some((m: any) => m.disconnectedAt === null))
+    ) {
       if (tx.direction === "Credit") {
         await txDb.account.update({
           where: { id: tx.accountId },
@@ -43,8 +49,15 @@ async function adjustBalances(
   }
 
   if (tx.direction === "InternalTransfer" && tx.destinationAccountId) {
-    const destAcc = await txDb.account.findUnique({ where: { id: tx.destinationAccountId }, include: { externalMappings: true } });
-    if (destAcc && (!destAcc.externalMappings || !destAcc.externalMappings.some((m: any) => m.disconnectedAt === null))) {
+    const destAcc = await txDb.account.findUnique({
+      where: { id: tx.destinationAccountId },
+      include: { externalMappings: true },
+    });
+    if (
+      destAcc &&
+      (!destAcc.externalMappings ||
+        !destAcc.externalMappings.some((m: any) => m.disconnectedAt === null))
+    ) {
       // Increase destination account
       await txDb.account.update({
         where: { id: tx.destinationAccountId },
@@ -94,27 +107,51 @@ export const createTransaction = authActionClient
   .action(async ({ parsedInput, ctx: { userId } }) => {
     const tx = await db.$transaction(async (txDb) => {
       if (parsedInput.accountId) {
-        const acc = await txDb.account.findUnique({ where: { id: parsedInput.accountId }, include: { externalMappings: true } });
-        if (!acc || acc.userId !== userId) throw new Error("Invalid or unauthorized account");
-        if (acc.externalMappings.some(m => m.disconnectedAt === null)) throw new Error("Bank-connected account transactions are managed by bank synchronization.");
+        const acc = await txDb.account.findUnique({
+          where: { id: parsedInput.accountId },
+          include: { externalMappings: true },
+        });
+        if (!acc || acc.userId !== userId)
+          throw new Error("Invalid or unauthorized account");
+        if (acc.externalMappings.some((m) => m.disconnectedAt === null))
+          throw new Error(
+            "Bank-connected account transactions are managed by bank synchronization.",
+          );
       }
 
       if (parsedInput.destinationAccountId) {
-        const dacc = await txDb.account.findUnique({ where: { id: parsedInput.destinationAccountId }, include: { externalMappings: true } });
-        if (!dacc || dacc.userId !== userId) throw new Error("Invalid or unauthorized destination account");
-        if (dacc.externalMappings.some(m => m.disconnectedAt === null)) throw new Error("Bank-connected account transactions are managed by bank synchronization.");
+        const dacc = await txDb.account.findUnique({
+          where: { id: parsedInput.destinationAccountId },
+          include: { externalMappings: true },
+        });
+        if (!dacc || dacc.userId !== userId)
+          throw new Error("Invalid or unauthorized destination account");
+        if (dacc.externalMappings.some((m) => m.disconnectedAt === null))
+          throw new Error(
+            "Bank-connected account transactions are managed by bank synchronization.",
+          );
       }
 
       if (parsedInput.categoryId) {
-        const cat = await txDb.category.findUnique({ where: { id: parsedInput.categoryId } });
-        if (!cat || cat.userId !== userId) throw new Error("Invalid or unauthorized category");
+        const cat = await txDb.category.findUnique({
+          where: { id: parsedInput.categoryId },
+        });
+        if (!cat || cat.userId !== userId)
+          throw new Error("Invalid or unauthorized category");
       }
 
       if (parsedInput.direction === "InternalTransfer") {
-        if (!parsedInput.accountId || !parsedInput.destinationAccountId) throw new Error("InternalTransfer requires both source and destination accounts");
-        if (parsedInput.accountId === parsedInput.destinationAccountId) throw new Error("Source and destination accounts must be different");
+        if (!parsedInput.accountId || !parsedInput.destinationAccountId)
+          throw new Error(
+            "InternalTransfer requires both source and destination accounts",
+          );
+        if (parsedInput.accountId === parsedInput.destinationAccountId)
+          throw new Error("Source and destination accounts must be different");
       } else {
-        if (parsedInput.destinationAccountId) throw new Error("Destination account is only allowed for InternalTransfer");
+        if (parsedInput.destinationAccountId)
+          throw new Error(
+            "Destination account is only allowed for InternalTransfer",
+          );
       }
 
       const created = await txDb.transaction.create({
@@ -151,7 +188,7 @@ export const updateTransaction = authActionClient
     const tx = await db.$transaction(async (txDb) => {
       const original = await txDb.transaction.findUnique({
         where: { id },
-        include: { externalMapping: true }
+        include: { externalMapping: true },
       });
 
       if (!original || original.userId !== userId) {
@@ -160,61 +197,124 @@ export const updateTransaction = authActionClient
 
       if (original.externalMapping) {
         const changedBankFields = [];
-        if (data.amount !== undefined && data.amount !== original.amount) changedBankFields.push('amount');
-        if (data.date !== undefined && new Date(data.date).getTime() !== original.date.getTime()) changedBankFields.push('date');
-        if (data.description !== undefined && data.description !== original.description) changedBankFields.push('description');
-        if (data.direction !== undefined && data.direction !== original.direction) changedBankFields.push('direction');
-        if (data.accountId !== undefined && data.accountId !== original.accountId) changedBankFields.push('accountId');
-        if (data.destinationAccountId !== undefined && data.destinationAccountId !== original.destinationAccountId) changedBankFields.push('destinationAccountId');
+        if (data.amount !== undefined && data.amount !== original.amount)
+          changedBankFields.push("amount");
+        if (
+          data.date !== undefined &&
+          new Date(data.date).getTime() !== original.date.getTime()
+        )
+          changedBankFields.push("date");
+        if (
+          data.description !== undefined &&
+          data.description !== original.description
+        )
+          changedBankFields.push("description");
+        if (
+          data.direction !== undefined &&
+          data.direction !== original.direction
+        )
+          changedBankFields.push("direction");
+        if (
+          data.accountId !== undefined &&
+          data.accountId !== original.accountId
+        )
+          changedBankFields.push("accountId");
+        if (
+          data.destinationAccountId !== undefined &&
+          data.destinationAccountId !== original.destinationAccountId
+        )
+          changedBankFields.push("destinationAccountId");
 
         if (changedBankFields.length > 0) {
-           throw new Error("Cannot edit bank-controlled fields on a synced transaction.");
+          throw new Error(
+            "Cannot edit bank-controlled fields on a synced transaction.",
+          );
         }
 
         if (data.categoryId) {
-           const cat = await txDb.category.findUnique({ where: { id: data.categoryId } });
-           if (!cat || cat.userId !== userId) throw new Error("Invalid or unauthorized category");
+          const cat = await txDb.category.findUnique({
+            where: { id: data.categoryId },
+          });
+          if (!cat || cat.userId !== userId)
+            throw new Error("Invalid or unauthorized category");
         }
 
         // Bank imported transaction. Only allow metadata updates
         const updateData: any = {};
-        if (data.categoryId !== undefined) updateData.categoryId = data.categoryId;
+        if (data.categoryId !== undefined)
+          updateData.categoryId = data.categoryId;
         if (data.tags !== undefined) updateData.tags = data.tags;
         if (data.notes !== undefined) updateData.notes = data.notes;
 
         const updated = await txDb.transaction.update({
           where: { id },
-          data: updateData
+          data: updateData,
         });
         return updated;
       }
 
       // 1. Validate if moving to a bank-connected account
-      if (data.accountId !== undefined && data.accountId !== original.accountId && data.accountId !== null) {
-        const acc = await txDb.account.findUnique({ where: { id: data.accountId }, include: { externalMappings: true } });
-        if (!acc || acc.userId !== userId) throw new Error("Invalid or unauthorized account");
-        if (acc.externalMappings.some(m => m.disconnectedAt === null)) throw new Error("Bank-connected account transactions are managed by bank synchronization.");
+      if (
+        data.accountId !== undefined &&
+        data.accountId !== original.accountId &&
+        data.accountId !== null
+      ) {
+        const acc = await txDb.account.findUnique({
+          where: { id: data.accountId },
+          include: { externalMappings: true },
+        });
+        if (!acc || acc.userId !== userId)
+          throw new Error("Invalid or unauthorized account");
+        if (acc.externalMappings.some((m) => m.disconnectedAt === null))
+          throw new Error(
+            "Bank-connected account transactions are managed by bank synchronization.",
+          );
       }
-      if (data.destinationAccountId !== undefined && data.destinationAccountId !== original.destinationAccountId && data.destinationAccountId !== null) {
-        const dacc = await txDb.account.findUnique({ where: { id: data.destinationAccountId }, include: { externalMappings: true } });
-        if (!dacc || dacc.userId !== userId) throw new Error("Invalid or unauthorized destination account");
-        if (dacc.externalMappings.some(m => m.disconnectedAt === null)) throw new Error("Bank-connected account transactions are managed by bank synchronization.");
+      if (
+        data.destinationAccountId !== undefined &&
+        data.destinationAccountId !== original.destinationAccountId &&
+        data.destinationAccountId !== null
+      ) {
+        const dacc = await txDb.account.findUnique({
+          where: { id: data.destinationAccountId },
+          include: { externalMappings: true },
+        });
+        if (!dacc || dacc.userId !== userId)
+          throw new Error("Invalid or unauthorized destination account");
+        if (dacc.externalMappings.some((m) => m.disconnectedAt === null))
+          throw new Error(
+            "Bank-connected account transactions are managed by bank synchronization.",
+          );
       }
 
       if (data.categoryId) {
-         const cat = await txDb.category.findUnique({ where: { id: data.categoryId } });
-         if (!cat || cat.userId !== userId) throw new Error("Invalid or unauthorized category");
+        const cat = await txDb.category.findUnique({
+          where: { id: data.categoryId },
+        });
+        if (!cat || cat.userId !== userId)
+          throw new Error("Invalid or unauthorized category");
       }
 
-      const finalSourceId = data.accountId !== undefined ? data.accountId : original.accountId;
-      const finalDestId = data.destinationAccountId !== undefined ? data.destinationAccountId : original.destinationAccountId;
+      const finalSourceId =
+        data.accountId !== undefined ? data.accountId : original.accountId;
+      const finalDestId =
+        data.destinationAccountId !== undefined
+          ? data.destinationAccountId
+          : original.destinationAccountId;
       const finalDirection = data.direction || original.direction;
 
       if (finalDirection === "InternalTransfer") {
-        if (!finalSourceId || !finalDestId) throw new Error("InternalTransfer requires both source and destination accounts");
-        if (finalSourceId === finalDestId) throw new Error("Source and destination accounts must be different");
+        if (!finalSourceId || !finalDestId)
+          throw new Error(
+            "InternalTransfer requires both source and destination accounts",
+          );
+        if (finalSourceId === finalDestId)
+          throw new Error("Source and destination accounts must be different");
       } else {
-        if (finalDestId) throw new Error("Destination account is only allowed for InternalTransfer");
+        if (finalDestId)
+          throw new Error(
+            "Destination account is only allowed for InternalTransfer",
+          );
       }
 
       // 2. Reverse original balance changes
@@ -229,8 +329,10 @@ export const updateTransaction = authActionClient
       }
       if (data.amount !== undefined) updateData.amount = data.amount;
       if (data.accountId) updateData.accountId = data.accountId;
-      if (data.categoryId !== undefined) updateData.categoryId = data.categoryId;
-      if (data.destinationAccountId !== undefined) updateData.destinationAccountId = data.destinationAccountId;
+      if (data.categoryId !== undefined)
+        updateData.categoryId = data.categoryId;
+      if (data.destinationAccountId !== undefined)
+        updateData.destinationAccountId = data.destinationAccountId;
       if (data.tags !== undefined) updateData.tags = data.tags;
       if (data.notes !== undefined) updateData.notes = data.notes;
 
@@ -260,7 +362,7 @@ export const deleteTransaction = authActionClient
     await db.$transaction(async (txDb) => {
       const original = await txDb.transaction.findUnique({
         where: { id },
-        include: { externalMapping: true }
+        include: { externalMapping: true },
       });
 
       if (!original || original.userId !== userId) {
@@ -295,7 +397,7 @@ export const bulkDeleteTransactions = authActionClient
       for (const id of ids) {
         const original = await txDb.transaction.findUnique({
           where: { id },
-          include: { externalMapping: true }
+          include: { externalMapping: true },
         });
         if (original && original.userId === userId) {
           if (original.externalMapping) {

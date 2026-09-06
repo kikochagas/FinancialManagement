@@ -8,8 +8,13 @@ const globalForPrisma = globalThis as unknown as {
 
 export function getDatabaseClient(): PrismaClient {
   if (process.env.NODE_ENV === "test") {
-    if (!process.env.DATABASE_URL || !process.env.DATABASE_URL.startsWith("file:")) {
-      throw new Error("Test environment requires a local SQLite DATABASE_URL (e.g. file:../test.db)");
+    if (
+      !process.env.DATABASE_URL ||
+      !process.env.DATABASE_URL.startsWith("file:")
+    ) {
+      throw new Error(
+        "Test environment requires a local SQLite DATABASE_URL (e.g. file:../test.db)",
+      );
     }
     console.log("[db] Using local SQLite test database");
     return new PrismaClient();
@@ -19,7 +24,9 @@ export function getDatabaseClient(): PrismaClient {
   const hasTursoToken = Boolean(process.env.TURSO_AUTH_TOKEN);
 
   if (hasTursoUrl !== hasTursoToken) {
-    throw new Error("TURSO_DATABASE_URL and TURSO_AUTH_TOKEN must be configured together.");
+    throw new Error(
+      "TURSO_DATABASE_URL and TURSO_AUTH_TOKEN must be configured together.",
+    );
   }
 
   if (hasTursoUrl && hasTursoToken) {
@@ -33,7 +40,9 @@ export function getDatabaseClient(): PrismaClient {
   } else {
     // Fallback to local SQLite
     if (process.env.RENDER) {
-      throw new Error("Turso database credentials (TURSO_DATABASE_URL, TURSO_AUTH_TOKEN) are missing in Render production environment. Local SQLite fallback is disabled.");
+      throw new Error(
+        "Turso database credentials (TURSO_DATABASE_URL, TURSO_AUTH_TOKEN) are missing in Render production environment. Local SQLite fallback is disabled.",
+      );
     }
     console.log("[db] Using local SQLite database");
     return new PrismaClient();

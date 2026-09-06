@@ -1,13 +1,33 @@
 "use client";
 
 import React, { useTransition, useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 import { updateSettings, resetAndSeedDatabase, wipeUserData } from "./actions";
 import { useSettingsStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { Settings, RefreshCw, Languages, Coins, Palette, AlertTriangle, Trash2 } from "lucide-react";
+import {
+  Settings,
+  RefreshCw,
+  Languages,
+  Coins,
+  Palette,
+  AlertTriangle,
+  Trash2,
+} from "lucide-react";
 import { useTheme } from "next-themes";
 
 interface SettingsClientProps {
@@ -67,7 +87,7 @@ export function SettingsClient({ data }: SettingsClientProps) {
   const handleResetDatabase = () => {
     if (
       confirm(
-        "WARNING: This will wipe out all custom modifications in the database and re-seed with the initial benchmark balances and configuration! Continue?"
+        "WARNING: This will wipe out all custom modifications in the database and re-seed with the initial benchmark balances and configuration! Continue?",
       )
     ) {
       startResetTransition(async () => {
@@ -83,7 +103,7 @@ export function SettingsClient({ data }: SettingsClientProps) {
   const handleWipeData = () => {
     if (
       confirm(
-        "WARNING: This will permanently delete ALL your financial data (accounts, transactions, goals, investments, etc.). Your settings and account will remain. This action cannot be undone. Continue?"
+        "WARNING: This will permanently delete ALL your financial data (accounts, transactions, goals, investments, etc.). Your settings and account will remain. This action cannot be undone. Continue?",
       )
     ) {
       startWipeTransition(async () => {
@@ -104,13 +124,20 @@ export function SettingsClient({ data }: SettingsClientProps) {
           <CardTitle className="text-sm font-semibold text-card-foreground flex items-center gap-2">
             <Palette className="h-4 w-4 text-primary" /> Interface Theme
           </CardTitle>
-          <CardDescription className="text-xs text-muted-foreground">Adjust interface display aesthetics.</CardDescription>
+          <CardDescription className="text-xs text-muted-foreground">
+            Adjust interface display aesthetics.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Select Theme</span>
+            <span className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">
+              Select Theme
+            </span>
             <div className="w-[180px]">
-              <Select value={theme} onValueChange={(val: any) => handleSavePreferences(val)}>
+              <Select
+                value={theme}
+                onValueChange={(val: any) => handleSavePreferences(val)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select theme" />
                 </SelectTrigger>
@@ -131,13 +158,19 @@ export function SettingsClient({ data }: SettingsClientProps) {
           <CardTitle className="text-sm font-semibold text-card-foreground flex items-center gap-2">
             <Coins className="h-4 w-4 text-primary" /> Currency & Localization
           </CardTitle>
-          <CardDescription className="text-xs text-muted-foreground">System denomination and language settings.</CardDescription>
+          <CardDescription className="text-xs text-muted-foreground">
+            System denomination and language settings.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex flex-col">
-              <span className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Default Currency</span>
-              <span className="text-[10px] text-muted-foreground mt-0.5">Fixed for June/July accounts</span>
+              <span className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">
+                Default Currency
+              </span>
+              <span className="text-[10px] text-muted-foreground mt-0.5">
+                Fixed for June/July accounts
+              </span>
             </div>
             <div className="w-[180px]">
               <Select value={currency} onValueChange={() => {}} disabled>
@@ -153,8 +186,12 @@ export function SettingsClient({ data }: SettingsClientProps) {
 
           <div className="flex items-center justify-between border-t border-border pt-4">
             <div className="flex flex-col">
-              <span className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Language Support</span>
-              <span className="text-[10px] text-muted-foreground mt-0.5">Localization support is coming soon</span>
+              <span className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">
+                Language Support
+              </span>
+              <span className="text-[10px] text-muted-foreground mt-0.5">
+                Localization support is coming soon
+              </span>
             </div>
             <div className="w-[180px]">
               <Select value={language} onValueChange={() => {}} disabled>
@@ -176,31 +213,55 @@ export function SettingsClient({ data }: SettingsClientProps) {
           <CardTitle className="text-sm font-semibold text-destructive flex items-center gap-2">
             <AlertTriangle className="h-4 w-4" /> System Maintenance
           </CardTitle>
-          <CardDescription className="text-xs text-muted-foreground">Danger zone: destructive database operations.</CardDescription>
+          <CardDescription className="text-xs text-muted-foreground">
+            Danger zone: destructive database operations.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="space-y-1">
-              <span className="text-xs text-card-foreground font-semibold">Reset & Re-seed Database</span>
+              <span className="text-xs text-card-foreground font-semibold">
+                Reset & Re-seed Database
+              </span>
               <p className="text-[10px] text-muted-foreground max-w-sm">
-                Wipe all tables and re-populate millisecond-fresh seed configurations representing the initial benchmark cash flows.
+                Wipe all tables and re-populate millisecond-fresh seed
+                configurations representing the initial benchmark cash flows.
               </p>
             </div>
-            <Button variant="outline" size="sm" className="flex items-center gap-2 border-destructive/30 text-destructive hover:bg-destructive/10" onClick={handleResetDatabase} disabled={isResetPending || isWipePending}>
-              <RefreshCw className={cn("h-4 w-4", isResetPending && "animate-spin")} />
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-2 border-destructive/30 text-destructive hover:bg-destructive/10"
+              onClick={handleResetDatabase}
+              disabled={isResetPending || isWipePending}
+            >
+              <RefreshCw
+                className={cn("h-4 w-4", isResetPending && "animate-spin")}
+              />
               {isResetPending ? "Seeding..." : "Reset Data"}
             </Button>
           </div>
 
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-t border-border/50 pt-4">
             <div className="space-y-1">
-              <span className="text-xs text-card-foreground font-semibold">Wipe All Financial Data</span>
+              <span className="text-xs text-card-foreground font-semibold">
+                Wipe All Financial Data
+              </span>
               <p className="text-[10px] text-muted-foreground max-w-sm">
-                Permanently delete all accounts, transactions, investments, and goals. You will start fresh with zero balances.
+                Permanently delete all accounts, transactions, investments, and
+                goals. You will start fresh with zero balances.
               </p>
             </div>
-            <Button variant="destructive" size="sm" className="flex items-center gap-2" onClick={handleWipeData} disabled={isWipePending || isResetPending}>
-              <Trash2 className={cn("h-4 w-4", isWipePending && "animate-spin")} />
+            <Button
+              variant="destructive"
+              size="sm"
+              className="flex items-center gap-2"
+              onClick={handleWipeData}
+              disabled={isWipePending || isResetPending}
+            >
+              <Trash2
+                className={cn("h-4 w-4", isWipePending && "animate-spin")}
+              />
               {isWipePending ? "Wiping..." : "Wipe All Data"}
             </Button>
           </div>

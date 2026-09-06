@@ -10,8 +10,14 @@ export async function orchestrateColumnMapping(
   headers: string[],
   dataRows: any[][],
   aiMapper: BankStatementAIMapper,
-  headerRowIndex: number = 0
-): Promise<{ mapping: Record<number, ColumnMapping>; aiSucceeded: boolean; aiAttempted: boolean; aiError: string | null; warnings: string[] }> {
+  headerRowIndex: number = 0,
+): Promise<{
+  mapping: Record<number, ColumnMapping>;
+  aiSucceeded: boolean;
+  aiAttempted: boolean;
+  aiError: string | null;
+  warnings: string[];
+}> {
   const warnings: string[] = [];
   const mapping: Record<number, ColumnMapping> = {};
 
@@ -28,11 +34,15 @@ export async function orchestrateColumnMapping(
   });
 
   // Collision handling for DESCRIPTION
-  const descColumns = Object.values(mapping).filter(m => m.semantic === "DESCRIPTION");
+  const descColumns = Object.values(mapping).filter(
+    (m) => m.semantic === "DESCRIPTION",
+  );
   if (descColumns.length > 1) {
-    descColumns.forEach(m => {
+    descColumns.forEach((m) => {
       mapping[m.columnIndex].confidence = 0.4; // Degrade confidence to force review
-      warnings.push(`Semantic collision on DESCRIPTION for column: ${m.header}`);
+      warnings.push(
+        `Semantic collision on DESCRIPTION for column: ${m.header}`,
+      );
     });
   }
 
@@ -48,11 +58,13 @@ export async function orchestrateColumnMapping(
 
     try {
       const transactionDataRows = dataRows.slice(headerRowIndex + 1);
-      const sanitizedCols: AISanitizedColumnInfo[] = headers.map((header, idx) => ({
-        index: idx,
-        normalizedHeader: normalizeHeader(header),
-        valueShapes: sampleColumnShapes(transactionDataRows, idx),
-      }));
+      const sanitizedCols: AISanitizedColumnInfo[] = headers.map(
+        (header, idx) => ({
+          index: idx,
+          normalizedHeader: normalizeHeader(header),
+          valueShapes: sampleColumnShapes(transactionDataRows, idx),
+        }),
+      );
 
       aiResult = await aiMapper.mapColumns(sanitizedCols);
     } catch (e: any) {
@@ -62,7 +74,7 @@ export async function orchestrateColumnMapping(
     if (aiResult) {
       try {
         if (!aiResult.mappings || !Array.isArray(aiResult.mappings)) {
-            throw new Error("Invalid mappings returned from AI");
+          throw new Error("Invalid mappings returned from AI");
         }
 
         aiResult.mappings.forEach((aiMapping: any) => {
@@ -72,18 +84,23 @@ export async function orchestrateColumnMapping(
               mapping[aiMapping.columnIndex] = {
                 columnIndex: aiMapping.columnIndex,
                 header: aiMapping.header,
-                semantic: aiMapping.semantic === "IGNORE" ? null : aiMapping.semantic,
+                semantic:
+                  aiMapping.semantic === "IGNORE" ? null : aiMapping.semantic,
                 confidence: aiMapping.confidence,
                 source: "ai",
               };
             } else if (existing.semantic !== aiMapping.semantic) {
               mapping[aiMapping.columnIndex].confidence = 0.5; // Flagged
-              warnings.push(`AI disagreed with strong deterministic match for column: ${existing.header}`);
+              warnings.push(
+                `AI disagreed with strong deterministic match for column: ${existing.header}`,
+              );
             }
           }
         });
 
-        const aiWarnings = Array.isArray(aiResult.warnings) ? aiResult.warnings : [];
+        const aiWarnings = Array.isArray(aiResult.warnings)
+          ? aiResult.warnings
+          : [];
         warnings.push(...aiWarnings);
 
         // Explicit invariant: If we get here successfully, it succeeded.

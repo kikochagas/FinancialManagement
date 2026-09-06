@@ -13,8 +13,8 @@ vi.mock("../../../../lib/db", () => ({
     transaction: {
       findFirst: vi.fn(),
       create: vi.fn(),
-    }
-  }
+    },
+  },
 }));
 
 vi.mock("../../../../lib/auth", () => ({
@@ -33,18 +33,27 @@ describe("importBankStatementAction", () => {
       id: "acc_1",
       userId: "user_1",
       externalMappings: [
-        { disconnectedAt: null } // ACTIVE
-      ]
+        { disconnectedAt: null }, // ACTIVE
+      ],
     });
 
     const result = await importBankStatementAction({
       accountId: "acc_1",
       updateBalance: false,
-      transactions: [{ bookingDate: "2026-08-12", description: "test", amount: 10, direction: "Credit" }]
+      transactions: [
+        {
+          bookingDate: "2026-08-12",
+          description: "test",
+          amount: 10,
+          direction: "Credit",
+        },
+      ],
     });
 
     // The safe-action client returns a serverError when an error is thrown
-    expect(result?.serverError).toContain("Cannot import unstructured bank statement into an actively connected Open Banking account");
+    expect(result?.serverError).toContain(
+      "Cannot import unstructured bank statement into an actively connected Open Banking account",
+    );
   });
 
   it("accepts historically disconnected accounts and manual accounts", async () => {
@@ -52,8 +61,8 @@ describe("importBankStatementAction", () => {
       id: "acc_1",
       userId: "user_1",
       externalMappings: [
-        { disconnectedAt: new Date() } // HISTORICAL
-      ]
+        { disconnectedAt: new Date() }, // HISTORICAL
+      ],
     });
 
     // Mock the $transaction to just execute the callback
@@ -64,105 +73,169 @@ describe("importBankStatementAction", () => {
     const result = await importBankStatementAction({
       accountId: "acc_1",
       updateBalance: false,
-      transactions: [{ bookingDate: "2026-08-12", description: "test", amount: 10, direction: "Credit" }]
+      transactions: [
+        {
+          bookingDate: "2026-08-12",
+          description: "test",
+          amount: 10,
+          direction: "Credit",
+        },
+      ],
     });
 
     expect(result?.data?.success).toBe(true);
   });
 
   it("server accepts EUR rows for EUR account", async () => {
-    (db.account.findFirst as any).mockResolvedValue({ id: "acc_1", currency: "EUR", externalMappings: [] });
+    (db.account.findFirst as any).mockResolvedValue({
+      id: "acc_1",
+      currency: "EUR",
+      externalMappings: [],
+    });
     (db.$transaction as any).mockImplementation(async (cb: any) => cb(db));
 
     const result = await importBankStatementAction({
       accountId: "acc_1",
       updateBalance: false,
       transactions: [
-        { bookingDate: "2026-08-12", description: "test", amount: 10, direction: "Credit", currency: "EUR" }
-      ]
+        {
+          bookingDate: "2026-08-12",
+          description: "test",
+          amount: 10,
+          direction: "Credit",
+          currency: "EUR",
+        },
+      ],
     });
 
     expect(result?.data?.success).toBe(true);
   });
 
   it("server rejects USD rows for EUR account", async () => {
-    (db.account.findFirst as any).mockResolvedValue({ id: "acc_1", currency: "EUR", externalMappings: [] });
+    (db.account.findFirst as any).mockResolvedValue({
+      id: "acc_1",
+      currency: "EUR",
+      externalMappings: [],
+    });
 
     const result = await importBankStatementAction({
       accountId: "acc_1",
       updateBalance: false,
       transactions: [
-        { bookingDate: "2026-08-12", description: "test", amount: 10, direction: "Credit", currency: "USD" }
-      ]
+        {
+          bookingDate: "2026-08-12",
+          description: "test",
+          amount: 10,
+          direction: "Credit",
+          currency: "USD",
+        },
+      ],
     });
 
-    expect(result?.serverError).toContain("Statement currency does not match account currency");
+    expect(result?.serverError).toContain(
+      "Statement currency does not match account currency",
+    );
   });
 
-    it('should reject InternalTransfer direction', async () => {
-      const parsedInput = {
-        accountId: 'acc-1',
-        updateBalance: false,
-        transactions: [
-          {
-            bookingDate: '2026-08-01',
-            description: 'Transfer',
-            amount: 100,
-            direction: 'InternalTransfer' as any,
-            forceImportDuplicate: false
-          }
-        ]
-      };
+  it("should reject InternalTransfer direction", async () => {
+    const parsedInput = {
+      accountId: "acc-1",
+      updateBalance: false,
+      transactions: [
+        {
+          bookingDate: "2026-08-01",
+          description: "Transfer",
+          amount: 100,
+          direction: "InternalTransfer" as any,
+          forceImportDuplicate: false,
+        },
+      ],
+    };
 
-      const res = await importBankStatementAction(parsedInput);
-      expect(res?.validationErrors).toBeDefined();
-    });
+    const res = await importBankStatementAction(parsedInput);
+    expect(res?.validationErrors).toBeDefined();
+  });
 
-    it('should reject InternalTransfer in previewBankStatementDuplicatesAction', async () => {
-      const { previewBankStatementDuplicatesAction } = await import('../../bank-import/actions');
-      const parsedInput = {
-        accountId: 'acc-1',
-        transactions: [
-          {
-            candidateIndex: 0,
-            bookingDate: '2026-08-01',
-            description: 'Transfer',
-            amount: 100,
-            direction: 'InternalTransfer' as any
-          }
-        ]
-      };
-      
-      const res = await previewBankStatementDuplicatesAction(parsedInput);
-      expect(res?.validationErrors).toBeDefined();
-    });
+  it("should reject InternalTransfer in previewBankStatementDuplicatesAction", async () => {
+    const { previewBankStatementDuplicatesAction } =
+      await import("../../bank-import/actions");
+    const parsedInput = {
+      accountId: "acc-1",
+      transactions: [
+        {
+          candidateIndex: 0,
+          bookingDate: "2026-08-01",
+          description: "Transfer",
+          amount: 100,
+          direction: "InternalTransfer" as any,
+        },
+      ],
+    };
+
+    const res = await previewBankStatementDuplicatesAction(parsedInput);
+    expect(res?.validationErrors).toBeDefined();
+  });
 
   it("server rejects mixed-currency rows", async () => {
-    (db.account.findFirst as any).mockResolvedValue({ id: "acc_1", currency: "EUR", externalMappings: [] });
+    (db.account.findFirst as any).mockResolvedValue({
+      id: "acc_1",
+      currency: "EUR",
+      externalMappings: [],
+    });
 
     const result = await importBankStatementAction({
       accountId: "acc_1",
       updateBalance: false,
       transactions: [
-        { bookingDate: "2026-08-12", description: "test1", amount: 10, direction: "Credit", currency: "EUR" },
-        { bookingDate: "2026-08-12", description: "test2", amount: 10, direction: "Credit", currency: "USD" }
-      ]
+        {
+          bookingDate: "2026-08-12",
+          description: "test1",
+          amount: 10,
+          direction: "Credit",
+          currency: "EUR",
+        },
+        {
+          bookingDate: "2026-08-12",
+          description: "test2",
+          amount: 10,
+          direction: "Credit",
+          currency: "USD",
+        },
+      ],
     });
 
-    expect(result?.serverError).toContain("Cannot import multi-currency statements");
+    expect(result?.serverError).toContain(
+      "Cannot import multi-currency statements",
+    );
   });
 
   it("server accepts mixed unknown and known currency rows matching account", async () => {
-    (db.account.findFirst as any).mockResolvedValue({ id: "acc_1", currency: "EUR", externalMappings: [] });
+    (db.account.findFirst as any).mockResolvedValue({
+      id: "acc_1",
+      currency: "EUR",
+      externalMappings: [],
+    });
     (db.$transaction as any).mockImplementation(async (cb: any) => cb(db));
 
     const result = await importBankStatementAction({
       accountId: "acc_1",
       updateBalance: false,
       transactions: [
-        { bookingDate: "2026-08-12", description: "test1", amount: 10, direction: "Credit", currency: "EUR" },
-        { bookingDate: "2026-08-12", description: "test2", amount: 10, direction: "Credit", currency: null } // derived from bare $ or absent
-      ]
+        {
+          bookingDate: "2026-08-12",
+          description: "test1",
+          amount: 10,
+          direction: "Credit",
+          currency: "EUR",
+        },
+        {
+          bookingDate: "2026-08-12",
+          description: "test2",
+          amount: 10,
+          direction: "Credit",
+          currency: null,
+        }, // derived from bare $ or absent
+      ],
     });
 
     expect(result?.data?.success).toBe(true);
@@ -174,9 +247,11 @@ describe("importBankStatementAction", () => {
         accountId: "acc_1",
         updateBalance: true,
         endingBalance: 100,
-        transactions: []
+        transactions: [],
       });
-      expect((result?.validationErrors?.transactions as any)?._errors).toContain("At least one valid transaction is required.");
+      expect(
+        (result?.validationErrors?.transactions as any)?._errors,
+      ).toContain("At least one valid transaction is required.");
     });
 
     it("rejects Infinity endingBalance", async () => {
@@ -184,7 +259,14 @@ describe("importBankStatementAction", () => {
         accountId: "acc_1",
         updateBalance: true,
         endingBalance: Infinity,
-        transactions: [{ bookingDate: "2026-08-12", description: "test", amount: 10, direction: "Credit" }]
+        transactions: [
+          {
+            bookingDate: "2026-08-12",
+            description: "test",
+            amount: 10,
+            direction: "Credit",
+          },
+        ],
       });
       expect(result?.validationErrors?.endingBalance?._errors).toBeDefined();
     });
@@ -194,7 +276,14 @@ describe("importBankStatementAction", () => {
         accountId: "acc_1",
         updateBalance: true,
         endingBalance: -Infinity,
-        transactions: [{ bookingDate: "2026-08-12", description: "test", amount: 10, direction: "Credit" }]
+        transactions: [
+          {
+            bookingDate: "2026-08-12",
+            description: "test",
+            amount: 10,
+            direction: "Credit",
+          },
+        ],
       });
       expect(result?.validationErrors?.endingBalance?._errors).toBeDefined();
     });
@@ -204,20 +293,38 @@ describe("importBankStatementAction", () => {
         accountId: "acc_1",
         updateBalance: true,
         endingBalance: NaN,
-        transactions: [{ bookingDate: "2026-08-12", description: "test", amount: 10, direction: "Credit" }]
+        transactions: [
+          {
+            bookingDate: "2026-08-12",
+            description: "test",
+            amount: 10,
+            direction: "Credit",
+          },
+        ],
       });
       expect(result?.validationErrors?.endingBalance?._errors).toBeDefined();
     });
 
     it("accepts finite endingBalance when updateBalance is true", async () => {
-      (db.account.findFirst as any).mockResolvedValue({ id: "acc_1", currency: "EUR", externalMappings: [] });
+      (db.account.findFirst as any).mockResolvedValue({
+        id: "acc_1",
+        currency: "EUR",
+        externalMappings: [],
+      });
       (db.$transaction as any).mockImplementation(async (cb: any) => cb(db));
 
       const result = await importBankStatementAction({
         accountId: "acc_1",
         updateBalance: true,
         endingBalance: 123.45,
-        transactions: [{ bookingDate: "2026-08-12", description: "test", amount: 10, direction: "Credit" }]
+        transactions: [
+          {
+            bookingDate: "2026-08-12",
+            description: "test",
+            amount: 10,
+            direction: "Credit",
+          },
+        ],
       });
       expect(result?.data?.success).toBe(true);
     });

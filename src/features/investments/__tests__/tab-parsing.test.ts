@@ -1,7 +1,9 @@
 import { describe, test, expect } from "vitest";
 
 // Helper mirroring the logic inside InvestmentsClient
-export function parseTab (queryTab: string | null): "portfolio" | "activity" | "import" {
+export function parseTab(
+  queryTab: string | null,
+): "portfolio" | "activity" | "import" {
   if (queryTab === "activity") return "activity";
   if (queryTab === "import") return "import";
 

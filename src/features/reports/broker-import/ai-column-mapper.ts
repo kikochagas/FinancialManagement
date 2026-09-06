@@ -27,21 +27,25 @@ export const BrokerStatementAIMappingResultSchema = z.object({
         "ORIGINAL_CURRENCY",
         "FX_RATE",
         "DESCRIPTION",
-        "IGNORE"
+        "IGNORE",
       ]),
       confidence: z.number(),
-    })
+    }),
   ),
   overallConfidence: z.number(),
   warnings: z.array(z.string()),
 });
 
-export type BrokerStatementAIMappingResult = z.infer<typeof BrokerStatementAIMappingResultSchema>;
+export type BrokerStatementAIMappingResult = z.infer<
+  typeof BrokerStatementAIMappingResultSchema
+>;
 
 export class BrokerTransactionAIMapper {
   constructor(private provider: AIProvider) {}
 
-  async mapColumns(columns: AISanitizedColumnInfo[]): Promise<BrokerStatementAIMappingResult> {
+  async mapColumns(
+    columns: AISanitizedColumnInfo[],
+  ): Promise<BrokerStatementAIMappingResult> {
     const systemPrompt = `You are an expert at mapping unstructured broker transaction exports to a strict vocabulary.
 You will be provided with a JSON array of columns. Each column has an index, a normalized header, and a list of observed value shapes from the data rows.
 Your job is to identify the semantic meaning of each column.

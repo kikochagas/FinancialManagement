@@ -15,7 +15,12 @@ export function validateBrokerTransaction(tx: ParsedBrokerTransaction): void {
   }
 
   if (tx.eventType === "BUY" || tx.eventType === "SELL") {
-    if (!tx.instrumentIdentifier && !tx.isin && !tx.ticker && !tx.instrumentName) {
+    if (
+      !tx.instrumentIdentifier &&
+      !tx.isin &&
+      !tx.ticker &&
+      !tx.instrumentName
+    ) {
       tx.valid = false;
       tx.warnings.push("Missing instrument identifier for trade.");
     }
@@ -29,7 +34,14 @@ export function validateBrokerTransaction(tx: ParsedBrokerTransaction): void {
     }
   }
 
-  if (tx.eventType === "DIVIDEND" || tx.eventType === "INTEREST" || tx.eventType === "CASH_DEPOSIT" || tx.eventType === "CASH_WITHDRAWAL" || tx.eventType === "FEE" || tx.eventType === "TAX") {
+  if (
+    tx.eventType === "DIVIDEND" ||
+    tx.eventType === "INTEREST" ||
+    tx.eventType === "CASH_DEPOSIT" ||
+    tx.eventType === "CASH_WITHDRAWAL" ||
+    tx.eventType === "FEE" ||
+    tx.eventType === "TAX"
+  ) {
     if (tx.amount === null) {
       tx.valid = false;
       tx.warnings.push("Missing amount for cash movement.");

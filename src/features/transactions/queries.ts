@@ -37,7 +37,17 @@ export async function getTransactionsData() {
       tags: t.tags,
       notes: t.notes || "",
     })),
-    accounts: accounts.map((a) => ({ id: a.id, name: a.name, type: a.type, balance: a.balance })),
-    categories: categories.map((c) => ({ id: c.id, name: c.name, systemKey: c.systemKey || "", color: c.color || "#94a3b8" })),
+    accounts: accounts.map((a) => ({
+      id: a.id,
+      name: a.name,
+      type: a.type,
+      balance: a.balance,
+    })),
+    categories: categories.map((c) => ({
+      id: c.id,
+      name: c.name,
+      systemKey: c.systemKey || "",
+      color: c.color || "#94a3b8",
+    })),
   };
 }

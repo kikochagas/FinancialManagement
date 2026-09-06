@@ -23,7 +23,11 @@ export const useSettingsStore = create<SettingsState>()(
           const root = window.document.documentElement;
           root.classList.remove("light", "dark");
           if (theme === "System") {
-            const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+            const systemTheme = window.matchMedia(
+              "(prefers-color-scheme: dark)",
+            ).matches
+              ? "dark"
+              : "light";
             root.classList.add(systemTheme);
           } else {
             root.classList.add(theme.toLowerCase());
@@ -35,6 +39,6 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: "financial-management-settings",
-    }
-  )
+    },
+  ),
 );

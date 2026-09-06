@@ -6,60 +6,95 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 
 const importDataSchema = z.object({
-  importMode: z.enum(["FullBackup", "TransactionsOnly"]).default("TransactionsOnly"),
-  transactions: z.array(z.object({
-    date: z.string(),
-    description: z.string(),
-    direction: z.enum(["Credit", "Debit", "InternalTransfer"]),
-    amount: z.number(),
-    accountName: z.string(),
-    destinationAccountName: z.string().optional().nullable(),
-    categoryName: z.string().optional().nullable(),
-    tags: z.string().default(""),
-    notes: z.string().optional().nullable(),
-  })).optional(),
-  accounts: z.array(z.object({
-    name: z.string(),
-    type: z.string(),
-    balance: z.number(),
-    currency: z.string().default("EUR"),
-  })).optional(),
-  investments: z.array(z.object({
-    name: z.string(),
-    type: z.string(),
-    costBasis: z.number().nullable().optional(),
-    marketValue: z.number(),
-  })).optional(),
-  goals: z.array(z.object({
-    name: z.string(),
-    type: z.string(),
-    targetAmount: z.number(),
-    currentAmount: z.number(),
-  })).optional(),
-  snapshots: z.array(z.object({
-    year: z.number(),
-    month: z.number(),
-    netWorth: z.number(),
-    liquidAssets: z.number(),
-    investmentsValue: z.number(),
-    savingsRate: z.number(),
-  })).optional(),
+  importMode: z
+    .enum(["FullBackup", "TransactionsOnly"])
+    .default("TransactionsOnly"),
+  transactions: z
+    .array(
+      z.object({
+        date: z.string(),
+        description: z.string(),
+        direction: z.enum(["Credit", "Debit", "InternalTransfer"]),
+        amount: z.number(),
+        accountName: z.string(),
+        destinationAccountName: z.string().optional().nullable(),
+        categoryName: z.string().optional().nullable(),
+        tags: z.string().default(""),
+        notes: z.string().optional().nullable(),
+      }),
+    )
+    .optional(),
+  accounts: z
+    .array(
+      z.object({
+        name: z.string(),
+        type: z.string(),
+        balance: z.number(),
+        currency: z.string().default("EUR"),
+      }),
+    )
+    .optional(),
+  investments: z
+    .array(
+      z.object({
+        name: z.string(),
+        type: z.string(),
+        costBasis: z.number().nullable().optional(),
+        marketValue: z.number(),
+      }),
+    )
+    .optional(),
+  goals: z
+    .array(
+      z.object({
+        name: z.string(),
+        type: z.string(),
+        targetAmount: z.number(),
+        currentAmount: z.number(),
+      }),
+    )
+    .optional(),
+  snapshots: z
+    .array(
+      z.object({
+        year: z.number(),
+        month: z.number(),
+        netWorth: z.number(),
+        liquidAssets: z.number(),
+        investmentsValue: z.number(),
+        savingsRate: z.number(),
+      }),
+    )
+    .optional(),
 });
 
 export const importDataAction = authActionClient
   .schema(importDataSchema)
   .action(async ({ parsedInput, ctx: { userId } }) => {
-    const { importMode, transactions, accounts, investments, goals, snapshots } = parsedInput;
+    const {
+      importMode,
+      transactions,
+      accounts,
+      investments,
+      goals,
+      snapshots,
+    } = parsedInput;
 
     await db.$transaction(async (txDb) => {
       // 1. Process Accounts
       if (accounts && accounts.length > 0) {
         for (const acc of accounts) {
-          const existing = await txDb.account.findFirst({ where: { userId, name: acc.name } });
+          const existing = await txDb.account.findFirst({
+            where: { userId, name: acc.name },
+          });
           if (existing) {
             await txDb.account.update({
               where: { id: existing.id },
-              data: { balance: acc.balance, type: acc.type, currency: acc.currency },
+              data: {
+                balance: acc.balance,
+                type: acc.type,
+                currency: acc.currency,
+              },
             });
           } else {
             await txDb.account.create({
@@ -78,26 +113,39 @@ export const importDataAction = authActionClient
       // 2. Process Transactions
       if (transactions && transactions.length > 0) {
         const dbAccounts = await txDb.account.findMany({ where: { userId } });
-        const dbCategories = await txDb.category.findMany({ where: { userId } });
+        const dbCategories = await txDb.category.findMany({
+          where: { userId },
+        });
 
         for (const tx of transactions) {
           // Enforce invariants
           if (tx.direction === "Debit" || tx.direction === "Credit") {
             if (tx.destinationAccountName) {
-              throw new Error(`Destination account must not be supplied for ${tx.direction}`);
+              throw new Error(
+                `Destination account must not be supplied for ${tx.direction}`,
+              );
             }
           }
           if (tx.direction === "InternalTransfer") {
             if (!tx.accountName || !tx.destinationAccountName) {
-              throw new Error("Source and destination required for InternalTransfer");
+              throw new Error(
+                "Source and destination required for InternalTransfer",
+              );
             }
-            if (tx.accountName.toLowerCase() === tx.destinationAccountName.toLowerCase()) {
-              throw new Error("Source and destination accounts cannot be the same");
+            if (
+              tx.accountName.toLowerCase() ===
+              tx.destinationAccountName.toLowerCase()
+            ) {
+              throw new Error(
+                "Source and destination accounts cannot be the same",
+              );
             }
           }
 
           // Find or create account
-          let account = dbAccounts.find((a) => a.name.toLowerCase() === tx.accountName.toLowerCase());
+          let account = dbAccounts.find(
+            (a) => a.name.toLowerCase() === tx.accountName.toLowerCase(),
+          );
           if (!account) {
             account = await txDb.account.create({
               data: {
@@ -113,7 +161,9 @@ export const importDataAction = authActionClient
           // Find or create category
           let categoryId: string | null = null;
           if (tx.categoryName) {
-            let category = dbCategories.find((c) => c.name.toLowerCase() === tx.categoryName!.toLowerCase());
+            let category = dbCategories.find(
+              (c) => c.name.toLowerCase() === tx.categoryName!.toLowerCase(),
+            );
             if (!category) {
               category = await txDb.category.create({
                 data: {
@@ -130,8 +180,15 @@ export const importDataAction = authActionClient
           const txDate = new Date(tx.date);
 
           let destAccount: any = null;
-          if (tx.direction === "InternalTransfer" && tx.destinationAccountName) {
-            destAccount = dbAccounts.find((a) => a.name.toLowerCase() === tx.destinationAccountName!.toLowerCase());
+          if (
+            tx.direction === "InternalTransfer" &&
+            tx.destinationAccountName
+          ) {
+            destAccount = dbAccounts.find(
+              (a) =>
+                a.name.toLowerCase() ===
+                tx.destinationAccountName!.toLowerCase(),
+            );
             if (!destAccount) {
               destAccount = await txDb.account.create({
                 data: {
@@ -208,8 +265,11 @@ export const importDataAction = authActionClient
       // 3. Process Investments
       if (investments && investments.length > 0) {
         for (const inv of investments) {
-          const existing = await txDb.investment.findFirst({ where: { userId, name: inv.name } });
-          const profit = inv.costBasis != null ? inv.marketValue - inv.costBasis : null;
+          const existing = await txDb.investment.findFirst({
+            where: { userId, name: inv.name },
+          });
+          const profit =
+            inv.costBasis != null ? inv.marketValue - inv.costBasis : null;
           if (existing) {
             await txDb.investment.update({
               where: { id: existing.id },
@@ -218,7 +278,7 @@ export const importDataAction = authActionClient
                 costBasis: inv.costBasis,
                 marketValue: inv.marketValue,
                 profit,
-              }
+              },
             });
           } else {
             await txDb.investment.create({
@@ -229,16 +289,24 @@ export const importDataAction = authActionClient
                 costBasis: inv.costBasis,
                 marketValue: inv.marketValue,
                 profit,
-                allocation: 0
-              }
+                allocation: 0,
+              },
             });
           }
         }
         // Recompute allocations
-        const allInvestments = await txDb.investment.findMany({ where: { userId } });
-        const totalMarketValue = allInvestments.reduce((sum, inv) => sum + inv.marketValue, 0);
+        const allInvestments = await txDb.investment.findMany({
+          where: { userId },
+        });
+        const totalMarketValue = allInvestments.reduce(
+          (sum, inv) => sum + inv.marketValue,
+          0,
+        );
         for (const inv of allInvestments) {
-          let newAllocation = totalMarketValue > 0 ? (inv.marketValue / totalMarketValue) * 100 : 0;
+          let newAllocation =
+            totalMarketValue > 0
+              ? (inv.marketValue / totalMarketValue) * 100
+              : 0;
           await txDb.investment.update({
             where: { id: inv.id },
             data: { allocation: newAllocation },
@@ -249,8 +317,13 @@ export const importDataAction = authActionClient
       // 4. Process Goals
       if (goals && goals.length > 0) {
         for (const goal of goals) {
-          const existing = await txDb.goal.findFirst({ where: { userId, name: goal.name } });
-          const progress = goal.targetAmount > 0 ? (goal.currentAmount / goal.targetAmount) * 100 : 0;
+          const existing = await txDb.goal.findFirst({
+            where: { userId, name: goal.name },
+          });
+          const progress =
+            goal.targetAmount > 0
+              ? (goal.currentAmount / goal.targetAmount) * 100
+              : 0;
           if (existing) {
             await txDb.goal.update({
               where: { id: existing.id },
@@ -259,7 +332,7 @@ export const importDataAction = authActionClient
                 targetAmount: goal.targetAmount,
                 currentAmount: goal.currentAmount,
                 progress,
-              }
+              },
             });
           } else {
             await txDb.goal.create({
@@ -270,7 +343,7 @@ export const importDataAction = authActionClient
                 targetAmount: goal.targetAmount,
                 currentAmount: goal.currentAmount,
                 progress,
-              }
+              },
             });
           }
         }
@@ -278,10 +351,10 @@ export const importDataAction = authActionClient
       // 5. Process Snapshots
       if (snapshots && snapshots.length > 0) {
         for (const snap of snapshots) {
-          const existing = await txDb.monthlySnapshot.findFirst({ 
-            where: { userId, year: snap.year, month: snap.month } 
+          const existing = await txDb.monthlySnapshot.findFirst({
+            where: { userId, year: snap.year, month: snap.month },
           });
-          
+
           if (existing) {
             await txDb.monthlySnapshot.update({
               where: { id: existing.id },
@@ -290,7 +363,7 @@ export const importDataAction = authActionClient
                 liquidAssets: snap.liquidAssets,
                 investmentsValue: snap.investmentsValue,
                 savingsRate: snap.savingsRate,
-              }
+              },
             });
           } else {
             await txDb.monthlySnapshot.create({
@@ -302,7 +375,7 @@ export const importDataAction = authActionClient
                 liquidAssets: snap.liquidAssets,
                 investmentsValue: snap.investmentsValue,
                 savingsRate: snap.savingsRate,
-              }
+              },
             });
           }
         }
@@ -317,4 +390,3 @@ export const importDataAction = authActionClient
     revalidatePath("/reports");
     return { success: true };
   });
-

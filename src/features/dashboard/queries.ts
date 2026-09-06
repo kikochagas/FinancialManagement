@@ -11,11 +11,13 @@ export async function getDashboardData() {
   const accounts = await db.account.findMany({ where: { userId } });
   const investments = await db.investment.findMany({ where: { userId } });
   const goals = await db.goal.findMany({ where: { userId } });
-  const taxReservations = await db.taxReservation.findMany({ where: { userId } });
+  const taxReservations = await db.taxReservation.findMany({
+    where: { userId },
+  });
   const categories = await ensureDefaultCategories(userId);
 
   // Use current date
-  const now = new Date(); 
+  const now = new Date();
   const currentMonthStart = startOfMonth(now);
   const currentMonthEnd = endOfMonth(now);
   const monthName = now.toLocaleString("en-US", { month: "short" });
@@ -41,13 +43,16 @@ export async function getDashboardData() {
   });
 
   // Investments: Total market value of all tracked investments
-  const investmentsValue = investments.reduce((acc, inv) => acc + inv.marketValue, 0);
+  const investmentsValue = investments.reduce(
+    (acc, inv) => acc + inv.marketValue,
+    0,
+  );
 
   // Calculate Net Worth
   const totalAccountBalance = accounts.reduce((acc, a) => acc + a.balance, 0);
   const netWorth = totalAccountBalance + investmentsValue;
 
-    // Liquid Assets: generic liquid account classification
+  // Liquid Assets: generic liquid account classification
   const liquidAssets = accounts
     .filter((a) => isLiquidAccountType(a.type))
     .reduce((acc, a) => acc + a.balance, 0);
@@ -61,30 +66,41 @@ export async function getDashboardData() {
     .filter((t) => t.direction === "Debit")
     .reduce((acc, t) => acc + Math.abs(t.amount), 0);
 
-  const savingsRate = currentIncome > 0 ? ((currentIncome - currentExpenses) / currentIncome) * 100 : 0;
+  const savingsRate =
+    currentIncome > 0
+      ? ((currentIncome - currentExpenses) / currentIncome) * 100
+      : 0;
 
   // Dynamic Cards Logic
-  const dynamicCards: Array<{ title: string; value: number; description: string; type: string }> = [];
+  const dynamicCards: Array<{
+    title: string;
+    value: number;
+    description: string;
+    type: string;
+  }> = [];
 
   if (taxReservations.length > 0) {
     const latestTax = taxReservations[0];
-    const taxRemaining = Math.max(0, latestTax.estimatedTaxLiability - latestTax.taxWithheld);
+    const taxRemaining = Math.max(
+      0,
+      latestTax.estimatedTaxLiability - latestTax.taxWithheld,
+    );
     if (taxRemaining > 0) {
       dynamicCards.push({
         title: "IRS Remaining",
         value: taxRemaining,
         description: "Estimated outstanding tax",
-        type: "tax"
+        type: "tax",
       });
     }
   }
 
-  goals.forEach(g => {
+  goals.forEach((g) => {
     dynamicCards.push({
       title: g.name,
       value: g.currentAmount,
-      description: `Target: ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'EUR' }).format(g.targetAmount)}`,
-      type: "goal"
+      description: `Target: ${new Intl.NumberFormat("en-US", { style: "currency", currency: "EUR" }).format(g.targetAmount)}`,
+      type: "goal",
     });
   });
 
@@ -96,7 +112,7 @@ export async function getDashboardData() {
         title: `${acc.name} Balance`,
         value: acc.balance,
         description: `${acc.type} Account`,
-        type: "account"
+        type: "account",
       });
     }
   }
@@ -128,15 +144,18 @@ export async function getDashboardData() {
     .forEach((t) => {
       const cat = categories.find((c) => c.id === t.categoryId);
       if (cat) {
-        categoryExpensesMap[cat.name] = (categoryExpensesMap[cat.name] || 0) + Math.abs(t.amount);
+        categoryExpensesMap[cat.name] =
+          (categoryExpensesMap[cat.name] || 0) + Math.abs(t.amount);
       }
     });
 
-  const expensesByCategory = Object.entries(categoryExpensesMap).map(([name, value]) => ({
-    name,
-    value,
-    color: categories.find((c) => c.name === name)?.color || "#94a3b8",
-  }));
+  const expensesByCategory = Object.entries(categoryExpensesMap).map(
+    ([name, value]) => ({
+      name,
+      value,
+      color: categories.find((c) => c.name === name)?.color || "#94a3b8",
+    }),
+  );
 
   // Chart data: Income by Source
   const sourceIncomeMap: Record<string, number> = {};
@@ -149,14 +168,18 @@ export async function getDashboardData() {
       }
     });
 
-  const incomeBySource = Object.entries(sourceIncomeMap).map(([name, value]) => ({
-    name,
-    value,
-    color: categories.find((c) => c.name === name)?.color || "#10B981",
-  }));
+  const incomeBySource = Object.entries(sourceIncomeMap).map(
+    ([name, value]) => ({
+      name,
+      value,
+      color: categories.find((c) => c.name === name)?.color || "#10B981",
+    }),
+  );
 
   // Asset allocation charts
-  const assetAllocations = await db.assetAllocation.findMany({ where: { userId } });
+  const assetAllocations = await db.assetAllocation.findMany({
+    where: { userId },
+  });
 
   const sixMonthsAgoStart = startOfMonth(subMonths(now, 5));
   const last6MonthsTransactions = await db.transaction.findMany({
@@ -191,7 +214,20 @@ export async function getDashboardData() {
       account: t.account?.name || "External",
     })),
     netWorthEvolution: snapshots.map((s) => {
-      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const monthNames = [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec",
+      ];
       return {
         name: monthNames[s.month - 1] + " " + s.year,
         netWorth: s.netWorth,
@@ -205,24 +241,31 @@ export async function getDashboardData() {
       const mStart = startOfMonth(mDate).getTime();
       const mEnd = endOfMonth(mDate).getTime();
 
-      const mTransactions = last6MonthsTransactions.filter(t => {
+      const mTransactions = last6MonthsTransactions.filter((t) => {
         const tTime = t.date.getTime();
         return tTime >= mStart && tTime <= mEnd;
       });
 
-      const mInc = mTransactions.filter(t => t.direction === "Credit").reduce((sum, t) => sum + t.amount, 0);
-      const mExp = mTransactions.filter(t => t.direction === "Debit").reduce((sum, t) => sum + Math.abs(t.amount), 0);
-      
+      const mInc = mTransactions
+        .filter((t) => t.direction === "Credit")
+        .reduce((sum, t) => sum + t.amount, 0);
+      const mExp = mTransactions
+        .filter((t) => t.direction === "Debit")
+        .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+
       return { month: mName, Income: mInc, Expenses: mExp };
     }),
     expensesByCategory: expensesByCategory,
     incomeBySource: incomeBySource,
-    assetAllocation: assetAllocations.length > 0 ? assetAllocations.map((a) => ({
-      name: a.assetType,
-      value: a.currentPercentage,
-    })) : [
-      { name: "Liquid Assets", value: liquidAssets },
-      { name: "Investments", value: investmentsValue }
-    ].filter(a => a.value > 0),
+    assetAllocation:
+      assetAllocations.length > 0
+        ? assetAllocations.map((a) => ({
+            name: a.assetType,
+            value: a.currentPercentage,
+          }))
+        : [
+            { name: "Liquid Assets", value: liquidAssets },
+            { name: "Investments", value: investmentsValue },
+          ].filter((a) => a.value > 0),
   };
 }

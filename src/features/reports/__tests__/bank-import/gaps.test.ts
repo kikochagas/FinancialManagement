@@ -23,18 +23,18 @@ describe("Bank Import Strict Requirements", () => {
   it("Strict money parsing accepts anchored formats and extracts currency", () => {
     expect(parseMoneyStrict("-14,74 €").value).toBe(-14.74);
     expect(parseMoneyStrict("-14,74 €").currency).toBe("EUR");
-    
-    expect(parseMoneyStrict("1.657,60 €").value).toBe(1657.60);
-    expect(parseMoneyStrict("-4.000,00").value).toBe(-4000.00);
-    expect(parseMoneyStrict("1,657.60").value).toBe(1657.60);
+
+    expect(parseMoneyStrict("1.657,60 €").value).toBe(1657.6);
+    expect(parseMoneyStrict("-4.000,00").value).toBe(-4000.0);
+    expect(parseMoneyStrict("1,657.60").value).toBe(1657.6);
     expect(parseMoneyStrict("14.74").value).toBe(14.74);
 
     expect(parseMoneyStrict("€ 12,34").value).toBe(12.34);
     expect(parseMoneyStrict("12,34 €").value).toBe(12.34);
     expect(parseMoneyStrict("EUR 12,34").value).toBe(12.34);
     expect(parseMoneyStrict("12,34 EUR").value).toBe(12.34);
-    expect(parseMoneyStrict("USD 10.50").value).toBe(10.50);
-    expect(parseMoneyStrict("10.50 USD").value).toBe(10.50);
+    expect(parseMoneyStrict("USD 10.50").value).toBe(10.5);
+    expect(parseMoneyStrict("10.50 USD").value).toBe(10.5);
     expect(parseMoneyStrict("10.50 USD").currency).toBe("USD");
   });
 
@@ -50,14 +50,18 @@ describe("Bank Import Strict Requirements", () => {
   it("Malformed transaction retained for Review rather than classified footer", () => {
     const rows = [
       ["Date", "Desc", "Amount"],
-      ["31/02/2026", "Card purchase", "abc"]
+      ["31/02/2026", "Card purchase", "abc"],
     ];
     const mapping: any = {
       0: { semantic: "BOOKING_DATE", columnIndex: 0 },
       1: { semantic: "DESCRIPTION", columnIndex: 1 },
-      2: { semantic: "AMOUNT", columnIndex: 2 }
+      2: { semantic: "AMOUNT", columnIndex: 2 },
     };
-    const { transactions, footerRowsSkipped } = buildTransactions(rows, 0, mapping);
+    const { transactions, footerRowsSkipped } = buildTransactions(
+      rows,
+      0,
+      mapping,
+    );
     expect(footerRowsSkipped).toBe(0);
     expect(transactions.length).toBe(1);
     expect(transactions[0].valid).toBe(false); // Retained but invalid
@@ -69,14 +73,15 @@ describe("Bank Import Strict Requirements", () => {
       ["2026-08-12", "Valid", "10"],
       ["", "", ""], // Blank
       [null, undefined, ""], // Blank
-      ["Data de impressão: 12/08", "", ""] // Footer in BOOKING_DATE
+      ["Data de impressão: 12/08", "", ""], // Footer in BOOKING_DATE
     ];
     const mapping: any = {
       0: { semantic: "BOOKING_DATE", columnIndex: 0 },
       1: { semantic: "DESCRIPTION", columnIndex: 1 },
-      2: { semantic: "AMOUNT", columnIndex: 2 }
+      2: { semantic: "AMOUNT", columnIndex: 2 },
     };
-    const { footerRowsSkipped, transactions, blankRowsIgnored } = buildTransactions(rows, 0, mapping);
+    const { footerRowsSkipped, transactions, blankRowsIgnored } =
+      buildTransactions(rows, 0, mapping);
     expect(footerRowsSkipped).toBe(1); // Only the actual footer text row
     expect(blankRowsIgnored).toBe(2);
     expect(transactions.length).toBe(1);
@@ -88,32 +93,42 @@ describe("Bank Import Strict Requirements", () => {
       ["2026-08-12", "Test", "128.00", "Débito"], // Unsigned + Débito -> Expense
       ["2026-08-12", "Test", "128.00", "Crédito"], // Unsigned + Crédito -> Income
       ["2026-08-12", "Test", "-128.00", "Crédito"], // Explicit negative + Crédito -> Conflict
-      ["2026-08-12", "Test", "+128.00", "Débito"] // Explicit positive + Débito -> Conflict
+      ["2026-08-12", "Test", "+128.00", "Débito"], // Explicit positive + Débito -> Conflict
     ];
     const mapping: any = {
       0: { semantic: "BOOKING_DATE", columnIndex: 0 },
       1: { semantic: "DESCRIPTION", columnIndex: 1 },
       2: { semantic: "AMOUNT", columnIndex: 2 },
-      3: { semantic: "TYPE", columnIndex: 3 }
+      3: { semantic: "TYPE", columnIndex: 3 },
     };
     const { transactions } = buildTransactions(rows, 0, mapping);
-    
+
     expect(transactions[0].direction).toBe("Debit");
-    expect(transactions[0].amount).toBe(128.00);
-    
+    expect(transactions[0].amount).toBe(128.0);
+
     expect(transactions[1].direction).toBe("Credit");
-    expect(transactions[1].amount).toBe(128.00);
-    
+    expect(transactions[1].amount).toBe(128.0);
+
     expect(transactions[2].direction).toBe(null); // Conflict
-    expect(transactions[2].warnings.some(w => w.includes("conflict") || w.includes("Conflict"))).toBe(true);
+    expect(
+      transactions[2].warnings.some(
+        (w) => w.includes("conflict") || w.includes("Conflict"),
+      ),
+    ).toBe(true);
 
     expect(transactions[3].direction).toBe(null); // Conflict
-    expect(transactions[3].warnings.some(w => w.includes("conflict") || w.includes("Conflict"))).toBe(true);
+    expect(
+      transactions[3].warnings.some(
+        (w) => w.includes("conflict") || w.includes("Conflict"),
+      ),
+    ).toBe(true);
   });
 
   it("Debit + Credit both populated -> review", () => {
     const { direction, warnings } = resolveAmount(undefined, "10", "20");
     expect(direction).toBe(null);
-    expect(warnings.some(w => w.includes("Both Debit and Credit"))).toBe(true);
+    expect(warnings.some((w) => w.includes("Both Debit and Credit"))).toBe(
+      true,
+    );
   });
 });

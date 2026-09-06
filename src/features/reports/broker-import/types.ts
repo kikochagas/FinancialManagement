@@ -46,7 +46,7 @@ export interface ColumnMapping {
   source: MappingSource | null;
 }
 
-export type ValueShape = 
+export type ValueShape =
   | "EMPTY"
   | "DATE_DD_MM_YYYY"
   | "DATE_ISO"
@@ -74,33 +74,33 @@ export interface ParseResult<T> {
 
 export interface ParsedBrokerTransaction {
   sourceRow: number;
-  
+
   occurredAt: string | null; // ISO datetime string
-  
+
   eventType: CanonicalEventType | "IGNORE" | null; // Note: IGNORE is permitted during preview
   rawEventType: string | null;
   rawCategory: string | null;
-  
+
   assetClass: string | null;
   instrumentName: string | null;
   instrumentIdentifier: string | null;
   isin: string | null;
   ticker: string | null;
-  
+
   quantity: number | null;
   unitPrice: number | null;
   amount: number | null;
   fee: number | null;
   tax: number | null;
   currency: string | null;
-  
+
   originalAmount: number | null;
   originalCurrency: string | null;
   fxRate: number | null;
-  
+
   description: string | null;
   externalId: string | null;
-  
+
   // Computed fields during validation
   valid: boolean;
   warnings: string[];

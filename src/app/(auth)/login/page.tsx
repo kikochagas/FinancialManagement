@@ -2,7 +2,13 @@
 
 import { useState } from "react";
 import { login } from "@/features/auth/actions";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -28,7 +34,9 @@ export default function LoginPage() {
         <div className="mx-auto bg-primary/10 w-12 h-12 rounded-full flex items-center justify-center mb-2">
           <Lock className="w-6 h-6 text-primary" />
         </div>
-        <CardTitle className="text-2xl font-bold tracking-tight">Welcome back</CardTitle>
+        <CardTitle className="text-2xl font-bold tracking-tight">
+          Welcome back
+        </CardTitle>
         <CardDescription className="text-muted-foreground">
           Sign in to your FinancialManagement account
         </CardDescription>
@@ -41,33 +49,44 @@ export default function LoginPage() {
             </div>
           )}
           <div className="space-y-1.5">
-            <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Email address</label>
-            <Input 
+            <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+              Email address
+            </label>
+            <Input
               name="email"
-              type="email" 
+              type="email"
               placeholder="name@example.com"
               required
               className="bg-background"
             />
           </div>
           <div className="space-y-1.5">
-            <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Password</label>
-            <Input 
+            <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+              Password
+            </label>
+            <Input
               name="password"
-              type="password" 
+              type="password"
               required
               className="bg-background"
             />
           </div>
-          <Button type="submit" className="w-full font-semibold" disabled={isPending}>
+          <Button
+            type="submit"
+            className="w-full font-semibold"
+            disabled={isPending}
+          >
             {isPending ? "Signing in..." : "Sign In"}
             {!isPending && <ArrowRight className="w-4 h-4 ml-2" />}
           </Button>
         </form>
-        
+
         <div className="mt-6 text-center text-sm text-muted-foreground">
           Don't have an account?{" "}
-          <Link href="/register" className="text-primary hover:underline font-semibold">
+          <Link
+            href="/register"
+            className="text-primary hover:underline font-semibold"
+          >
             Sign up
           </Link>
         </div>

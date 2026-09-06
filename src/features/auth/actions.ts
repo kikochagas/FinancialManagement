@@ -43,7 +43,7 @@ export async function register(formData: FormData) {
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
-  
+
   const user = await db.user.create({
     data: {
       name,
@@ -54,10 +54,10 @@ export async function register(formData: FormData) {
         create: {
           theme: "Dark",
           currency: "EUR",
-          language: "English"
-        }
-      }
-    }
+          language: "English",
+        },
+      },
+    },
   });
 
   await ensureDefaultCategories(user.id);

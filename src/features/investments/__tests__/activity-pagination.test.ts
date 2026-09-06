@@ -1,11 +1,16 @@
 import { describe, test, expect } from "vitest";
 
 // Pure helper function to simulate the pagination logic in InvestmentActivityTab
-function getPaginationState(totalItems: number, itemsPerPage: number, currentPage: number) {
+function getPaginationState(
+  totalItems: number,
+  itemsPerPage: number,
+  currentPage: number,
+) {
   const pageCount = Math.ceil(totalItems / itemsPerPage) || 1;
   const safeCurrentPage = currentPage > pageCount ? pageCount : currentPage;
-  
-  const startIndex = totalItems > 0 ? (safeCurrentPage - 1) * itemsPerPage + 1 : 0;
+
+  const startIndex =
+    totalItems > 0 ? (safeCurrentPage - 1) * itemsPerPage + 1 : 0;
   const endIndex = Math.min(safeCurrentPage * itemsPerPage, totalItems);
 
   return { pageCount, safeCurrentPage, startIndex, endIndex };

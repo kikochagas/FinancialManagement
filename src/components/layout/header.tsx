@@ -5,7 +5,13 @@ import { format } from "date-fns";
 import { Bell, TrendingUp, Calendar } from "lucide-react";
 import { MobileNav } from "./mobile-nav";
 
-export function Header({ netWorth = 0, user }: { netWorth?: number; user?: { name: string | null; email: string } }) {
+export function Header({
+  netWorth = 0,
+  user,
+}: {
+  netWorth?: number;
+  user?: { name: string | null; email: string };
+}) {
   const pathname = usePathname();
 
   const getPageTitle = () => {
@@ -35,7 +41,9 @@ export function Header({ netWorth = 0, user }: { netWorth?: number; user?: { nam
         {/* Mobile menu trigger */}
         <MobileNav user={user} />
         <div>
-          <h1 className="text-lg font-semibold tracking-tight text-foreground">{getPageTitle()}</h1>
+          <h1 className="text-lg font-semibold tracking-tight text-foreground">
+            {getPageTitle()}
+          </h1>
         </div>
       </div>
 
@@ -49,7 +57,13 @@ export function Header({ netWorth = 0, user }: { netWorth?: number; user?: { nam
         {/* Global Net Worth Stat Badge */}
         <div className="hidden sm:flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-semibold shadow-none dark:shadow-glow-green">
           <TrendingUp className="h-3.5 w-3.5" />
-          <span>Net Worth: {new Intl.NumberFormat("en-US", { style: "currency", currency: "EUR" }).format(netWorth)}</span>
+          <span>
+            Net Worth:{" "}
+            {new Intl.NumberFormat("en-US", {
+              style: "currency",
+              currency: "EUR",
+            }).format(netWorth)}
+          </span>
         </div>
 
         {/* Action icons */}

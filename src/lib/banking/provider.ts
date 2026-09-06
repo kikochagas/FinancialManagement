@@ -36,7 +36,7 @@ export interface ExternalBankTransaction {
   dedupKey: string;
   entryReference?: string;
   providerTransactionId?: string;
-  
+
   bookingDate?: Date;
   valueDate?: Date;
   transactionDate?: Date;
@@ -85,24 +85,20 @@ export interface BankingProvider {
     institutionCountry: string,
     callbackUrl: string,
     state: string,
-    maximumConsentValiditySeconds: number
+    maximumConsentValiditySeconds: number,
   ): Promise<BankAuthorization>;
 
   completeAuthorization(
     code: string,
-    redirectUri: string
+    redirectUri: string,
   ): Promise<BankConnectionResult>;
 
-
-
-  getBalances(
-    providerAccountUid: string
-  ): Promise<ExternalBalance[]>;
+  getBalances(providerAccountUid: string): Promise<ExternalBalance[]>;
 
   normalizeBalance(balances: ExternalBalance[]): ExternalBalance | null;
 
   getTransactions(
     providerAccountUid: string,
-    options?: TransactionQuery
+    options?: TransactionQuery,
   ): Promise<TransactionResult>;
 }

@@ -12,8 +12,8 @@ describe("ai-column-mapper (Sanitization Boundary)", () => {
       generateStructured: vi.fn().mockResolvedValue({
         mappings: [],
         overallConfidence: 1.0,
-        warnings: []
-      })
+        warnings: [],
+      }),
     };
 
     const mapper = new BankStatementAIMapper(mockProvider);
@@ -22,16 +22,28 @@ describe("ai-column-mapper (Sanitization Boundary)", () => {
     const rawHeaders = ["Descritivo", "Valor", "Data", "Conta"];
     const rawRows = [
       rawHeaders,
-      ["Transfer from John Example", "100.00", "2026-08-16", "PT50000000000000000000000"],
-      ["Payroll 123456789", "5000.00", "2026-08-15", "PT50000000000000000000123"]
+      [
+        "Transfer from John Example",
+        "100.00",
+        "2026-08-16",
+        "PT50000000000000000000000",
+      ],
+      [
+        "Payroll 123456789",
+        "5000.00",
+        "2026-08-15",
+        "PT50000000000000000000123",
+      ],
     ];
 
     // Simulate parser orchestration path
-    const sanitizedInput: AISanitizedColumnInfo[] = rawHeaders.map((header, idx) => ({
-      index: idx,
-      normalizedHeader: normalizeHeader(header),
-      valueShapes: sampleColumnShapes(rawRows.slice(1), idx)
-    }));
+    const sanitizedInput: AISanitizedColumnInfo[] = rawHeaders.map(
+      (header, idx) => ({
+        index: idx,
+        normalizedHeader: normalizeHeader(header),
+        valueShapes: sampleColumnShapes(rawRows.slice(1), idx),
+      }),
+    );
 
     await mapper.mapColumns(sanitizedInput);
 

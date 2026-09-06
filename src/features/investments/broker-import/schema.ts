@@ -1,59 +1,59 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 // ---------------------------------------------------------------------------
 // Date provenance: how the statement/valuation date was determined
 // ---------------------------------------------------------------------------
 const DateProvenanceEnum = z.enum([
-  'DOCUMENT',        // Explicitly stated in the document (e.g. "Statement Date: 2024-01-31")
-  'USER_CONFIRMED',  // Provided or confirmed by the user, not extracted from document text
-  'UNKNOWN',
+  "DOCUMENT", // Explicitly stated in the document (e.g. "Statement Date: 2024-01-31")
+  "USER_CONFIRMED", // Provided or confirmed by the user, not extracted from document text
+  "UNKNOWN",
 ]);
 
 // ---------------------------------------------------------------------------
 // Document completeness
 // ---------------------------------------------------------------------------
 const CompletenessEnum = z.enum([
-  'COMPLETE',   // All expected sections are present and parseable
-  'PARTIAL',    // Some sections missing or unparseable
-  'UNKNOWN',
+  "COMPLETE", // All expected sections are present and parseable
+  "PARTIAL", // Some sections missing or unparseable
+  "UNKNOWN",
 ]);
 
 // ---------------------------------------------------------------------------
 // Capabilities: what data kinds this snapshot contains
 // ---------------------------------------------------------------------------
 const CapabilityEnum = z.enum([
-  'SNAPSHOT_DATE',    // Document carries an explicit valuation/statement date
-  'CASH_BALANCES',    // Cash balances present
-  'POSITIONS',        // Holdings / positions present
-  'QUANTITIES',       // Quantity per position available
-  'PRICES',           // Unit price per position available
-  'MARKET_VALUES',    // Market value per position available
-  'PORTFOLIO_TOTALS', // Aggregate portfolio totals (invested, overall, section)
-  'ACTIVITY',         // Activity / transaction section present
-  'COST_BASIS',       // Cost basis per position available
-  'PNL',              // Unrealised P&L per position available
+  "SNAPSHOT_DATE", // Document carries an explicit valuation/statement date
+  "CASH_BALANCES", // Cash balances present
+  "POSITIONS", // Holdings / positions present
+  "QUANTITIES", // Quantity per position available
+  "PRICES", // Unit price per position available
+  "MARKET_VALUES", // Market value per position available
+  "PORTFOLIO_TOTALS", // Aggregate portfolio totals (invested, overall, section)
+  "ACTIVITY", // Activity / transaction section present
+  "COST_BASIS", // Cost basis per position available
+  "PNL", // Unrealised P&L per position available
 ]);
 
 // ---------------------------------------------------------------------------
 // Cash type: describes the settlement/availability semantics of the cash entry
 // ---------------------------------------------------------------------------
 const CashTypeEnum = z.enum([
-  'TOTAL',       // Sum of all cash (may include settled + unsettled)
-  'SETTLED',     // Cleared / settled cash available to withdraw
-  'AVAILABLE',   // Buying power / available to invest (may differ from settled)
-  'UNSETTLED',   // Pending settlement
-  'UNKNOWN',
+  "TOTAL", // Sum of all cash (may include settled + unsettled)
+  "SETTLED", // Cleared / settled cash available to withdraw
+  "AVAILABLE", // Buying power / available to invest (may differ from settled)
+  "UNSETTLED", // Pending settlement
+  "UNKNOWN",
 ]);
 
 // ---------------------------------------------------------------------------
 // Total type: what the aggregate figure represents in broker-generic terms
 // ---------------------------------------------------------------------------
 const TotalTypeEnum = z.enum([
-  'CASH',          // Cash component of the portfolio
-  'INVESTED',      // Cost/invested capital total
-  'OVERALL',       // Overall portfolio value (cash + positions)
-  'SECTION_TOTAL', // A sub-section total (e.g. per asset class)
-  'UNKNOWN',
+  "CASH", // Cash component of the portfolio
+  "INVESTED", // Cost/invested capital total
+  "OVERALL", // Overall portfolio value (cash + positions)
+  "SECTION_TOTAL", // A sub-section total (e.g. per asset class)
+  "UNKNOWN",
 ]);
 
 // ---------------------------------------------------------------------------
@@ -62,13 +62,13 @@ const TotalTypeEnum = z.enum([
 const PositionSchema = z.object({
   // Identity
   name: z.string().nullable(),
-  sourceSection: z.string().nullable(),         // Which section/table this came from
+  sourceSection: z.string().nullable(), // Which section/table this came from
   assetClass: z.string().nullable(),
 
   // Identifiers
   isin: z.string().nullable(),
-  ticker: z.string().nullable(),                // Maps to Investment.symbol on reconciliation
-  instrumentIdentifier: z.string().nullable(),  // Generic fallback identifier (e.g. CUSIP, SEDOL)
+  ticker: z.string().nullable(), // Maps to Investment.symbol on reconciliation
+  instrumentIdentifier: z.string().nullable(), // Generic fallback identifier (e.g. CUSIP, SEDOL)
   instrumentIdentifierType: z.string().nullable(),
 
   // Valuation

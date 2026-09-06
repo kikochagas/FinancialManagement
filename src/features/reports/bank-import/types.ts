@@ -32,7 +32,7 @@ export interface ParseResult<T> {
   warning?: string;
 }
 
-export type ValueShape = 
+export type ValueShape =
   | "EMPTY"
   | "DATE_DD_MM_YYYY"
   | "DATE_ISO"
@@ -70,7 +70,7 @@ export interface ParsedBankTransaction {
   beneficiary?: string | null;
   iban?: string | null;
   reference?: string | null;
-  
+
   // Computed fields during validation
   valid: boolean;
   warnings: string[];

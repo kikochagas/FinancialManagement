@@ -30,7 +30,10 @@ describe("applyExistingBrokerSnapshot DB Engine", () => {
     await db.user.deleteMany();
 
     await db.user.createMany({
-      data: [{ id: userId, email: "user@test.com", passwordHash: "x" }, { id: "user-b", email: "user-b@test.com", passwordHash: "x" }],
+      data: [
+        { id: userId, email: "user@test.com", passwordHash: "x" },
+        { id: "user-b", email: "user-b@test.com", passwordHash: "x" },
+      ],
     });
 
     await db.account.createMany({

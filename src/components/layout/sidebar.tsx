@@ -12,7 +12,7 @@ import {
   BarChart3,
   Settings,
   Coins,
-  ChevronsLeftRight
+  ChevronsLeftRight,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -20,7 +20,11 @@ import { navLinks } from "./nav-links";
 
 import { logout } from "@/features/auth/actions";
 
-export function Sidebar({ user }: { user: { name: string | null; email: string } }) {
+export function Sidebar({
+  user,
+}: {
+  user: { name: string | null; email: string };
+}) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
 
@@ -28,7 +32,7 @@ export function Sidebar({ user }: { user: { name: string | null; email: string }
     <aside
       className={cn(
         "hidden md:flex flex-col border-r border-border bg-card/40 backdrop-blur-md transition-all duration-300 ease-in-out",
-        collapsed ? "w-20" : "w-64"
+        collapsed ? "w-20" : "w-64",
       )}
     >
       {/* Brand Header */}
@@ -64,10 +68,17 @@ export function Sidebar({ user }: { user: { name: string | null; email: string }
                 "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 group relative",
                 isActive
                   ? "bg-accent text-accent-foreground border-l-2 border-primary shadow-sm"
-                  : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent/50",
               )}
             >
-              <Icon className={cn("h-4 w-4 shrink-0 transition-transform duration-200 group-hover:scale-110", isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground")} />
+              <Icon
+                className={cn(
+                  "h-4 w-4 shrink-0 transition-transform duration-200 group-hover:scale-110",
+                  isActive
+                    ? "text-primary"
+                    : "text-muted-foreground group-hover:text-foreground",
+                )}
+              />
               {!collapsed && <span>{link.label}</span>}
               {collapsed && (
                 <div className="absolute left-16 bg-popover text-popover-foreground text-xs px-2.5 py-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none border border-border shadow-md">
@@ -87,8 +98,12 @@ export function Sidebar({ user }: { user: { name: string | null; email: string }
               {user.name ? user.name.charAt(0).toUpperCase() : "U"}
             </div>
             <div className="flex-1 overflow-hidden">
-              <p className="text-xs font-semibold text-foreground truncate">{user.name || "User"}</p>
-              <p className="text-[10px] text-muted-foreground truncate">{user.email}</p>
+              <p className="text-xs font-semibold text-foreground truncate">
+                {user.name || "User"}
+              </p>
+              <p className="text-[10px] text-muted-foreground truncate">
+                {user.email}
+              </p>
             </div>
           </div>
           <form action={logout}>

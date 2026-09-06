@@ -8,14 +8,14 @@ export interface OrchestratedConfidence {
 
 /**
  * Evaluates the deterministic mapping and decides if AI fallback is required.
- * 
+ *
  * Rules for requiring AI:
  * - Missing required fields: BOOKING_DATE + DESCRIPTION + (AMOUNT OR DEBIT/CREDIT)
  * - Required field confidence < 0.8
  * - Multiple columns mapped to the same semantic
  */
 export function evaluateMappingConfidence(
-  mapping: Record<number, ColumnMapping>
+  mapping: Record<number, ColumnMapping>,
 ): OrchestratedConfidence {
   let needsAI = false;
   let reason = "";
@@ -23,12 +23,17 @@ export function evaluateMappingConfidence(
   const semanticCounts: Record<string, number> = {};
   const semanticsPresent = new Set<BankColumnSemantic>();
 
-  Object.values(mapping).forEach(col => {
+  Object.values(mapping).forEach((col) => {
     if (col.semantic) {
       semanticCounts[col.semantic] = (semanticCounts[col.semantic] || 0) + 1;
       semanticsPresent.add(col.semantic);
 
-      if (col.confidence < 0.8 && ["BOOKING_DATE", "DESCRIPTION", "AMOUNT", "DEBIT", "CREDIT"].includes(col.semantic)) {
+      if (
+        col.confidence < 0.8 &&
+        ["BOOKING_DATE", "DESCRIPTION", "AMOUNT", "DEBIT", "CREDIT"].includes(
+          col.semantic,
+        )
+      ) {
         needsAI = true;
         reason = `Required field ${col.semantic} has low confidence (${col.confidence}).`;
       }
@@ -48,7 +53,8 @@ export function evaluateMappingConfidence(
   const hasDate = semanticsPresent.has("BOOKING_DATE");
   const hasDesc = semanticsPresent.has("DESCRIPTION");
   const hasAmount = semanticsPresent.has("AMOUNT");
-  const hasDebitCredit = semanticsPresent.has("DEBIT") || semanticsPresent.has("CREDIT");
+  const hasDebitCredit =
+    semanticsPresent.has("DEBIT") || semanticsPresent.has("CREDIT");
 
   if (!hasDate) {
     needsAI = true;

@@ -6,14 +6,21 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { EnableBankingClient } from "@/lib/banking/enable-banking-client";
 import { internalSyncBalance, internalSyncTransactions } from "./services/sync";
-import { AccountType, OpenBankingCashAccountType, LinkAction, canHoldInvestments } from "@/lib/constants";
+import {
+  AccountType,
+  OpenBankingCashAccountType,
+  LinkAction,
+  canHoldInvestments,
+} from "@/lib/constants";
 
 const accountTypeValues = Object.values(AccountType) as [string, ...string[]];
 const linkActionValues = Object.values(LinkAction) as [string, ...string[]];
 
 const createAccountSchema = z.object({
   name: z.string().min(1, "Name is required"),
-  type: z.enum(accountTypeValues, { required_error: "Account Type is required" }),
+  type: z.enum(accountTypeValues, {
+    required_error: "Account Type is required",
+  }),
   balance: z.number().default(0),
   currency: z.string().default("EUR"),
 });
@@ -47,39 +54,58 @@ export const updateAccount = authActionClient
   .action(async ({ parsedInput, ctx: { userId } }) => {
     const { id, ...data } = parsedInput;
     // Verify ownership
-    const existing = await db.account.findUnique({ where: { id }, include: { externalMappings: true } });
-    if (!existing || existing.userId !== userId) throw new Error("Unauthorized");
+    const existing = await db.account.findUnique({
+      where: { id },
+      include: { externalMappings: true },
+    });
+    if (!existing || existing.userId !== userId)
+      throw new Error("Unauthorized");
 
     // Note: accounts with financial history (events/holdings/snapshots) are still editable.
     // Only deleteAccount enforces the financial-history guard.
-    const hasActiveMapping = existing.externalMappings.some(m => m.disconnectedAt === null);
+    const hasActiveMapping = existing.externalMappings.some(
+      (m) => m.disconnectedAt === null,
+    );
     if (hasActiveMapping) {
       if (data.balance !== undefined && data.balance !== existing.balance) {
-         throw new Error("Cannot manually modify the balance of a bank-connected account.");
+        throw new Error(
+          "Cannot manually modify the balance of a bank-connected account.",
+        );
       }
       if (data.currency !== undefined && data.currency !== existing.currency) {
-         throw new Error("Cannot manually modify the currency of a bank-connected account.");
+        throw new Error(
+          "Cannot manually modify the currency of a bank-connected account.",
+        );
       }
       if (data.type !== undefined && data.type !== existing.type) {
-         throw new Error("Cannot manually modify the type of a bank-connected account.");
+        throw new Error(
+          "Cannot manually modify the type of a bank-connected account.",
+        );
       }
     }
 
-    if (data.type !== undefined && data.type !== existing.type && !canHoldInvestments(data.type)) {
-  const [linkedInvestmentCount, investmentEventCount, snapshotCount,] = await Promise.all([
-    db.investment.count({where: { accountId: id },}),
-    db.investmentEvent.count({where: { accountId: id },}),
-    db.investmentAccountSnapshot.count({where: { accountId: id },}),
-  ]);
+    if (
+      data.type !== undefined &&
+      data.type !== existing.type &&
+      !canHoldInvestments(data.type)
+    ) {
+      const [linkedInvestmentCount, investmentEventCount, snapshotCount] =
+        await Promise.all([
+          db.investment.count({ where: { accountId: id } }),
+          db.investmentEvent.count({ where: { accountId: id } }),
+          db.investmentAccountSnapshot.count({ where: { accountId: id } }),
+        ]);
 
-  if (
-    linkedInvestmentCount > 0 || investmentEventCount > 0 || snapshotCount > 0
-  ) {
-    throw new Error(
-      "Cannot change this account type because it contains investment data."
-    );
-  }
-}
+      if (
+        linkedInvestmentCount > 0 ||
+        investmentEventCount > 0 ||
+        snapshotCount > 0
+      ) {
+        throw new Error(
+          "Cannot change this account type because it contains investment data.",
+        );
+      }
+    }
 
     const account = await db.account.update({
       where: { id },
@@ -94,20 +120,30 @@ export const updateAccount = authActionClient
 export const deleteAccount = authActionClient
   .schema(deleteAccountSchema)
   .action(async ({ parsedInput, ctx: { userId } }) => {
-    const account = await db.account.findUnique({ 
+    const account = await db.account.findUnique({
       where: { id: parsedInput.id },
-      include: { externalMappings: true }
+      include: { externalMappings: true },
     });
     if (!account) throw new Error("Account not found");
     if (account.userId !== userId) throw new Error("Unauthorized");
 
-    const evCount = await db.investmentEvent.count({ where: { accountId: parsedInput.id } });
-    const invCount = await db.investment.count({ where: { accountId: parsedInput.id } });
-    const snapCount = await db.investmentAccountSnapshot.count({ where: { accountId: parsedInput.id } });
+    const evCount = await db.investmentEvent.count({
+      where: { accountId: parsedInput.id },
+    });
+    const invCount = await db.investment.count({
+      where: { accountId: parsedInput.id },
+    });
+    const snapCount = await db.investmentAccountSnapshot.count({
+      where: { accountId: parsedInput.id },
+    });
     if (evCount > 0 || invCount > 0 || snapCount > 0) {
-      throw new Error('Account contains financial history or holdings and cannot be deleted.');
+      throw new Error(
+        "Account contains financial history or holdings and cannot be deleted.",
+      );
     }
-    const hasActiveMapping = account.externalMappings && account.externalMappings.some(m => m.disconnectedAt === null);
+    const hasActiveMapping =
+      account.externalMappings &&
+      account.externalMappings.some((m) => m.disconnectedAt === null);
     if (hasActiveMapping) {
       throw new Error("Disconnect the bank account before deleting it.");
     }
@@ -121,7 +157,7 @@ export const deleteAccount = authActionClient
     return { success: true };
   });
 
-  export const deleteAccountWithFinancialData = authActionClient
+export const deleteAccountWithFinancialData = authActionClient
   .schema(deleteAccountSchema)
   .action(async ({ parsedInput, ctx: { userId } }) => {
     const { id } = parsedInput;
@@ -141,7 +177,7 @@ export const deleteAccount = authActionClient
       }
 
       const hasActiveMapping = account.externalMappings.some(
-        (mapping) => mapping.disconnectedAt === null
+        (mapping) => mapping.disconnectedAt === null,
       );
 
       if (hasActiveMapping) {
@@ -192,7 +228,7 @@ export const deleteAccount = authActionClient
 
       const totalMarketValue = remainingInvestments.reduce(
         (sum, investment) => sum + investment.marketValue,
-        0
+        0,
       );
 
       for (const investment of remainingInvestments) {
@@ -230,16 +266,18 @@ export const deleteAccount = authActionClient
 
 const linkAccountsSchema = z.object({
   connectionId: z.string(),
-  selections: z.array(z.object({
-    pendingAccountId: z.string(),
-    action: z.enum(linkActionValues),
-    // For CREATE
-    name: z.string().optional(),
-    // For LINK
-    existingAccountId: z.string().optional(),
-    // For transaction history policy
-    importHistory: z.boolean().default(false)
-  }))
+  selections: z.array(
+    z.object({
+      pendingAccountId: z.string(),
+      action: z.enum(linkActionValues),
+      // For CREATE
+      name: z.string().optional(),
+      // For LINK
+      existingAccountId: z.string().optional(),
+      // For transaction history policy
+      importHistory: z.boolean().default(false),
+    }),
+  ),
 });
 
 export const linkAccounts = authActionClient
@@ -249,29 +287,33 @@ export const linkAccounts = authActionClient
 
     const result = await db.$transaction(async (tx) => {
       const connection = await tx.bankConnection.findUnique({
-        where: { id: connectionId }
+        where: { id: connectionId },
       });
       if (!connection || connection.userId !== userId) {
         throw new Error("Unauthorized connection");
       }
 
       const pendingAccounts = await tx.pendingExternalAccount.findMany({
-        where: { bankConnectionId: connectionId }
+        where: { bankConnectionId: connectionId },
       });
 
       let linkedAccountIds: string[] = [];
       for (const selection of selections) {
         if (selection.action === LinkAction.IGNORE) {
-          const existsInDb = pendingAccounts.some(a => a.id === selection.pendingAccountId);
+          const existsInDb = pendingAccounts.some(
+            (a) => a.id === selection.pendingAccountId,
+          );
           if (existsInDb) {
             await tx.pendingExternalAccount.delete({
-              where: { id: selection.pendingAccountId }
+              where: { id: selection.pendingAccountId },
             });
           }
           continue;
         }
 
-        const pendingAcc = pendingAccounts.find((a) => a.id === selection.pendingAccountId);
+        const pendingAcc = pendingAccounts.find(
+          (a) => a.id === selection.pendingAccountId,
+        );
         if (!pendingAcc) throw new Error("Invalid pending account");
 
         if (pendingAcc.expiresAt < new Date()) {
@@ -283,14 +325,23 @@ export const linkAccounts = authActionClient
 
         if (selection.action === LinkAction.CREATE) {
           transactionImportFrom = null; // Always null for new accounts
-          
+
           // Map cashAccountType to an existing Account type
           let accountType: string = AccountType.BANK;
-          if (pendingAcc.cashAccountType === OpenBankingCashAccountType.CURRENT) accountType = AccountType.BANK; // Current Account
-          else if (pendingAcc.cashAccountType === OpenBankingCashAccountType.SAVINGS) accountType = AccountType.BANK; // Savings
-          else if (pendingAcc.cashAccountType === OpenBankingCashAccountType.CARD) accountType = AccountType.CREDIT_CARD;
+          if (pendingAcc.cashAccountType === OpenBankingCashAccountType.CURRENT)
+            accountType = AccountType.BANK; // Current Account
+          else if (
+            pendingAcc.cashAccountType === OpenBankingCashAccountType.SAVINGS
+          )
+            accountType = AccountType.BANK; // Savings
+          else if (
+            pendingAcc.cashAccountType === OpenBankingCashAccountType.CARD
+          )
+            accountType = AccountType.CREDIT_CARD;
           else {
-            throw new Error(`Unsupported account type: ${pendingAcc.cashAccountType || "Unknown"}`);
+            throw new Error(
+              `Unsupported account type: ${pendingAcc.cashAccountType || "Unknown"}`,
+            );
           }
 
           const newAccount = await tx.account.create({
@@ -299,35 +350,40 @@ export const linkAccounts = authActionClient
               name: selection.name || pendingAcc.displayName,
               type: accountType,
               balance: 0, // Requirements: use neutral/default value, don't fetch balances here
-              currency: pendingAcc.currency
-            }
+              currency: pendingAcc.currency,
+            },
           });
           accountIdToMap = newAccount.id;
         } else if (selection.action === LinkAction.LINK) {
           transactionImportFrom = selection.importHistory ? null : new Date(); // Use history setting for existing accounts
 
-          if (!selection.existingAccountId) throw new Error("Existing account ID required");
+          if (!selection.existingAccountId)
+            throw new Error("Existing account ID required");
 
           const existingAccount = await tx.account.findUnique({
             where: { id: selection.existingAccountId },
-            include: { externalMappings: true }
+            include: { externalMappings: true },
           });
 
           if (!existingAccount || existingAccount.userId !== userId) {
             throw new Error("Invalid existing account");
           }
-          
+
           if (existingAccount.currency !== pendingAcc.currency) {
-             // Requirements: Do not silently change an existing Account's currency.
-             // We'll throw an error. UI should prevent selecting this.
-             throw new Error("Currency mismatch");
+            // Requirements: Do not silently change an existing Account's currency.
+            // We'll throw an error. UI should prevent selecting this.
+            throw new Error("Currency mismatch");
           }
 
           const hasOtherMapping = existingAccount.externalMappings.some(
-             (m) => m.identificationHash !== pendingAcc.identificationHash && m.disconnectedAt === null
+            (m) =>
+              m.identificationHash !== pendingAcc.identificationHash &&
+              m.disconnectedAt === null,
           );
           if (hasOtherMapping) {
-            throw new Error("Account already linked to a different external identity");
+            throw new Error(
+              "Account already linked to a different external identity",
+            );
           }
 
           accountIdToMap = existingAccount.id;
@@ -338,29 +394,29 @@ export const linkAccounts = authActionClient
           where: {
             bankConnectionId_identificationHash: {
               bankConnectionId: connectionId,
-              identificationHash: pendingAcc.identificationHash
-            }
+              identificationHash: pendingAcc.identificationHash,
+            },
           },
           update: {
             providerAccountUid: pendingAcc.providerAccountUid,
             accountId: accountIdToMap, // In case they update it somehow? The UI prevents this but fine
             transactionImportFrom: transactionImportFrom,
-            disconnectedAt: null
+            disconnectedAt: null,
           },
           create: {
             bankConnectionId: connectionId,
             accountId: accountIdToMap,
             providerAccountUid: pendingAcc.providerAccountUid,
             identificationHash: pendingAcc.identificationHash,
-            transactionImportFrom: transactionImportFrom
-          }
+            transactionImportFrom: transactionImportFrom,
+          },
         });
 
         // Delete the consumed pending record
         await tx.pendingExternalAccount.delete({
-          where: { id: pendingAcc.id }
+          where: { id: pendingAcc.id },
         });
-        
+
         linkedAccountIds.push(accountIdToMap);
       }
 
@@ -407,7 +463,13 @@ export const syncBankAccount = authActionClient
     try {
       balanceRes = await internalSyncBalance(accountId, userId);
     } catch (e: any) {
-      return { success: false, partial: false, balanceUpdated: false, transactionsUpdated: false, error: e.message };
+      return {
+        success: false,
+        partial: false,
+        balanceUpdated: false,
+        transactionsUpdated: false,
+        error: e.message,
+      };
     }
 
     if (balanceRes.reauthRequired) {
@@ -419,12 +481,12 @@ export const syncBankAccount = authActionClient
     try {
       txRes = await internalSyncTransactions(accountId, userId);
     } catch (e: any) {
-      return { 
-        success: false, 
-        partial: true, 
-        balanceUpdated: true, 
-        transactionsUpdated: false, 
-        error: e.message 
+      return {
+        success: false,
+        partial: true,
+        balanceUpdated: true,
+        transactionsUpdated: false,
+        error: e.message,
       };
     }
 
@@ -442,7 +504,8 @@ export const syncBankAccount = authActionClient
       transactionsUpdated: true,
       imported: txRes.imported || 0,
       duplicates: txRes.duplicates || 0,
-      skipped: (txRes.skippedInvalid || 0) + (txRes.skippedCurrencyMismatch || 0),
+      skipped:
+        (txRes.skippedInvalid || 0) + (txRes.skippedCurrencyMismatch || 0),
     };
   });
 
@@ -453,38 +516,46 @@ export const disconnectBank = authActionClient
       where: { id: accountId },
       include: {
         externalMappings: {
-          include: { bankConnection: true }
-        }
-      }
+          include: { bankConnection: true },
+        },
+      },
     });
 
-    if (!account || account.userId !== userId) throw new Error("Unauthorized or invalid account");
+    if (!account || account.userId !== userId)
+      throw new Error("Unauthorized or invalid account");
 
-    const mapping = account.externalMappings.find(m => m.disconnectedAt === null);
+    const mapping = account.externalMappings.find(
+      (m) => m.disconnectedAt === null,
+    );
     if (!mapping) throw new Error("Account is not connected to a bank");
 
     const connection = mapping.bankConnection;
 
-    if (connection.userId !== userId) throw new Error("Unauthorized connection");
+    if (connection.userId !== userId)
+      throw new Error("Unauthorized connection");
 
     // 1. Check remaining active mappings on this connection
     const otherActiveMappingsCount = await db.externalAccountMapping.count({
       where: {
         bankConnectionId: connection.id,
         disconnectedAt: null,
-        id: { not: mapping.id }
-      }
+        id: { not: mapping.id },
+      },
     });
 
     if (otherActiveMappingsCount > 0) {
       // Just mark this mapping as disconnected, leave connection alone
       await db.externalAccountMapping.update({
         where: { id: mapping.id },
-        data: { disconnectedAt: new Date() }
+        data: { disconnectedAt: new Date() },
       });
     } else {
       // Last active mapping. Revoke session FIRST.
-      if (connection.providerSessionId && connection.status !== "REVOKED" && connection.status !== "EXPIRED") {
+      if (
+        connection.providerSessionId &&
+        connection.status !== "REVOKED" &&
+        connection.status !== "EXPIRED"
+      ) {
         const client = new EnableBankingClient();
         try {
           await client.revokeSession(connection.providerSessionId);
@@ -492,13 +563,22 @@ export const disconnectBank = authActionClient
           if (e.name === "EnableBankingProviderError") {
             const code = e.body?.error;
             // terminal states are safe to consider "revoked"
-            if (code === "EXPIRED_SESSION" || code === "REVOKED_SESSION" || code === "CLOSED_SESSION" || code === "NOT_FOUND") {
+            if (
+              code === "EXPIRED_SESSION" ||
+              code === "REVOKED_SESSION" ||
+              code === "CLOSED_SESSION" ||
+              code === "NOT_FOUND"
+            ) {
               // Safe to proceed to local revocation
             } else {
-              throw new Error(`Provider failed to revoke: ${code || e.message}`);
+              throw new Error(
+                `Provider failed to revoke: ${code || e.message}`,
+              );
             }
           } else {
-             throw new Error("Provider revocation failed due to a network/application error.");
+            throw new Error(
+              "Provider revocation failed due to a network/application error.",
+            );
           }
         }
       }
@@ -507,18 +587,17 @@ export const disconnectBank = authActionClient
       await db.$transaction(async (tx) => {
         await tx.externalAccountMapping.update({
           where: { id: mapping.id },
-          data: { disconnectedAt: new Date() }
+          data: { disconnectedAt: new Date() },
         });
         await tx.bankConnection.update({
           where: { id: connection.id },
-          data: { status: "REVOKED" }
+          data: { status: "REVOKED" },
         });
       });
     }
 
     revalidatePath("/");
     revalidatePath("/accounts");
-    
+
     return { success: true, institutionName: connection.institutionName };
   });
-

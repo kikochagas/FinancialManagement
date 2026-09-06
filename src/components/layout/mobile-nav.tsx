@@ -9,7 +9,11 @@ import { cn } from "@/lib/utils";
 import { navLinks } from "./nav-links";
 import { logout } from "@/features/auth/actions";
 
-export function MobileNav({ user }: { user?: { name: string | null; email: string } }) {
+export function MobileNav({
+  user,
+}: {
+  user?: { name: string | null; email: string };
+}) {
   const pathname = usePathname();
   const [open, setOpen] = React.useState(false);
 
@@ -26,9 +30,15 @@ export function MobileNav({ user }: { user?: { name: string | null; email: strin
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
         <DialogPrimitive.Content className="fixed inset-y-0 left-0 z-50 w-3/4 max-w-sm border-r border-border bg-card p-6 shadow-lg transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left duration-300 flex flex-col">
-          <DialogPrimitive.Title className="sr-only">Navigation</DialogPrimitive.Title>
+          <DialogPrimitive.Title className="sr-only">
+            Navigation
+          </DialogPrimitive.Title>
           <div className="flex items-center justify-between mb-8">
-            <Link href="/" className="flex items-center gap-3" onClick={() => setOpen(false)}>
+            <Link
+              href="/"
+              className="flex items-center gap-3"
+              onClick={() => setOpen(false)}
+            >
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-tr from-violet-600 to-indigo-600 text-white shadow-glow">
                 <Coins className="h-5 w-5" />
               </div>
@@ -41,7 +51,7 @@ export function MobileNav({ user }: { user?: { name: string | null; email: strin
               <span className="sr-only">Close menu</span>
             </DialogPrimitive.Close>
           </div>
-          
+
           <div className="flex-1 overflow-y-auto">
             <nav className="flex flex-col space-y-2">
               {navLinks.map((link) => {
@@ -56,13 +66,15 @@ export function MobileNav({ user }: { user?: { name: string | null; email: strin
                       "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 group relative",
                       isActive
                         ? "bg-accent text-accent-foreground border-l-2 border-primary shadow-sm"
-                        : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                        : "text-muted-foreground hover:text-foreground hover:bg-accent/50",
                     )}
                   >
                     <Icon
                       className={cn(
                         "h-5 w-5 shrink-0 transition-transform duration-200 group-hover:scale-110",
-                        isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
+                        isActive
+                          ? "text-primary"
+                          : "text-muted-foreground group-hover:text-foreground",
                       )}
                     />
                     <span>{link.label}</span>
@@ -78,8 +90,12 @@ export function MobileNav({ user }: { user?: { name: string | null; email: strin
                   {user.name ? user.name.charAt(0).toUpperCase() : "U"}
                 </div>
                 <div className="flex-1 overflow-hidden">
-                  <p className="text-xs font-semibold text-foreground truncate">{user.name || "User"}</p>
-                  <p className="text-[10px] text-muted-foreground truncate">{user.email}</p>
+                  <p className="text-xs font-semibold text-foreground truncate">
+                    {user.name || "User"}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground truncate">
+                    {user.email}
+                  </p>
                 </div>
               </div>
               <form action={logout}>

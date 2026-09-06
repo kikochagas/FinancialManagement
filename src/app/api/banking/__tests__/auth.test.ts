@@ -23,7 +23,7 @@ vi.mock("@/lib/banking/enable-banking-client", () => {
     externalAccountMapping: {
       findUnique: vi.fn(),
       update: vi.fn(),
-    }
+    },
   };
 });
 
@@ -61,7 +61,10 @@ describe("Banking Auth APIs", () => {
       vi.mocked(auth.getUserId).mockResolvedValue(null);
       const req = new Request("http://localhost/api/banking/connect", {
         method: "POST",
-        body: JSON.stringify({ institutionName: "Test Bank", institutionCountry: "PT" }),
+        body: JSON.stringify({
+          institutionName: "Test Bank",
+          institutionCountry: "PT",
+        }),
       });
       const res = await ConnectPOST(req);
       expect(res.status).toBe(401);
@@ -70,11 +73,14 @@ describe("Banking Auth APIs", () => {
     it("fails with invalid institution", async () => {
       vi.mocked(auth.getUserId).mockResolvedValue("user-123");
       mockGetInstitutions.mockResolvedValue([
-        { id: "Other Bank", name: "Other Bank", country: "PT" }
+        { id: "Other Bank", name: "Other Bank", country: "PT" },
       ]);
       const req = new Request("http://localhost/api/banking/connect", {
         method: "POST",
-        body: JSON.stringify({ institutionName: "Test Bank", institutionCountry: "PT" }),
+        body: JSON.stringify({
+          institutionName: "Test Bank",
+          institutionCountry: "PT",
+        }),
       });
       const res = await ConnectPOST(req);
       expect(res.status).toBe(400);
@@ -85,29 +91,37 @@ describe("Banking Auth APIs", () => {
     it("creates state and returns authorization url", async () => {
       vi.mocked(auth.getUserId).mockResolvedValue("user-123");
       mockGetInstitutions.mockResolvedValue([
-        { id: "Test Bank", name: "Test Bank", country: "PT", maximumConsentValidity: 90 }
+        {
+          id: "Test Bank",
+          name: "Test Bank",
+          country: "PT",
+          maximumConsentValidity: 90,
+        },
       ]);
       mockCreateAuthorization.mockResolvedValue({
         url: "http://enablebanking.test/auth",
-        providerAuthorizationId: "auth-456"
+        providerAuthorizationId: "auth-456",
       });
 
       const req = new Request("http://localhost/api/banking/connect", {
         method: "POST",
-        body: JSON.stringify({ institutionName: "Test Bank", institutionCountry: "PT" }),
+        body: JSON.stringify({
+          institutionName: "Test Bank",
+          institutionCountry: "PT",
+        }),
       });
       const res = await ConnectPOST(req);
       expect(res.status).toBe(200);
       const data = await res.json();
       expect(data.authorizationUrl).toBe("http://enablebanking.test/auth");
-      
+
       expect(prisma.bankAuthorizationState.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
             userId: "user-123",
             institutionName: "Test Bank",
-          })
-        })
+          }),
+        }),
       );
     });
   });
@@ -123,7 +137,9 @@ describe("Banking Auth APIs", () => {
     it("redirects on unknown or expired state", async () => {
       vi.mocked(auth.getUserId).mockResolvedValue("user-123");
       vi.mocked(prisma.$transaction).mockResolvedValue(null); // state not found or invalid
-      const req = new Request("http://localhost/api/banking/callback?code=abc&state=badstate");
+      const req = new Request(
+        "http://localhost/api/banking/callback?code=abc&state=badstate",
+      );
       const res = await CallbackGET(req);
       expect(res.status).toBe(307);
       expect(res.headers.get("location")).toContain("error=invalid_state");
@@ -135,13 +151,17 @@ describe("Banking Auth APIs", () => {
         id: "state-1",
         userId: "user-123",
         institutionName: "Test Bank",
-        institutionCountry: "PT"
+        institutionCountry: "PT",
       } as any);
 
-      const req = new Request("http://localhost/api/banking/callback?error=user_cancelled&state=goodstate");
+      const req = new Request(
+        "http://localhost/api/banking/callback?error=user_cancelled&state=goodstate",
+      );
       const res = await CallbackGET(req);
       expect(res.status).toBe(307);
-      expect(res.headers.get("location")).toContain("error=authorization_failed");
+      expect(res.headers.get("location")).toContain(
+        "error=authorization_failed",
+      );
     });
 
     it("redirects on missing code with valid unused state", async () => {
@@ -150,15 +170,19 @@ describe("Banking Auth APIs", () => {
         id: "state-1",
         userId: "user-123",
         institutionName: "Test Bank",
-        institutionCountry: "PT"
+        institutionCountry: "PT",
       } as any);
 
       // Only state, no code
-      const req = new Request("http://localhost/api/banking/callback?state=goodstate");
+      const req = new Request(
+        "http://localhost/api/banking/callback?state=goodstate",
+      );
       const res = await CallbackGET(req);
-      
+
       expect(res.status).toBe(307);
-      expect(res.headers.get("location")).toContain("error=authorization_failed");
+      expect(res.headers.get("location")).toContain(
+        "error=authorization_failed",
+      );
       expect(mockCompleteAuthorization).not.toHaveBeenCalled();
       expect(prisma.bankConnection.create).not.toHaveBeenCalled();
     });
@@ -169,15 +193,19 @@ describe("Banking Auth APIs", () => {
         id: "state-1",
         userId: "user-123",
         institutionName: "Test Bank",
-        institutionCountry: "PT"
+        institutionCountry: "PT",
       } as any);
-      
+
       mockCompleteAuthorization.mockRejectedValue(new Error("API Down"));
 
-      const req = new Request("http://localhost/api/banking/callback?code=abc&state=goodstate");
+      const req = new Request(
+        "http://localhost/api/banking/callback?code=abc&state=goodstate",
+      );
       const res = await CallbackGET(req);
       expect(res.status).toBe(307);
-      expect(res.headers.get("location")).toContain("error=session_creation_failed");
+      expect(res.headers.get("location")).toContain(
+        "error=session_creation_failed",
+      );
     });
 
     it("creates bank connection on successful callback", async () => {
@@ -186,7 +214,7 @@ describe("Banking Auth APIs", () => {
         id: "state-1",
         userId: "user-123",
         institutionName: "Test Bank",
-        institutionCountry: "PT"
+        institutionCountry: "PT",
       } as any);
       vi.mocked(prisma.bankConnection.findFirst).mockResolvedValue(null);
       vi.mocked(prisma.bankConnection.create).mockResolvedValue({
@@ -196,34 +224,38 @@ describe("Banking Auth APIs", () => {
 
       mockCompleteAuthorization.mockResolvedValue({
         providerSessionId: "session-456",
-        accountsData: [{ uid: "acc1", identification_hash: "hash1" }]
+        accountsData: [{ uid: "acc1", identification_hash: "hash1" }],
       });
 
-      const req = new Request("http://localhost/api/banking/callback?code=abc&state=goodstate");
+      const req = new Request(
+        "http://localhost/api/banking/callback?code=abc&state=goodstate",
+      );
       const res = await CallbackGET(req);
-      
+
       expect(res.status).toBe(307);
-      expect(res.headers.get("location")).toContain("/accounts/link?connectionId=conn-123");
-      
+      expect(res.headers.get("location")).toContain(
+        "/accounts/link?connectionId=conn-123",
+      );
+
       expect(prisma.pendingExternalAccount.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
             bankConnectionId_identificationHash: expect.objectContaining({
-              bankConnectionId: "conn-123"
-            })
-          })
-        })
+              bankConnectionId: "conn-123",
+            }),
+          }),
+        }),
       );
     });
     it("prevents state replay attacks", async () => {
       vi.mocked(auth.getUserId).mockResolvedValue("user-123");
-      
+
       // First call simulates successful finding and updating
       vi.mocked(prisma.$transaction).mockResolvedValueOnce({
         id: "state-1",
         userId: "user-123",
         institutionName: "Test Bank",
-        institutionCountry: "PT"
+        institutionCountry: "PT",
       } as any);
 
       // Second call simulates returning null because usedAt is not null
@@ -231,7 +263,7 @@ describe("Banking Auth APIs", () => {
 
       mockCompleteAuthorization.mockResolvedValue({
         providerSessionId: "session-456",
-        accountsData: [{ uid: "acc1", identification_hash: "hash1" }]
+        accountsData: [{ uid: "acc1", identification_hash: "hash1" }],
       });
 
       vi.mocked(prisma.bankConnection.findFirst).mockResolvedValue(null);
@@ -240,12 +272,18 @@ describe("Banking Auth APIs", () => {
         userId: "user-123",
       } as any);
 
-      const req1 = new Request("http://localhost/api/banking/callback?code=abc&state=goodstate");
+      const req1 = new Request(
+        "http://localhost/api/banking/callback?code=abc&state=goodstate",
+      );
       const res1 = await CallbackGET(req1);
       expect(res1.status).toBe(307);
-      expect(res1.headers.get("location")).toContain("/accounts/link?connectionId=conn-123");
+      expect(res1.headers.get("location")).toContain(
+        "/accounts/link?connectionId=conn-123",
+      );
 
-      const req2 = new Request("http://localhost/api/banking/callback?code=abc&state=goodstate");
+      const req2 = new Request(
+        "http://localhost/api/banking/callback?code=abc&state=goodstate",
+      );
       const res2 = await CallbackGET(req2);
       expect(res2.status).toBe(307);
       expect(res2.headers.get("location")).toContain("error=invalid_state");

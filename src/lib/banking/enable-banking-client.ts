@@ -15,7 +15,10 @@ import path from "path";
 import crypto from "crypto";
 
 export class EnableBankingProviderError extends Error {
-  constructor(public status: number, public body: any) {
+  constructor(
+    public status: number,
+    public body: any,
+  ) {
     super(`Enable Banking API error: ${status} ${JSON.stringify(body)}`);
     this.name = "EnableBankingProviderError";
   }
@@ -30,12 +33,14 @@ export class EnableBankingClient implements BankingProvider {
     this.apiUrl = "https://api.enablebanking.com";
     this.appId = process.env.ENABLE_BANKING_APPLICATION_ID || "";
     this.privateKeyPath = process.env.ENABLE_BANKING_PRIVATE_KEY_PATH || "";
-    
+
     if (!this.appId) {
       console.warn("ENABLE_BANKING_APPLICATION_ID is not set");
     }
     if (!process.env.ENABLE_BANKING_PRIVATE_KEY && !this.privateKeyPath) {
-      console.warn("ENABLE_BANKING_PRIVATE_KEY and ENABLE_BANKING_PRIVATE_KEY_PATH are both not set");
+      console.warn(
+        "ENABLE_BANKING_PRIVATE_KEY and ENABLE_BANKING_PRIVATE_KEY_PATH are both not set",
+      );
     }
   }
 
@@ -43,7 +48,7 @@ export class EnableBankingClient implements BankingProvider {
     try {
       let keyStr = "";
       if (process.env.ENABLE_BANKING_PRIVATE_KEY) {
-        keyStr = process.env.ENABLE_BANKING_PRIVATE_KEY.replace(/\\n/g, '\n');
+        keyStr = process.env.ENABLE_BANKING_PRIVATE_KEY.replace(/\\n/g, "\n");
       } else if (this.privateKeyPath) {
         keyStr = readFileSync(path.resolve(this.privateKeyPath), "utf8");
       } else {
@@ -71,7 +76,7 @@ export class EnableBankingClient implements BankingProvider {
   private async request(endpoint: string, method: string = "GET", body?: any) {
     const token = await this.generateToken();
     const url = `${this.apiUrl}${endpoint}`;
-    
+
     const headers: Record<string, string> = {
       Authorization: `Bearer ${token}`,
     };
@@ -104,19 +109,16 @@ export class EnableBankingClient implements BankingProvider {
       service: "AIS",
       psu_type: "personal",
     });
-    
+
     // Enable Banking /aspsps endpoint
     const data = await this.request(`/aspsps?${params.toString()}`);
-    
+
     if (!data || !data.aspsps) {
       return [];
     }
 
     const institutions: BankInstitution[] = data.aspsps
-      .filter((aspsp: any) => 
-        Boolean(aspsp.name) && 
-        Boolean(aspsp.country)
-      )
+      .filter((aspsp: any) => Boolean(aspsp.name) && Boolean(aspsp.country))
       .map((aspsp: any) => ({
         id: aspsp.name, // Enable Banking uses name as primary identifier for auth
         name: aspsp.name,
@@ -133,18 +135,20 @@ export class EnableBankingClient implements BankingProvider {
     institutionCountry: string,
     callbackUrl: string,
     state: string,
-    maximumConsentValiditySeconds: number
+    maximumConsentValiditySeconds: number,
   ): Promise<BankAuthorization> {
     if (
       !Number.isFinite(maximumConsentValiditySeconds) ||
       maximumConsentValiditySeconds <= 0
     ) {
       throw new Error(
-        "maximumConsentValiditySeconds must be a valid positive finite number."
+        "maximumConsentValiditySeconds must be a valid positive finite number.",
       );
     }
-    const validUntilDate = new Date(Date.now() + maximumConsentValiditySeconds * 1000);
-    
+    const validUntilDate = new Date(
+      Date.now() + maximumConsentValiditySeconds * 1000,
+    );
+
     const body = {
       access: {
         valid_until: validUntilDate.toISOString(),
@@ -159,7 +163,7 @@ export class EnableBankingClient implements BankingProvider {
     };
 
     const data = await this.request("/auth", "POST", body);
-    
+
     return {
       url: data.url,
       providerAuthorizationId: data.authorization_id,
@@ -168,16 +172,18 @@ export class EnableBankingClient implements BankingProvider {
 
   async completeAuthorization(
     code: string,
-    redirectUri: string
+    redirectUri: string,
   ): Promise<BankConnectionResult> {
     const body = { code };
 
     const data = await this.request("/sessions", "POST", body);
-    
+
     return {
       providerSessionId: data.session_id,
       accountsData: data.accounts,
-      validUntil: data.access?.valid_until ? new Date(data.access.valid_until) : undefined,
+      validUntil: data.access?.valid_until
+        ? new Date(data.access.valid_until)
+        : undefined,
     };
   }
 
@@ -189,13 +195,12 @@ export class EnableBankingClient implements BankingProvider {
     }
   }
 
+  async getBalances(providerAccountUid: string): Promise<ExternalBalance[]> {
+    const data = await this.request(
+      `/accounts/${providerAccountUid}/balances`,
+      "GET",
+    );
 
-
-  async getBalances(
-    providerAccountUid: string
-  ): Promise<ExternalBalance[]> {
-    const data = await this.request(`/accounts/${providerAccountUid}/balances`, "GET");
-    
     if (!data || !data.balances) {
       return [];
     }
@@ -209,7 +214,7 @@ export class EnableBankingClient implements BankingProvider {
 
       const amount = Number(amountStr);
       if (!Number.isFinite(amount)) return acc;
-      
+
       let referenceDate: Date | undefined;
       if (b.reference_date) {
         const parsed = new Date(b.reference_date);
@@ -225,7 +230,6 @@ export class EnableBankingClient implements BankingProvider {
         date: referenceDate,
       };
 
-
       acc.push(balance);
       return acc;
     }, []);
@@ -236,9 +240,9 @@ export class EnableBankingClient implements BankingProvider {
 
     // Priority: ITBD > CLBD > ITAV > CLAV
     const priorities = ["ITBD", "CLBD", "ITAV", "CLAV"];
-    
+
     for (const p of priorities) {
-      const match = balances.find(b => b.type === p);
+      const match = balances.find((b) => b.type === p);
       if (match) return match;
     }
 
@@ -248,7 +252,7 @@ export class EnableBankingClient implements BankingProvider {
 
   async getTransactions(
     providerAccountUid: string,
-    options?: TransactionQuery
+    options?: TransactionQuery,
   ): Promise<TransactionResult> {
     const params = new URLSearchParams({
       transaction_status: "BOOK",
@@ -264,131 +268,145 @@ export class EnableBankingClient implements BankingProvider {
       params.set("strategy", options.strategy);
     }
 
-    const data = await this.request(`/accounts/${providerAccountUid}/transactions?${params.toString()}`, "GET");
-    
+    const data = await this.request(
+      `/accounts/${providerAccountUid}/transactions?${params.toString()}`,
+      "GET",
+    );
+
     if (!data || !data.transactions) {
       return { transactions: [], skippedInvalid: 0 };
     }
 
     let skippedInvalid = 0;
 
-    const transactions = data.transactions.reduce((acc: ExternalBankTransaction[], t: any) => {
-      const amountStr = t.transaction_amount?.amount;
-      const currency = t.transaction_amount?.currency;
-      
-      if (amountStr === undefined || amountStr === null) {
-        skippedInvalid++;
+    const transactions = data.transactions.reduce(
+      (acc: ExternalBankTransaction[], t: any) => {
+        const amountStr = t.transaction_amount?.amount;
+        const currency = t.transaction_amount?.currency;
+
+        if (amountStr === undefined || amountStr === null) {
+          skippedInvalid++;
+          return acc;
+        }
+
+        const parsedAmount = Number(amountStr);
+        if (!Number.isFinite(parsedAmount)) {
+          skippedInvalid++;
+          return acc;
+        }
+
+        if (!currency) {
+          skippedInvalid++;
+          return acc;
+        }
+
+        function parseSafeDate(d: any) {
+          if (!d) return undefined;
+          const parsed = new Date(d);
+          return isNaN(parsed.getTime()) ? undefined : parsed;
+        }
+
+        const bookingDate = parseSafeDate(t.booking_date);
+        const valueDate = parseSafeDate(t.value_date);
+        const transactionDate = parseSafeDate(t.transaction_date);
+
+        const finalDate = bookingDate || transactionDate || valueDate;
+        if (!finalDate) {
+          skippedInvalid++;
+          return acc;
+        }
+
+        const ind = t.credit_debit_indicator;
+        if (ind !== "CRDT" && ind !== "DBIT") {
+          skippedInvalid++;
+          return acc;
+        }
+        const creditDebitIndicator = ind === "CRDT" ? "CREDIT" : "DEBIT";
+
+        const creditorName = t.creditor?.name;
+        const debtorName = t.debtor?.name;
+        const note = t.note;
+
+        const code = t.bank_transaction_code?.code || "";
+        const subCode = t.bank_transaction_code?.sub_code || "";
+        const remittance = (t.remittance_information || []).join(" ");
+
+        const fallbackHashString = [
+          bookingDate?.toISOString() || "",
+          valueDate?.toISOString() || "",
+          transactionDate?.toISOString() || "",
+          parsedAmount.toString(),
+          currency,
+          creditDebitIndicator,
+          t.reference_number || "",
+          remittance,
+          creditorName || "",
+          debtorName || "",
+          t.merchant_category_code || "",
+          code,
+          subCode,
+        ].join("|");
+
+        const fallbackHash = crypto
+          .createHash("sha256")
+          .update(fallbackHashString)
+          .digest("hex");
+        const entryReference = t.entry_reference;
+
+        const dedupKey = entryReference
+          ? `entry:${entryReference}`
+          : `hash:${fallbackHash}`;
+
+        let descPieces = [
+          creditorName,
+          debtorName,
+          remittance,
+          t.bank_transaction_code?.description,
+          note,
+        ].filter(Boolean);
+
+        let description =
+          descPieces.length > 0 ? descPieces.join(" - ") : "Bank transaction";
+        if (description.length > 255) {
+          description = description.substring(0, 250) + "...";
+        }
+
+        acc.push({
+          dedupKey,
+          entryReference,
+          providerTransactionId: t.transaction_id,
+          amount: Math.abs(parsedAmount),
+          currency,
+          date: finalDate,
+          bookingDate,
+          valueDate,
+          transactionDate,
+          description,
+          creditDebitIndicator,
+          status: t.status === "BOOK" ? "BOOKED" : "PENDING",
+          referenceNumber: t.reference_number,
+          remittanceInformation: t.remittance_information || [],
+          creditorName,
+          debtorName,
+          merchantCategoryCode: t.merchant_category_code,
+          bankTransactionCode: t.bank_transaction_code
+            ? {
+                code: t.bank_transaction_code.code,
+                subCode: t.bank_transaction_code.sub_code,
+                description: t.bank_transaction_code.description,
+              }
+            : undefined,
+        });
+
         return acc;
-      }
-      
-      const parsedAmount = Number(amountStr);
-      if (!Number.isFinite(parsedAmount)) {
-        skippedInvalid++;
-        return acc;
-      }
-      
-      if (!currency) {
-        skippedInvalid++;
-        return acc;
-      }
-
-      function parseSafeDate(d: any) {
-        if (!d) return undefined;
-        const parsed = new Date(d);
-        return isNaN(parsed.getTime()) ? undefined : parsed;
-      }
-
-      const bookingDate = parseSafeDate(t.booking_date);
-      const valueDate = parseSafeDate(t.value_date);
-      const transactionDate = parseSafeDate(t.transaction_date);
-
-      const finalDate = bookingDate || transactionDate || valueDate;
-      if (!finalDate) {
-        skippedInvalid++;
-        return acc; 
-      }
-
-      const ind = t.credit_debit_indicator;
-      if (ind !== "CRDT" && ind !== "DBIT") {
-        skippedInvalid++;
-        return acc;
-      }
-      const creditDebitIndicator = ind === "CRDT" ? "CREDIT" : "DEBIT";
-
-      const creditorName = t.creditor?.name;
-      const debtorName = t.debtor?.name;
-      const note = t.note;
-
-      const code = t.bank_transaction_code?.code || "";
-      const subCode = t.bank_transaction_code?.sub_code || "";
-      const remittance = (t.remittance_information || []).join(" ");
-
-      const fallbackHashString = [
-         bookingDate?.toISOString() || "",
-         valueDate?.toISOString() || "",
-         transactionDate?.toISOString() || "",
-         parsedAmount.toString(),
-         currency,
-         creditDebitIndicator,
-         t.reference_number || "",
-         remittance,
-         creditorName || "",
-         debtorName || "",
-         t.merchant_category_code || "",
-         code,
-         subCode
-      ].join("|");
-      
-      const fallbackHash = crypto.createHash('sha256').update(fallbackHashString).digest('hex');
-      const entryReference = t.entry_reference;
-      
-      const dedupKey = entryReference ? `entry:${entryReference}` : `hash:${fallbackHash}`;
-
-      let descPieces = [
-        creditorName, 
-        debtorName, 
-        remittance, 
-        t.bank_transaction_code?.description,
-        note
-      ].filter(Boolean);
-
-      let description = descPieces.length > 0 ? descPieces.join(" - ") : "Bank transaction";
-      if (description.length > 255) {
-        description = description.substring(0, 250) + "...";
-      }
-
-      acc.push({
-        dedupKey,
-        entryReference,
-        providerTransactionId: t.transaction_id,
-        amount: Math.abs(parsedAmount),
-        currency,
-        date: finalDate,
-        bookingDate,
-        valueDate,
-        transactionDate,
-        description,
-        creditDebitIndicator,
-        status: t.status === "BOOK" ? "BOOKED" : "PENDING",
-        referenceNumber: t.reference_number,
-        remittanceInformation: t.remittance_information || [],
-        creditorName,
-        debtorName,
-        merchantCategoryCode: t.merchant_category_code,
-        bankTransactionCode: t.bank_transaction_code ? {
-          code: t.bank_transaction_code.code,
-          subCode: t.bank_transaction_code.sub_code,
-          description: t.bank_transaction_code.description,
-        } : undefined
-      });
-
-      return acc;
-    }, []);
+      },
+      [],
+    );
 
     return {
       transactions,
       continuationKey: data.continuation_key,
-      skippedInvalid
+      skippedInvalid,
     };
   }
 }

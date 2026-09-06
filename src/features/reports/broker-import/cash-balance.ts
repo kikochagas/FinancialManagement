@@ -7,16 +7,21 @@ export interface BrokerCashEvent {
 }
 
 export function deriveEventCashImpact(event: BrokerCashEvent): number {
-  if (!event.eventType || event.eventType === "IGNORE" || event.eventType === "UNMAPPED") return 0;
-  
+  if (
+    !event.eventType ||
+    event.eventType === "IGNORE" ||
+    event.eventType === "UNMAPPED"
+  )
+    return 0;
+
   if (event.eventType === "FEE") {
-     const baseFee = event.fee != null ? event.fee : (event.amount || 0);
-     return baseFee + (event.tax || 0);
+    const baseFee = event.fee != null ? event.fee : event.amount || 0;
+    return baseFee + (event.tax || 0);
   }
-  
+
   if (event.eventType === "TAX") {
-     const baseTax = event.tax != null ? event.tax : (event.amount || 0);
-     return baseTax + (event.fee || 0);
+    const baseTax = event.tax != null ? event.tax : event.amount || 0;
+    return baseTax + (event.fee || 0);
   }
 
   return (event.amount || 0) + (event.fee || 0) + (event.tax || 0);
@@ -24,14 +29,19 @@ export function deriveEventCashImpact(event: BrokerCashEvent): number {
 
 export function calculateAccountBalance(
   events: BrokerCashEvent[],
-  accountCurrency: string
+  accountCurrency: string,
 ): { isSafe: boolean; balance: number } {
   let balance = 0;
   let isSafe = true;
 
   for (const ev of events) {
-    if (!ev.eventType || ev.eventType === "IGNORE" || ev.eventType === "UNMAPPED") continue;
-    
+    if (
+      !ev.eventType ||
+      ev.eventType === "IGNORE" ||
+      ev.eventType === "UNMAPPED"
+    )
+      continue;
+
     const impact = deriveEventCashImpact(ev);
     if (impact !== 0) {
       if (!ev.currency || ev.currency !== accountCurrency) {
@@ -42,8 +52,8 @@ export function calculateAccountBalance(
     }
   }
 
-  return { 
-    isSafe, 
-    balance: Math.round(balance * 100) / 100 
+  return {
+    isSafe,
+    balance: Math.round(balance * 100) / 100,
   };
 }

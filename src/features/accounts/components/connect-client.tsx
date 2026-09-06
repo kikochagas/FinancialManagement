@@ -22,7 +22,9 @@ export function ConnectClient() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [isConnecting, setIsConnecting] = useState<string | null>(null); // holds ID of bank being connected
-  const [reconnectAccountId, setReconnectAccountId] = useState<string | null>(null);
+  const [reconnectAccountId, setReconnectAccountId] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -58,15 +60,15 @@ export function ConnectClient() {
           institutionName: institution.name,
           institutionCountry: institution.country,
           reconnectAccountId: reconnectAccountId || undefined,
-        })
+        }),
       });
-      
+
       const data = await res.json();
-      
+
       if (!res.ok || !data.authorizationUrl) {
         throw new Error(data.error || "Failed to initiate connection");
       }
-      
+
       window.location.assign(data.authorizationUrl);
     } catch (err: any) {
       setError(err.message || "Failed to connect to bank");
@@ -74,8 +76,8 @@ export function ConnectClient() {
     }
   };
 
-  const filteredInstitutions = institutions.filter((inst) => 
-    inst.name.toLowerCase().includes(search.toLowerCase())
+  const filteredInstitutions = institutions.filter((inst) =>
+    inst.name.toLowerCase().includes(search.toLowerCase()),
   );
 
   return (
@@ -99,8 +101,8 @@ export function ConnectClient() {
         <CardContent className="p-6 space-y-6">
           <div className="relative">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input 
-              placeholder="Search institutions..." 
+            <Input
+              placeholder="Search institutions..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9"
@@ -118,21 +120,25 @@ export function ConnectClient() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
               {filteredInstitutions.map((inst) => (
-                <div 
+                <div
                   key={inst.id}
                   onClick={() => handleConnect(inst)}
                   className={`p-4 border rounded-lg flex items-center gap-4 transition-colors ${
-                    isConnecting && isConnecting !== inst.id 
-                      ? 'opacity-50 cursor-not-allowed' 
-                      : 'cursor-pointer hover:bg-muted/50 hover:border-primary/50'
+                    isConnecting && isConnecting !== inst.id
+                      ? "opacity-50 cursor-not-allowed"
+                      : "cursor-pointer hover:bg-muted/50 hover:border-primary/50"
                   }`}
                 >
                   <div className="h-10 w-10 shrink-0 bg-secondary rounded-md flex items-center justify-center overflow-hidden border">
                     <Landmark className="h-5 w-5 text-muted-foreground" />
                   </div>
                   <div className="flex-1 truncate">
-                    <h3 className="font-semibold text-sm truncate">{inst.name}</h3>
-                    <p className="text-xs text-muted-foreground truncate">{inst.country}</p>
+                    <h3 className="font-semibold text-sm truncate">
+                      {inst.name}
+                    </h3>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {inst.country}
+                    </p>
                   </div>
                   {isConnecting === inst.id && (
                     <Loader2 className="h-4 w-4 animate-spin text-primary" />

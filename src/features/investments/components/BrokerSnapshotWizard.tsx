@@ -63,6 +63,14 @@ function isDuplicateFingerprintResult(
   return result.success === false && result.error === "DUPLICATE_FINGERPRINT";
 }
 
+function getDefaultIntentForPosition(
+  status: string,
+): "CREATE" | "UPDATE" | "SKIP" {
+  if (status === "NEW") return "CREATE";
+  if (status === "MATCHED") return "UPDATE";
+  return "SKIP";
+}
+
 export function BrokerSnapshotWizard({
   investmentAccounts,
 }: BrokerSnapshotWizardProps) {
@@ -105,14 +113,7 @@ export function BrokerSnapshotWizard({
 
         const initialIntents: Record<number, IntentAction> = {};
         res.data.reconciliation.positions.forEach((p: any, idx: number) => {
-          initialIntents[idx] =
-            p.status === "AMBIGUOUS" || p.status === "CONFLICT"
-              ? "SKIP"
-              : p.status === "NEW"
-                ? "CREATE"
-                : p.status === "MATCHED"
-                  ? "UPDATE"
-                  : "SKIP";
+          initialIntents[idx] = getDefaultIntentForPosition(p.status);
         });
         setPositionIntents(initialIntents);
       } else {
@@ -211,9 +212,11 @@ export function BrokerSnapshotWizard({
         if (result?.data) {
           setReconciliation(result.data);
           const defaultIntents: Record<number, IntentAction> = {};
-          result.data.positions.forEach((p, idx) => {
-            defaultIntents[idx] = "SKIP";
-          });
+          if (result?.data?.positions) {
+            result.data.positions.forEach((p, idx) => {
+              defaultIntents[idx] = getDefaultIntentForPosition(p.status);
+            });
+          }
           setPositionIntents(defaultIntents);
         } else {
           setError(result?.serverError || "Reconciliation failed");
@@ -838,12 +841,18 @@ export function BrokerSnapshotWizard({
               <CardHeader>
                 <CardTitle className="text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
                   <CheckCircle2 className="h-5 w-5" />
-                  Snapshot Saved Successfully
+                  {existingSnapshotId
+                    ? "Portfolio Updated Successfully"
+                    : "Snapshot Saved Successfully"}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
                 <ul className="list-disc list-inside space-y-1">
-                  <li>Snapshot evidence persisted immutably</li>
+                  <li>
+                    {existingSnapshotId
+                      ? "Existing snapshot evidence preserved"
+                      : "Snapshot evidence persisted immutably"}
+                  </li>
                   <li>{applyResult.created} investments created</li>
                   <li>{applyResult.updated} investments updated</li>
                   <li>{applyResult.skipped} positions skipped</li>

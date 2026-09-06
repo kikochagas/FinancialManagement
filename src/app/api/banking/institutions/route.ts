@@ -7,10 +7,13 @@ export async function GET(request: Request) {
     // 11. GET Portuguese institutions using: country=PT, service=AIS, psu_type=personal
     // Our EnableBankingClient's getInstitutions method defaults to these filters
     const institutions = await client.getInstitutions("PT");
-    
+
     return NextResponse.json({ institutions });
   } catch (error: any) {
     console.error("Failed to fetch banking institutions:", error);
-    return NextResponse.json({ error: "Failed to fetch institutions" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch institutions" },
+      { status: 500 },
+    );
   }
 }

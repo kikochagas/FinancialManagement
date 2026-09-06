@@ -1,10 +1,16 @@
-export function applyCategorySuggestionsAndFallbacks<T extends { categoryId?: string }>(
+export function applyCategorySuggestionsAndFallbacks<
+  T extends { categoryId?: string },
+>(
   transactions: T[],
   duplicates: number[],
   categoriesMap: Record<number, string | null> | undefined,
-  categories: { id: string; systemKey?: string | null }[]
-): (T & { isProbableDuplicate?: boolean; import?: boolean; isCategorySuggested?: boolean })[] {
-  const uncat = categories.find(c => c.systemKey === "uncategorized");
+  categories: { id: string; systemKey?: string | null }[],
+): (T & {
+  isProbableDuplicate?: boolean;
+  import?: boolean;
+  isCategorySuggested?: boolean;
+})[] {
+  const uncat = categories.find((c) => c.systemKey === "uncategorized");
 
   return transactions.map((t, i) => {
     let updated = { ...t } as any;

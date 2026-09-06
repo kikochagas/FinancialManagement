@@ -212,3 +212,94 @@ export const getSnapshotReconciliation = authActionClient
 
     return reconcileSnapshot(snapshot, accountId, investments);
   });
+
+const existingSnapshotReconcileSchema = z.object({
+  snapshotId: z.string(),
+});
+
+export const getExistingSnapshotReconciliation = authActionClient
+  .schema(existingSnapshotReconcileSchema)
+  .action(async ({ parsedInput: { snapshotId }, ctx: { userId } }) => {
+    const snapshotRow = await db.investmentAccountSnapshot.findUnique({
+      where: { id: snapshotId },
+      include: {
+        positions: true,
+        cashBalances: true,
+        totals: true,
+        account: true,
+      },
+    });
+
+    if (
+      !snapshotRow ||
+      snapshotRow.userId !== userId ||
+      snapshotRow.account.userId !== userId
+    ) {
+      throw new Error("Unauthorized existing snapshot");
+    }
+
+    const account = snapshotRow.account;
+    if (!canHoldInvestments(account.type)) {
+      throw new Error("Account cannot hold investments");
+    }
+
+    // Reconstruct BrokerSnapshot
+    const snapshot = {
+      statementDate: snapshotRow.statementDate.toISOString().split("T")[0],
+      dateProvenance: snapshotRow.statementDateSource as any,
+      documentFingerprint: snapshotRow.documentFingerprint,
+      completeness: snapshotRow.completeness as any,
+      positions: snapshotRow.positions.map((p) => ({
+        name: p.name,
+        sourceSection: p.sourceSection,
+        assetClass: p.assetClass,
+        isin: p.isin,
+        ticker: p.ticker,
+        instrumentIdentifier: p.instrumentIdentifier,
+        instrumentIdentifierType: p.instrumentIdentifierType,
+        quantity: p.quantity,
+        unitPrice: p.unitPrice,
+        marketValue: p.marketValue,
+        currency: p.currency,
+        valuationDate: p.valuationDate
+          ? p.valuationDate.toISOString().split("T")[0]
+          : null,
+      })),
+      cashBalances: snapshotRow.cashBalances.map((c) => ({
+        type: c.type as any,
+        label: c.label,
+        currency: c.currency,
+        amount: c.amount,
+      })),
+      totals: snapshotRow.totals.map((t) => ({
+        type: t.type as any,
+        label: t.label,
+        currency: t.currency,
+        amount: t.amount,
+      })),
+    };
+
+    const investments = await db.investment.findMany({
+      where: { accountId: account.id, userId },
+      select: {
+        id: true,
+        accountId: true,
+        name: true,
+        type: true,
+        symbol: true,
+        quantity: true,
+        marketValue: true,
+        isin: true,
+        instrumentIdentifier: true,
+        instrumentIdentifierType: true,
+      },
+    });
+
+    const reconciliation = reconcileSnapshot(snapshot, account.id, investments);
+
+    return {
+      snapshot,
+      reconciliation,
+      accountId: account.id,
+    };
+  });

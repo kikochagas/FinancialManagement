@@ -44,15 +44,21 @@ export function isValidISIN(isin: string): boolean {
 export function normalizeIdentifier(
   rawIdentifier: string | null,
   explicitISIN: string | null,
-  explicitTicker: string | null
+  explicitTicker: string | null,
 ): {
   instrumentIdentifier: string | null;
   isin: string | null;
   ticker: string | null;
 } {
-  let isin: string | null = explicitISIN ? explicitISIN.trim().toUpperCase() : null;
-  let ticker: string | null = explicitTicker ? explicitTicker.trim().toUpperCase() : null;
-  let instrumentIdentifier: string | null = rawIdentifier ? rawIdentifier.trim() : null;
+  let isin: string | null = explicitISIN
+    ? explicitISIN.trim().toUpperCase()
+    : null;
+  let ticker: string | null = explicitTicker
+    ? explicitTicker.trim().toUpperCase()
+    : null;
+  let instrumentIdentifier: string | null = rawIdentifier
+    ? rawIdentifier.trim()
+    : null;
 
   if (isin && !isValidISIN(isin)) {
     isin = null; // Ignore invalid ISIN

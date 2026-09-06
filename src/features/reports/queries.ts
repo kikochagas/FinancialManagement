@@ -2,7 +2,6 @@ import { db } from "@/lib/db";
 import { getUserId } from "@/lib/auth";
 import { ensureDefaultCategories } from "@/features/categories/default-categories";
 
-
 export async function getReportsData() {
   const userId = await getUserId();
   if (!userId) throw new Error("Unauthorized");
@@ -17,14 +16,16 @@ export async function getReportsData() {
     orderBy: { date: "desc" },
   });
 
-  const accounts = await db.account.findMany({ 
+  const accounts = await db.account.findMany({
     where: { userId },
-    include: { externalMappings: true }
+    include: { externalMappings: true },
   });
   const categories = await ensureDefaultCategories(userId);
   const investments = await db.investment.findMany({ where: { userId } });
   const goals = await db.goal.findMany({ where: { userId } });
-  const taxReservations = await db.taxReservation.findMany({ where: { userId } });
+  const taxReservations = await db.taxReservation.findMany({
+    where: { userId },
+  });
 
   return {
     transactions: transactions.map((t) => ({
@@ -44,7 +45,9 @@ export async function getReportsData() {
       type: a.type,
       balance: a.balance,
       currency: a.currency,
-      isBankConnected: a.externalMappings.some((m) => m.disconnectedAt === null),
+      isBankConnected: a.externalMappings.some(
+        (m) => m.disconnectedAt === null,
+      ),
     })),
     categories: categories.map((c) => ({
       id: c.id,

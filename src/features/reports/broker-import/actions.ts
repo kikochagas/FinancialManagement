@@ -17,17 +17,19 @@ const brokerShapeSchema = z.enum([
   "ISIN_LIKE",
   "SHORT_TEXT",
   "LONG_TEXT",
-  "UNKNOWN_TEXT"
+  "UNKNOWN_TEXT",
 ]);
 
 const aiMappingInputSchema = z.object({
-  columns: z.array(
-    z.object({
-      index: z.number(),
-      normalizedHeader: z.string().max(100),
-      valueShapes: z.array(brokerShapeSchema).max(15)
-    })
-  ).max(50)
+  columns: z
+    .array(
+      z.object({
+        index: z.number(),
+        normalizedHeader: z.string().max(100),
+        valueShapes: z.array(brokerShapeSchema).max(15),
+      }),
+    )
+    .max(50),
 });
 
 export const mapBrokerColumnsWithAIAction = authActionClient
@@ -37,7 +39,7 @@ export const mapBrokerColumnsWithAIAction = authActionClient
     const { openAIProvider } = await import("../../../lib/ai/providers/openai");
 
     const aiMapper = new BrokerTransactionAIMapper(openAIProvider);
-    
+
     try {
       const result = await aiMapper.mapColumns(parsedInput.columns);
       return { success: true, result };
@@ -49,9 +51,19 @@ export const mapBrokerColumnsWithAIAction = authActionClient
 const parsedBrokerTransactionSchema = z.object({
   occurredAt: z.string().min(1),
   eventType: z.enum([
-    "BUY", "SELL", "DIVIDEND", "INTEREST", "CASH_DEPOSIT", 
-    "CASH_WITHDRAWAL", "ASSET_TRANSFER_IN", "ASSET_TRANSFER_OUT", 
-    "FEE", "TAX", "CORPORATE_ACTION", "OTHER", "IGNORE"
+    "BUY",
+    "SELL",
+    "DIVIDEND",
+    "INTEREST",
+    "CASH_DEPOSIT",
+    "CASH_WITHDRAWAL",
+    "ASSET_TRANSFER_IN",
+    "ASSET_TRANSFER_OUT",
+    "FEE",
+    "TAX",
+    "CORPORATE_ACTION",
+    "OTHER",
+    "IGNORE",
   ]),
   rawEventType: z.string().nullable(),
   rawCategory: z.string().nullable(),
@@ -72,98 +84,120 @@ const parsedBrokerTransactionSchema = z.object({
   description: z.string().nullable(),
   externalId: z.string().nullable(),
   sourceRow: z.number().int().min(0),
-  candidateIndex: z.number().int().min(0).optional() // Useful for UI duplicate tracking
+  candidateIndex: z.number().int().min(0).optional(), // Useful for UI duplicate tracking
 });
 
 export const previewBrokerDuplicatesAction = authActionClient
-  .schema(z.object({
-    accountId: z.string().min(1),
-    transactions: z.array(parsedBrokerTransactionSchema)
-  }))
-  .action(async ({ parsedInput: { accountId, transactions }, ctx: { userId } }) => {
-    const { generateDedupKey } = await import("./dedup");
-    
-    // First map all candidate keys to find within-file duplicates
-    const candidateKeys = new Map<string, number>();
-    const duplicateIndices: number[] = [];
-    
-    for (const [idx, tx] of transactions.entries()) {
-      if (tx.eventType === "IGNORE") continue;
+  .schema(
+    z.object({
+      accountId: z.string().min(1),
+      transactions: z.array(parsedBrokerTransactionSchema),
+    }),
+  )
+  .action(
+    async ({ parsedInput: { accountId, transactions }, ctx: { userId } }) => {
+      const { generateDedupKey } = await import("./dedup");
 
-      const key = generateDedupKey(accountId, tx as any);
-      if (candidateKeys.has(key)) {
-         duplicateIndices.push(tx.candidateIndex ?? idx);
-      } else {
-         candidateKeys.set(key, tx.candidateIndex ?? idx);
+      // First map all candidate keys to find within-file duplicates
+      const candidateKeys = new Map<string, number>();
+      const duplicateIndices: number[] = [];
+
+      for (const [idx, tx] of transactions.entries()) {
+        if (tx.eventType === "IGNORE") continue;
+
+        const key = generateDedupKey(accountId, tx as any);
+        if (candidateKeys.has(key)) {
+          duplicateIndices.push(tx.candidateIndex ?? idx);
+        } else {
+          candidateKeys.set(key, tx.candidateIndex ?? idx);
+        }
       }
-    }
 
-    const uniqueKeys = Array.from(candidateKeys.keys());
+      const uniqueKeys = Array.from(candidateKeys.keys());
 
-    const existing = await db.investmentEvent.findMany({
-      where: {
-        userId,
-        accountId,
-      },
-      select: {
-        eventType: true,
-        amount: true,
-        fee: true,
-        tax: true,
-        currency: true,
-        dedupKey: true
+      const existing = await db.investmentEvent.findMany({
+        where: {
+          userId,
+          accountId,
+        },
+        select: {
+          eventType: true,
+          amount: true,
+          fee: true,
+          tax: true,
+          currency: true,
+          dedupKey: true,
+        },
+      });
+
+      const account = await db.account.findFirst({
+        where: { id: accountId, userId },
+        select: { currency: true, externalMappings: true, balance: true },
+      });
+
+      if (!account) {
+        throw new Error("Account not found or unauthorized.");
       }
-    });
 
-    const account = await db.account.findFirst({
-      where: { id: accountId, userId },
-      select: { currency: true, externalMappings: true, balance: true }
-    });
+      const hasActiveMapping = account.externalMappings.some(
+        (m) => m.disconnectedAt === null,
+      );
+      if (hasActiveMapping) {
+        throw new Error(
+          "Cannot preview broker transactions into an actively connected Open Banking account. Please disconnect it first.",
+        );
+      }
 
-    if (!account) {
-      throw new Error("Account not found or unauthorized.");
-    }
-    
-    const hasActiveMapping = account.externalMappings.some(m => m.disconnectedAt === null);
-    if (hasActiveMapping) {
-      throw new Error("Cannot preview broker transactions into an actively connected Open Banking account. Please disconnect it first.");
-    }
+      const existingDupes = existing.filter((e) =>
+        uniqueKeys.includes(e.dedupKey),
+      );
+      const dbDupes = new Set(existingDupes.map((e) => e.dedupKey));
 
-    const existingDupes = existing.filter(e => uniqueKeys.includes(e.dedupKey));
-    const dbDupes = new Set(existingDupes.map(e => e.dedupKey));
+      for (const [key, idx] of candidateKeys.entries()) {
+        if (dbDupes.has(key)) {
+          duplicateIndices.push(idx);
+        }
+      }
 
-    for (const [key, idx] of candidateKeys.entries()) {
-       if (dbDupes.has(key)) {
-         duplicateIndices.push(idx);
-       }
-    }
+      const { calculateAccountBalance } = await import("./cash-balance");
+      const existingBalanceCalculation = calculateAccountBalance(
+        existing as any,
+        account.currency || "EUR",
+      );
 
-    const { calculateAccountBalance } = await import("./cash-balance");
-    const existingBalanceCalculation = calculateAccountBalance(existing as any, account.currency || "EUR");
+      return {
+        success: true,
+        duplicateIndices,
+        currentAccountBalance: account.balance,
+        existingLedgerBalance: existingBalanceCalculation.balance,
+        existingLedgerBalanceSafe: existingBalanceCalculation.isSafe,
+        accountCurrency: account.currency || "EUR",
+      };
+    },
+  );
 
-    return { 
-      success: true, 
-      duplicateIndices,
-      currentAccountBalance: account.balance,
-      existingLedgerBalance: existingBalanceCalculation.balance,
-      existingLedgerBalanceSafe: existingBalanceCalculation.isSafe,
-      accountCurrency: account.currency || "EUR"
-    };
-  });
-
-export async function importBrokerTransactionsForUser(userId: string, accountId: string, transactions: any[], updateCashBalance?: boolean) {
+export async function importBrokerTransactionsForUser(
+  userId: string,
+  accountId: string,
+  transactions: any[],
+  updateCashBalance?: boolean,
+) {
   const account = await db.account.findFirst({
     where: { id: accountId, userId },
-    include: { externalMappings: true }
+    include: { externalMappings: true },
   });
 
   if (!account) {
     throw new Error("Account not found or unauthorized.");
   }
 
-  const hasActiveMapping = account.externalMappings.some(m => m.disconnectedAt === null);
+  const hasActiveMapping = account.externalMappings.some(
+    (m) => m.disconnectedAt === null,
+  );
   if (hasActiveMapping) {
-    throw new Error("Cannot import broker transactions into an actively connected Open Banking account. Please disconnect it first.");
+    throw new Error(
+      "Cannot import broker transactions into an actively connected Open Banking account. Please disconnect it first.",
+    );
   }
 
   let insertedCount = 0;
@@ -176,7 +210,7 @@ export async function importBrokerTransactionsForUser(userId: string, accountId:
   const { generateDedupKey } = await import("./dedup");
 
   const candidates: any[] = [];
-  
+
   for (const tx of transactions) {
     if (tx.eventType === "IGNORE") {
       skippedCount++;
@@ -186,12 +220,16 @@ export async function importBrokerTransactionsForUser(userId: string, accountId:
     const txForValidation = { ...tx, valid: true, warnings: [] };
     validateBrokerTransaction(txForValidation as any);
     if (!txForValidation.valid) {
-      throw new Error(`Server-side validation failed for transaction at row ${tx.sourceRow}: ${txForValidation.warnings.join(", ")}`);
+      throw new Error(
+        `Server-side validation failed for transaction at row ${tx.sourceRow}: ${txForValidation.warnings.join(", ")}`,
+      );
     }
-    
+
     const parsedDate = parseBrokerDatetimeStrict(tx.occurredAt);
     if (!parsedDate.valid || !parsedDate.value) {
-      throw new Error(`Strict server validation failed for occurredAt date at row ${tx.sourceRow}: ${parsedDate.warning || 'Invalid'}`);
+      throw new Error(
+        `Strict server validation failed for occurredAt date at row ${tx.sourceRow}: ${parsedDate.warning || "Invalid"}`,
+      );
     }
     const dateObj = new Date(parsedDate.value);
     if (isNaN(dateObj.getTime())) {
@@ -229,96 +267,125 @@ export async function importBrokerTransactionsForUser(userId: string, accountId:
   }
 
   if (candidates.length === 0 && !updateCashBalance) {
-    return { success: true, insertedCount, skippedCount, balanceUpdated, resultingBalance };
+    return {
+      success: true,
+      insertedCount,
+      skippedCount,
+      balanceUpdated,
+      resultingBalance,
+    };
   }
 
   try {
-    await db.$transaction(async (txDb) => {
-      let newEvents = [];
-      
-      if (candidates.length > 0) {
-        const dedupKeys = candidates.map(c => c.dedupKey);
-        const existing = await txDb.investmentEvent.findMany({
-          where: {
-            accountId,
-            userId,
-            dedupKey: { in: dedupKeys }
-          },
-          select: { dedupKey: true }
-        });
-        
-        const existingSet = new Set(existing.map(e => e.dedupKey));
-        newEvents = [];
-        for (const c of candidates) {
-          if (existingSet.has(c.dedupKey)) {
-            skippedCount++;
+    await db.$transaction(
+      async (txDb) => {
+        let newEvents = [];
+
+        if (candidates.length > 0) {
+          const dedupKeys = candidates.map((c) => c.dedupKey);
+          const existing = await txDb.investmentEvent.findMany({
+            where: {
+              accountId,
+              userId,
+              dedupKey: { in: dedupKeys },
+            },
+            select: { dedupKey: true },
+          });
+
+          const existingSet = new Set(existing.map((e) => e.dedupKey));
+          newEvents = [];
+          for (const c of candidates) {
+            if (existingSet.has(c.dedupKey)) {
+              skippedCount++;
+            } else {
+              existingSet.add(c.dedupKey);
+              newEvents.push(c);
+            }
+          }
+
+          if (newEvents.length > 0) {
+            await txDb.investmentEvent.createMany({
+              data: newEvents,
+            });
+            insertedCount += newEvents.length;
+          }
+        }
+
+        if (updateCashBalance) {
+          const allEvents = await txDb.investmentEvent.findMany({
+            where: { accountId, userId },
+            select: {
+              eventType: true,
+              amount: true,
+              fee: true,
+              tax: true,
+              currency: true,
+            },
+          });
+          const { calculateAccountBalance } = await import("./cash-balance");
+          const balanceCalculation = calculateAccountBalance(
+            allEvents as any,
+            account.currency,
+          );
+
+          if (balanceCalculation.isSafe) {
+            await txDb.account.update({
+              where: { id: accountId },
+              data: { balance: balanceCalculation.balance },
+            });
+            balanceUpdated = true;
+            resultingBalance = balanceCalculation.balance;
           } else {
-            existingSet.add(c.dedupKey);
-            newEvents.push(c);
+            throw new Error(
+              "Cash balance calculation was unsafe (e.g. multi-currency events without FX conversion). Transaction aborted.",
+            );
           }
         }
-
-        if (newEvents.length > 0) {
-          await txDb.investmentEvent.createMany({
-            data: newEvents
-          });
-          insertedCount += newEvents.length;
-        }
-      }
-
-      if (updateCashBalance) {
-        const allEvents = await txDb.investmentEvent.findMany({
-          where: { accountId, userId },
-          select: {
-            eventType: true,
-            amount: true,
-            fee: true,
-            tax: true,
-            currency: true
-          }
-        });
-        const { calculateAccountBalance } = await import("./cash-balance");
-        const balanceCalculation = calculateAccountBalance(allEvents as any, account.currency);
-        
-        if (balanceCalculation.isSafe) {
-          await txDb.account.update({
-            where: { id: accountId },
-            data: { balance: balanceCalculation.balance }
-          });
-          balanceUpdated = true;
-          resultingBalance = balanceCalculation.balance;
-        } else {
-          throw new Error("Cash balance calculation was unsafe (e.g. multi-currency events without FX conversion). Transaction aborted.");
-        }
-      }
-    }, {
-      maxWait: 5000,
-      timeout: 30000
-    });
+      },
+      {
+        maxWait: 5000,
+        timeout: 30000,
+      },
+    );
   } catch (err: any) {
-    if (err.code === 'P2002' || err.message?.includes('Unique constraint')) {
-      throw new Error("A concurrent import was detected and safely aborted to prevent duplicates. Please try again.");
+    if (err.code === "P2002" || err.message?.includes("Unique constraint")) {
+      throw new Error(
+        "A concurrent import was detected and safely aborted to prevent duplicates. Please try again.",
+      );
     }
     throw err;
   }
 
-  return { success: true, insertedCount, skippedCount, balanceUpdated, resultingBalance };
+  return {
+    success: true,
+    insertedCount,
+    skippedCount,
+    balanceUpdated,
+    resultingBalance,
+  };
 }
 
-const importTransactionsSchema = z.object({
-  accountId: z.string().min(1),
-  transactions: z.array(parsedBrokerTransactionSchema),
-  updateCashBalance: z.boolean().optional()
-}).refine(data => data.transactions.length > 0 || data.updateCashBalance, {
-  message: "At least one transaction or balance update required."
-});
+const importTransactionsSchema = z
+  .object({
+    accountId: z.string().min(1),
+    transactions: z.array(parsedBrokerTransactionSchema),
+    updateCashBalance: z.boolean().optional(),
+  })
+  .refine((data) => data.transactions.length > 0 || data.updateCashBalance, {
+    message: "At least one transaction or balance update required.",
+  });
 
 export const importBrokerTransactionsAction = authActionClient
   .schema(importTransactionsSchema)
   .action(async ({ parsedInput, ctx: { userId } }) => {
     const { accountId, transactions, updateCashBalance } = parsedInput;
-    const res = await importBrokerTransactionsForUser(userId, accountId, transactions, updateCashBalance);
-    
+    const res = await importBrokerTransactionsForUser(
+      userId,
+      accountId,
+      transactions,
+      updateCashBalance,
+    );
+
     revalidatePath("/");
     revalidatePath("/reports");
     revalidatePath("/investments"); // Even though we don't update investments yet, cache clear is safe.

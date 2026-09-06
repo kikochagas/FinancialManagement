@@ -8,7 +8,9 @@ import { ParsedBankTransaction } from "./types";
  * - amount (valid number)
  * - direction (Credit or Debit)
  */
-export function validateTransaction(tx: ParsedBankTransaction): ParsedBankTransaction {
+export function validateTransaction(
+  tx: ParsedBankTransaction,
+): ParsedBankTransaction {
   if (!tx.warnings) tx.warnings = [];
   let isValid = true;
 
@@ -22,21 +24,33 @@ export function validateTransaction(tx: ParsedBankTransaction): ParsedBankTransa
       isValid = false;
     } else {
       const d = new Date(tx.bookingDate);
-      if (isNaN(d.getTime()) || d.toISOString().split('T')[0] !== tx.bookingDate) {
+      if (
+        isNaN(d.getTime()) ||
+        d.toISOString().split("T")[0] !== tx.bookingDate
+      ) {
         tx.warnings.push("Invalid calendar date.");
         isValid = false;
       }
     }
   }
 
-  if (!tx.description || tx.description.trim() === "" || tx.description === "Imported Transaction") {
+  if (
+    !tx.description ||
+    tx.description.trim() === "" ||
+    tx.description === "Imported Transaction"
+  ) {
     tx.warnings.push("Description is empty or missing.");
     isValid = false;
   } else {
     tx.description = tx.description.trim();
   }
 
-  if (tx.amount === null || tx.amount === undefined || !isFinite(tx.amount) || tx.amount <= 0) {
+  if (
+    tx.amount === null ||
+    tx.amount === undefined ||
+    !isFinite(tx.amount) ||
+    tx.amount <= 0
+  ) {
     tx.warnings.push("Amount must be a finite positive number.");
     isValid = false;
   }
@@ -47,7 +61,7 @@ export function validateTransaction(tx: ParsedBankTransaction): ParsedBankTransa
   }
 
   if (tx.currencyConflict) {
-    if (!tx.warnings.some(w => w.includes("Currency conflict:"))) {
+    if (!tx.warnings.some((w) => w.includes("Currency conflict:"))) {
       tx.warnings.push("Currency conflict must be resolved.");
     }
     isValid = false;

@@ -1,57 +1,63 @@
-import { vi, describe, it, expect, beforeEach } from 'vitest';
-import { db } from '@/lib/db';
-import { createInvestment, updateInvestment } from '../actions';
+import { vi, describe, it, expect, beforeEach } from "vitest";
+import { db } from "@/lib/db";
+import { createInvestment, updateInvestment } from "../actions";
 
-vi.mock('@/lib/db', async () => {
-  const mod = await vi.importActual<any>('vitest-mock-extended');
+vi.mock("@/lib/db", async () => {
+  const mod = await vi.importActual<any>("vitest-mock-extended");
   return { db: mod.mockDeep() };
 });
 
-vi.mock('@/lib/auth', () => ({
-  getUserId: vi.fn().mockResolvedValue('test-user-id'),
+vi.mock("@/lib/auth", () => ({
+  getUserId: vi.fn().mockResolvedValue("test-user-id"),
 }));
 
-describe('Investments Actions', () => {
+describe("Investments Actions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  describe('updateInvestment', () => {
-    it('should calculate profit when updating investment', async () => {
+  describe("updateInvestment", () => {
+    it("should calculate profit when updating investment", async () => {
       const mockDb = db as any;
-      mockDb.investment.findUnique.mockResolvedValue({ costBasis: 1000, marketValue: 1000, userId: 'test-user-id' });
-      mockDb.investment.update.mockResolvedValue({ id: 'inv-1' });
+      mockDb.investment.findUnique.mockResolvedValue({
+        costBasis: 1000,
+        marketValue: 1000,
+        userId: "test-user-id",
+      });
+      mockDb.investment.update.mockResolvedValue({ id: "inv-1" });
       mockDb.investment.findMany.mockResolvedValue([]);
 
       await updateInvestment({
-        id: 'inv-1',
-        marketValue: 1500
+        id: "inv-1",
+        marketValue: 1500,
       });
 
-      expect(mockDb.investment.update).toHaveBeenCalledWith(expect.objectContaining({
-        where: { id: 'inv-1' },
-        data: expect.objectContaining({ marketValue: 1500, profit: 500 }) // 1500 - 1000
-      }));
+      expect(mockDb.investment.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "inv-1" },
+          data: expect.objectContaining({ marketValue: 1500, profit: 500 }), // 1500 - 1000
+        }),
+      );
     });
   });
 
-  describe('account ownership', () => {
-    it('allows creating an investment linked to an owned account', async () => {
+  describe("account ownership", () => {
+    it("allows creating an investment linked to an owned account", async () => {
       const mockDb = db as any;
 
       mockDb.account.findUnique.mockResolvedValue({
-        id: 'account-1',
-        userId: 'test-user-id',
+        id: "account-1",
+        userId: "test-user-id",
         type: "Broker",
       });
 
       mockDb.investment.create.mockResolvedValue({
-        id: 'inv-1',
-        userId: 'test-user-id',
-        accountId: 'account-1',
-        name: 'Test Asset',
-        type: 'Stocks',
-        symbol: 'TEST',
+        id: "inv-1",
+        userId: "test-user-id",
+        accountId: "account-1",
+        name: "Test Asset",
+        type: "Stocks",
+        symbol: "TEST",
         quantity: 1,
         costBasis: 100,
         marketValue: 120,
@@ -62,10 +68,10 @@ describe('Investments Actions', () => {
       mockDb.investment.findMany.mockResolvedValue([]);
 
       const res = await createInvestment({
-        name: 'Test Asset',
-        type: 'Stocks',
-        symbol: 'TEST',
-        accountId: 'account-1',
+        name: "Test Asset",
+        type: "Stocks",
+        symbol: "TEST",
+        accountId: "account-1",
         quantity: 1,
         costBasis: 100,
         marketValue: 120,
@@ -75,8 +81,8 @@ describe('Investments Actions', () => {
 
       expect(mockDb.investment.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
-          userId: 'test-user-id',
-          accountId: 'account-1',
+          userId: "test-user-id",
+          accountId: "account-1",
           profit: 20,
         }),
       });
@@ -86,25 +92,24 @@ describe('Investments Actions', () => {
       const mockDb = db as any;
 
       mockDb.account.findUnique.mockResolvedValue({
-        id: 'other-account',
-        userId: 'another-user',
+        id: "other-account",
+        userId: "another-user",
       });
 
       const res = await createInvestment({
-        name: 'Test Asset',
-        type: 'Stocks',
-        symbol: 'TEST',
-        accountId: 'other-account',
+        name: "Test Asset",
+        type: "Stocks",
+        symbol: "TEST",
+        accountId: "other-account",
         quantity: 1,
         costBasis: 100,
         marketValue: 120,
       });
 
-      expect(res?.serverError).toContain('Unauthorized account');
+      expect(res?.serverError).toContain("Unauthorized account");
       expect(mockDb.investment.create).not.toHaveBeenCalled();
     });
 
-    
     it("allows creating an investment in a Crypto Wallet", async () => {
       const mockDb = db as any;
 
@@ -168,79 +173,77 @@ describe('Investments Actions', () => {
         marketValue: 100,
       });
 
-      expect(res?.serverError).toContain(
-        "Account cannot hold investments"
-      );
+      expect(res?.serverError).toContain("Account cannot hold investments");
 
       expect(mockDb.investment.create).not.toHaveBeenCalled();
     });
 
     it("allows editing a legacy unassigned investment without assigning it", async () => {
-          const mockDb = db as any;
+      const mockDb = db as any;
 
-          mockDb.investment.findUnique.mockResolvedValue({
-            id: "legacy-1",
-            userId: "test-user-id",
-            accountId: null,
-            costBasis: 50,
-            marketValue: 100,
-          });
+      mockDb.investment.findUnique.mockResolvedValue({
+        id: "legacy-1",
+        userId: "test-user-id",
+        accountId: null,
+        costBasis: 50,
+        marketValue: 100,
+      });
 
-          mockDb.investment.update.mockResolvedValue({
-            id: "legacy-1",
-          });
+      mockDb.investment.update.mockResolvedValue({
+        id: "legacy-1",
+      });
 
-          mockDb.investment.findMany.mockResolvedValue([]);
+      mockDb.investment.findMany.mockResolvedValue([]);
 
-          const res = await updateInvestment({
-            id: "legacy-1",
-            name: "Renamed legacy investment",
-          });
+      const res = await updateInvestment({
+        id: "legacy-1",
+        name: "Renamed legacy investment",
+      });
 
-          expect(res?.data?.success).toBe(true);
-        });
+      expect(res?.data?.success).toBe(true);
+    });
 
-        it("allows assigning a legacy investment to a Broker account", async () => {
-          const mockDb = db as any;
+    it("allows assigning a legacy investment to a Broker account", async () => {
+      const mockDb = db as any;
 
-          mockDb.investment.findUnique.mockResolvedValue({
-            id: "legacy-1",
-            userId: "test-user-id",
-            accountId: null,
-            costBasis: 50,
-            marketValue: 100,
-          });
+      mockDb.investment.findUnique.mockResolvedValue({
+        id: "legacy-1",
+        userId: "test-user-id",
+        accountId: null,
+        costBasis: 50,
+        marketValue: 100,
+      });
 
-          mockDb.account.findUnique.mockResolvedValue({
-            id: "broker-1",
-            userId: "test-user-id",
-            type: "Broker",
-          });
+      mockDb.account.findUnique.mockResolvedValue({
+        id: "broker-1",
+        userId: "test-user-id",
+        type: "Broker",
+      });
 
-          mockDb.investment.update.mockResolvedValue({
-            id: "legacy-1",
+      mockDb.investment.update.mockResolvedValue({
+        id: "legacy-1",
+        accountId: "broker-1",
+      });
+
+      mockDb.investment.findMany.mockResolvedValue([]);
+
+      const res = await updateInvestment({
+        id: "legacy-1",
+        accountId: "broker-1",
+      });
+
+      expect(res?.data?.success).toBe(true);
+
+      expect(mockDb.investment.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
             accountId: "broker-1",
-          });
+          }),
+        }),
+      );
+    });
 
-          mockDb.investment.findMany.mockResolvedValue([]);
-
-          const res = await updateInvestment({
-            id: "legacy-1",
-            accountId: "broker-1",
-          });
-
-          expect(res?.data?.success).toBe(true);
-
-          expect(mockDb.investment.update).toHaveBeenCalledWith(
-            expect.objectContaining({
-              data: expect.objectContaining({
-                accountId: "broker-1",
-              }),
-            })
-          );
-        });
-
-it("does not allow an assigned investment to become unassigned", async () => {
+    it("does not allow an assigned investment to become unassigned", async () => {
       const mockDb = db as any;
 
       mockDb.investment.findUnique.mockResolvedValue({
@@ -257,35 +260,34 @@ it("does not allow an assigned investment to become unassigned", async () => {
       });
 
       expect(res?.serverError).toContain(
-        "Investment account cannot be removed"
+        "Investment account cannot be removed",
       );
 
       expect(mockDb.investment.update).not.toHaveBeenCalled();
     });
 
-
     it("rejects moving an investment to another user's account", async () => {
       const mockDb = db as any;
 
       mockDb.investment.findUnique.mockResolvedValue({
-        id: 'inv-1',
-        userId: 'test-user-id',
+        id: "inv-1",
+        userId: "test-user-id",
         accountId: null,
         costBasis: 100,
         marketValue: 120,
       });
 
       mockDb.account.findUnique.mockResolvedValue({
-        id: 'other-account',
-        userId: 'another-user',
+        id: "other-account",
+        userId: "another-user",
       });
 
       const res = await updateInvestment({
-        id: 'inv-1',
-        accountId: 'other-account',
+        id: "inv-1",
+        accountId: "other-account",
       });
 
-      expect(res?.serverError).toContain('Unauthorized account');
+      expect(res?.serverError).toContain("Unauthorized account");
       expect(mockDb.investment.update).not.toHaveBeenCalled();
     });
   });

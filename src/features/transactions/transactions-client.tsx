@@ -1,20 +1,56 @@
 "use client";
 
 import React, { useState, useTransition } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
 import {
   createTransaction,
   updateTransaction,
   deleteTransaction,
-  bulkDeleteTransactions
+  bulkDeleteTransactions,
 } from "./actions";
-import { buildTransactionPayload, getTransactionPerspective, filterTransactions } from "./utils";
+import {
+  buildTransactionPayload,
+  getTransactionPerspective,
+  filterTransactions,
+} from "./utils";
 import { formatCurrency, cn } from "@/lib/utils";
-import { Search, Plus, Filter, Trash2, Edit2, Check, X, ArrowUpDown, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  Search,
+  Plus,
+  Filter,
+  Trash2,
+  Edit2,
+  Check,
+  X,
+  ArrowUpDown,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 
 interface Transaction {
   id: string;
@@ -38,7 +74,12 @@ interface TransactionsClientProps {
   data: {
     transactions: Transaction[];
     accounts: { id: string; name: string; type: string }[];
-    categories: { id: string; name: string; systemKey: string; color: string }[];
+    categories: {
+      id: string;
+      name: string;
+      systemKey: string;
+      color: string;
+    }[];
   };
 }
 
@@ -70,7 +111,11 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
 
   // Inline Editing state
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<Partial<Omit<Transaction, "direction">> & { direction?: "Debit" | "Credit" | "InternalTransfer" }>({});
+  const [editForm, setEditForm] = useState<
+    Partial<Omit<Transaction, "direction">> & {
+      direction?: "Debit" | "Credit" | "InternalTransfer";
+    }
+  >({});
 
   // New Transaction Form State
   const [newTx, setNewTx] = useState({
@@ -82,7 +127,7 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
     categoryId: data.categories[0]?.id || "",
     destinationAccountId: "",
     tags: "",
-    notes: ""
+    notes: "",
   });
 
   // Handle Sort
@@ -98,7 +143,7 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
   // Toggle selection
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
     );
   };
 
@@ -113,8 +158,8 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
   // Inline Edit Trigger
   const startEdit = (tx: Transaction) => {
     setEditingId(tx.id);
-    setEditForm({ 
-      ...tx
+    setEditForm({
+      ...tx,
     });
   };
 
@@ -125,7 +170,7 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
       const payload = buildTransactionPayload(editForm);
       const res = await updateTransaction({
         id: editForm.id!,
-        ...payload
+        ...payload,
       });
       if (res?.data?.success) {
         setEditingId(null);
@@ -144,7 +189,11 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
 
   // Delete Bulk
   const handleBulkDelete = () => {
-    if (confirm(`Are you sure you want to delete ${selectedIds.length} selected transactions?`)) {
+    if (
+      confirm(
+        `Are you sure you want to delete ${selectedIds.length} selected transactions?`,
+      )
+    ) {
       startTransition(async () => {
         await bulkDeleteTransactions({ ids: selectedIds });
         setSelectedIds([]);
@@ -156,8 +205,8 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
     if (newTx.direction === "InternalTransfer" && !newTx.destinationAccountId) {
-        alert("Please select a destination account for the internal transfer.");
-        return;
+      alert("Please select a destination account for the internal transfer.");
+      return;
     }
     startTransition(async () => {
       const payload = buildTransactionPayload(newTx);
@@ -173,7 +222,7 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
           categoryId: data.categories[0]?.id || "",
           destinationAccountId: "",
           tags: "",
-          notes: ""
+          notes: "",
         });
       }
     });
@@ -184,7 +233,7 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
     search,
     directionFilter,
     accountFilter,
-    categoryFilter
+    categoryFilter,
   });
 
   // Sorting Logic
@@ -193,7 +242,10 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
     if (sortField === "date") {
       const dateDiff = new Date(a.date).getTime() - new Date(b.date).getTime();
       if (dateDiff === 0 && a.createdAt && b.createdAt) {
-        return (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) * multiplier;
+        return (
+          (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) *
+          multiplier
+        );
       }
       return dateDiff * multiplier;
     }
@@ -211,22 +263,29 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
 
   // Pagination Logic
   const pageCount = Math.ceil(sorted.length / itemsPerPage);
-  const paginated = sorted.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-
-
-
+  const paginated = sorted.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage,
+  );
 
   return (
     <div className="space-y-6">
       {/* Action Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <p className="text-xs text-muted-foreground font-medium">Manage and audit your transactional cash flow history.</p>
+          <p className="text-xs text-muted-foreground font-medium">
+            Manage and audit your transactional cash flow history.
+          </p>
         </div>
 
         <div className="flex items-center gap-3">
           {selectedIds.length > 0 && (
-            <Button variant="destructive" size="sm" className="flex items-center gap-2" onClick={handleBulkDelete}>
+            <Button
+              variant="destructive"
+              size="sm"
+              className="flex items-center gap-2"
+              onClick={handleBulkDelete}
+            >
               <Trash2 className="h-4 w-4" />
               Delete Selected ({selectedIds.length})
             </Button>
@@ -243,41 +302,82 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
               <form onSubmit={handleCreate}>
                 <DialogHeader>
                   <DialogTitle>Add Transaction Record</DialogTitle>
-                  <DialogDescription>Input new cash flow debit or credit entry.</DialogDescription>
+                  <DialogDescription>
+                    Input new cash flow debit or credit entry.
+                  </DialogDescription>
                 </DialogHeader>
 
                 <div className="space-y-4 py-4">
                   {/* Row 1: Date & Description */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-[11px] font-semibold text-muted-foreground uppercase">Date</label>
-                      <Input type="date" value={newTx.date} onChange={(e) => setNewTx({ ...newTx, date: e.target.value })} required />
+                      <label className="text-[11px] font-semibold text-muted-foreground uppercase">
+                        Date
+                      </label>
+                      <Input
+                        type="date"
+                        value={newTx.date}
+                        onChange={(e) =>
+                          setNewTx({ ...newTx, date: e.target.value })
+                        }
+                        required
+                      />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-[11px] font-semibold text-muted-foreground uppercase">Amount (€)</label>
-                      <Input type="number" step="0.01" placeholder="0.00" value={newTx.amount} onChange={(e) => setNewTx({ ...newTx, amount: e.target.value })} required />
+                      <label className="text-[11px] font-semibold text-muted-foreground uppercase">
+                        Amount (€)
+                      </label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        value={newTx.amount}
+                        onChange={(e) =>
+                          setNewTx({ ...newTx, amount: e.target.value })
+                        }
+                        required
+                      />
                     </div>
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-[11px] font-semibold text-muted-foreground uppercase">Description</label>
-                    <Input type="text" placeholder="e.g. ChatGPT subscription" value={newTx.description} onChange={(e) => setNewTx({ ...newTx, description: e.target.value })} required />
+                    <label className="text-[11px] font-semibold text-muted-foreground uppercase">
+                      Description
+                    </label>
+                    <Input
+                      type="text"
+                      placeholder="e.g. ChatGPT subscription"
+                      value={newTx.description}
+                      onChange={(e) =>
+                        setNewTx({ ...newTx, description: e.target.value })
+                      }
+                      required
+                    />
                   </div>
 
                   {/* Row 2: Type & Account */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-[11px] font-semibold text-muted-foreground uppercase">Direction</label>
-                      <Select 
-                        value={newTx.direction} 
+                      <label className="text-[11px] font-semibold text-muted-foreground uppercase">
+                        Direction
+                      </label>
+                      <Select
+                        value={newTx.direction}
                         onValueChange={(val) => {
                           const isNowTransfer = val === "InternalTransfer";
-                          const defaultTransferCat = data.categories.find(c => c.systemKey === "transfer")?.id || newTx.categoryId;
-                          setNewTx({ 
-                            ...newTx, 
+                          const defaultTransferCat =
+                            data.categories.find(
+                              (c) => c.systemKey === "transfer",
+                            )?.id || newTx.categoryId;
+                          setNewTx({
+                            ...newTx,
                             direction: val as any,
-                            destinationAccountId: isNowTransfer ? newTx.destinationAccountId : "",
-                            categoryId: isNowTransfer ? defaultTransferCat : newTx.categoryId
+                            destinationAccountId: isNowTransfer
+                              ? newTx.destinationAccountId
+                              : "",
+                            categoryId: isNowTransfer
+                              ? defaultTransferCat
+                              : newTx.categoryId,
                           });
                         }}
                       >
@@ -287,23 +387,34 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
                         <SelectContent>
                           <SelectItem value="Debit">Debit</SelectItem>
                           <SelectItem value="Credit">Credit</SelectItem>
-                          <SelectItem value="InternalTransfer">Internal Transfer</SelectItem>
+                          <SelectItem value="InternalTransfer">
+                            Internal Transfer
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
 
                     <div className="space-y-1.5">
                       <label className="text-[11px] font-semibold text-muted-foreground uppercase">
-                        {newTx.direction === "InternalTransfer" ? "From Account" : "Account"}
+                        {newTx.direction === "InternalTransfer"
+                          ? "From Account"
+                          : "Account"}
                       </label>
-                      <Select value={newTx.accountId} onValueChange={(val) => setNewTx({ ...newTx, accountId: val })}>
+                      <Select
+                        value={newTx.accountId}
+                        onValueChange={(val) =>
+                          setNewTx({ ...newTx, accountId: val })
+                        }
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Select account" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="none">None / External</SelectItem>
                           {data.accounts.map((ac) => (
-                            <SelectItem key={ac.id} value={ac.id}>{ac.name}</SelectItem>
+                            <SelectItem key={ac.id} value={ac.id}>
+                              {ac.name}
+                            </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -314,14 +425,23 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
                   <div className="grid grid-cols-2 gap-4">
                     {data.categories.length > 0 && (
                       <div className="space-y-1.5">
-                        <label className="text-[11px] font-semibold text-muted-foreground uppercase">Category</label>
-                        <Select value={newTx.categoryId} onValueChange={(val) => setNewTx({ ...newTx, categoryId: val })}>
+                        <label className="text-[11px] font-semibold text-muted-foreground uppercase">
+                          Category
+                        </label>
+                        <Select
+                          value={newTx.categoryId}
+                          onValueChange={(val) =>
+                            setNewTx({ ...newTx, categoryId: val })
+                          }
+                        >
                           <SelectTrigger>
                             <SelectValue placeholder="Select category" />
                           </SelectTrigger>
                           <SelectContent>
                             {data.categories.map((cat) => (
-                              <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                              <SelectItem key={cat.id} value={cat.id}>
+                                {cat.name}
+                              </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -329,15 +449,29 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
                     )}
                     {newTx.direction === "InternalTransfer" && (
                       <div className="space-y-1.5">
-                        <label className="text-[11px] font-semibold text-muted-foreground uppercase">To Account</label>
-                        <Select value={newTx.destinationAccountId} onValueChange={(val) => setNewTx({ ...newTx, destinationAccountId: val === "none" ? "" : val })}>
+                        <label className="text-[11px] font-semibold text-muted-foreground uppercase">
+                          To Account
+                        </label>
+                        <Select
+                          value={newTx.destinationAccountId}
+                          onValueChange={(val) =>
+                            setNewTx({
+                              ...newTx,
+                              destinationAccountId: val === "none" ? "" : val,
+                            })
+                          }
+                        >
                           <SelectTrigger>
                             <SelectValue placeholder="Internal transfer to..." />
                           </SelectTrigger>
                           <SelectContent>
-                            {data.accounts.filter(a => a.id !== newTx.accountId).map((ac) => (
-                              <SelectItem key={ac.id} value={ac.id}>{ac.name}</SelectItem>
-                            ))}
+                            {data.accounts
+                              .filter((a) => a.id !== newTx.accountId)
+                              .map((ac) => (
+                                <SelectItem key={ac.id} value={ac.id}>
+                                  {ac.name}
+                                </SelectItem>
+                              ))}
                           </SelectContent>
                         </Select>
                       </div>
@@ -347,19 +481,39 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
                   {/* Row 4: Tags & Notes */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-[11px] font-semibold text-muted-foreground uppercase">Tags (comma-separated)</label>
-                      <Input type="text" placeholder="fixed, tech" value={newTx.tags} onChange={(e) => setNewTx({ ...newTx, tags: e.target.value })} />
+                      <label className="text-[11px] font-semibold text-muted-foreground uppercase">
+                        Tags (comma-separated)
+                      </label>
+                      <Input
+                        type="text"
+                        placeholder="fixed, tech"
+                        value={newTx.tags}
+                        onChange={(e) =>
+                          setNewTx({ ...newTx, tags: e.target.value })
+                        }
+                      />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-[11px] font-semibold text-muted-foreground uppercase">Notes (optional)</label>
-                      <Input type="text" placeholder="Internal memo" value={newTx.notes} onChange={(e) => setNewTx({ ...newTx, notes: e.target.value })} />
+                      <label className="text-[11px] font-semibold text-muted-foreground uppercase">
+                        Notes (optional)
+                      </label>
+                      <Input
+                        type="text"
+                        placeholder="Internal memo"
+                        value={newTx.notes}
+                        onChange={(e) =>
+                          setNewTx({ ...newTx, notes: e.target.value })
+                        }
+                      />
                     </div>
                   </div>
                 </div>
 
                 <DialogFooter>
                   <DialogClose asChild>
-                    <Button type="button" variant="outline" size="sm">Cancel</Button>
+                    <Button type="button" variant="outline" size="sm">
+                      Cancel
+                    </Button>
                   </DialogClose>
                   <Button type="submit" size="sm" disabled={isPending}>
                     {isPending ? "Saving..." : "Save Record"}
@@ -380,14 +534,23 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
               placeholder="Search descriptions, tags..."
               className="pl-9"
               value={search}
-              onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setCurrentPage(1);
+              }}
             />
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
             {/* Filter by Type */}
             <div className="w-[140px]">
-              <Select value={directionFilter} onValueChange={(val) => { setDirectionFilter(val); setCurrentPage(1); }}>
+              <Select
+                value={directionFilter}
+                onValueChange={(val) => {
+                  setDirectionFilter(val);
+                  setCurrentPage(1);
+                }}
+              >
                 <SelectTrigger className="h-9">
                   <SelectValue placeholder="All Directions" />
                 </SelectTrigger>
@@ -395,21 +558,31 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
                   <SelectItem value="all">All Directions</SelectItem>
                   <SelectItem value="Debit">Debit</SelectItem>
                   <SelectItem value="Credit">Credit</SelectItem>
-                  <SelectItem value="InternalTransfer">Internal Transfer</SelectItem>
+                  <SelectItem value="InternalTransfer">
+                    Internal Transfer
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             {/* Filter by Account */}
             <div className="w-[160px]">
-              <Select value={accountFilter} onValueChange={(val) => { setAccountFilter(val); setCurrentPage(1); }}>
+              <Select
+                value={accountFilter}
+                onValueChange={(val) => {
+                  setAccountFilter(val);
+                  setCurrentPage(1);
+                }}
+              >
                 <SelectTrigger className="h-9">
                   <SelectValue placeholder="All Accounts" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Accounts</SelectItem>
                   {data.accounts.map((ac) => (
-                    <SelectItem key={ac.id} value={ac.id}>{ac.name}</SelectItem>
+                    <SelectItem key={ac.id} value={ac.id}>
+                      {ac.name}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -417,14 +590,22 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
 
             {/* Filter by Category */}
             <div className="w-[150px]">
-              <Select value={categoryFilter} onValueChange={(val) => { setCategoryFilter(val); setCurrentPage(1); }}>
+              <Select
+                value={categoryFilter}
+                onValueChange={(val) => {
+                  setCategoryFilter(val);
+                  setCurrentPage(1);
+                }}
+              >
                 <SelectTrigger className="h-9">
                   <SelectValue placeholder="All Categories" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Categories</SelectItem>
                   {data.categories.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -444,21 +625,33 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
                     <input
                       type="checkbox"
                       className="rounded border-input bg-background accent-primary h-3.5 w-3.5"
-                      checked={selectedIds.length === paginated.length && paginated.length > 0}
+                      checked={
+                        selectedIds.length === paginated.length &&
+                        paginated.length > 0
+                      }
                       onChange={() => toggleSelectAll(paginated)}
                     />
                   </th>
-                  <th className="p-4 cursor-pointer select-none" onClick={() => handleSort("date")}>
+                  <th
+                    className="p-4 cursor-pointer select-none"
+                    onClick={() => handleSort("date")}
+                  >
                     <div className="flex items-center gap-1.5 hover:text-foreground">
                       Date <ArrowUpDown className="h-3 w-3" />
                     </div>
                   </th>
-                  <th className="p-4 cursor-pointer select-none" onClick={() => handleSort("description")}>
+                  <th
+                    className="p-4 cursor-pointer select-none"
+                    onClick={() => handleSort("description")}
+                  >
                     <div className="flex items-center gap-1.5 hover:text-foreground">
                       Description <ArrowUpDown className="h-3 w-3" />
                     </div>
                   </th>
-                  <th className="p-4 cursor-pointer select-none" onClick={() => handleSort("direction")}>
+                  <th
+                    className="p-4 cursor-pointer select-none"
+                    onClick={() => handleSort("direction")}
+                  >
                     <div className="flex items-center gap-1.5 hover:text-foreground">
                       Direction <ArrowUpDown className="h-3 w-3" />
                     </div>
@@ -466,7 +659,10 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
                   <th className="p-4">Account</th>
                   <th className="p-4">Category</th>
                   <th className="p-4">Tags</th>
-                  <th className="p-4 cursor-pointer select-none text-right" onClick={() => handleSort("amount")}>
+                  <th
+                    className="p-4 cursor-pointer select-none text-right"
+                    onClick={() => handleSort("amount")}
+                  >
                     <div className="flex items-center justify-end gap-1.5 hover:text-foreground">
                       Amount <ArrowUpDown className="h-3 w-3" />
                     </div>
@@ -482,7 +678,7 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
                       key={tx.id}
                       className={cn(
                         "hover:bg-accent/40 transition-colors",
-                        isEditing && "bg-accent/80"
+                        isEditing && "bg-accent/80",
                       )}
                     >
                       {/* Checkbox */}
@@ -502,7 +698,9 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
                           <Input
                             type="date"
                             value={editForm.date || ""}
-                            onChange={(e) => setEditForm({ ...editForm, date: e.target.value })}
+                            onChange={(e) =>
+                              setEditForm({ ...editForm, date: e.target.value })
+                            }
                             className="h-8 py-0.5 px-2 text-xs font-mono w-[120px]"
                           />
                         ) : (
@@ -516,7 +714,12 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
                           <Input
                             type="text"
                             value={editForm.description || ""}
-                            onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                            onChange={(e) =>
+                              setEditForm({
+                                ...editForm,
+                                description: e.target.value,
+                              })
+                            }
                             className="h-8 py-0.5 px-2 text-xs w-[180px]"
                           />
                         ) : (
@@ -531,11 +734,14 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
                             <Select
                               value={editForm.direction}
                               onValueChange={(val) => {
-                                const isNowTransfer = val === "InternalTransfer";
-                                setEditForm({ 
-                                  ...editForm, 
+                                const isNowTransfer =
+                                  val === "InternalTransfer";
+                                setEditForm({
+                                  ...editForm,
                                   direction: val as any,
-                                  destinationAccountId: isNowTransfer ? editForm.destinationAccountId : undefined
+                                  destinationAccountId: isNowTransfer
+                                    ? editForm.destinationAccountId
+                                    : undefined,
                                 });
                               }}
                             >
@@ -545,7 +751,9 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
                               <SelectContent>
                                 <SelectItem value="Debit">Debit</SelectItem>
                                 <SelectItem value="Credit">Credit</SelectItem>
-                                <SelectItem value="InternalTransfer">Internal Transfer</SelectItem>
+                                <SelectItem value="InternalTransfer">
+                                  Internal Transfer
+                                </SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
@@ -553,12 +761,17 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
                           <span
                             className={cn(
                               "px-2 py-0.5 rounded text-[10px] font-bold border",
-                              tx.direction === "Credit" && "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400",
-                              tx.direction === "Debit" && "bg-accent border-border text-foreground",
-                              tx.direction === "InternalTransfer" && "bg-blue-500/10 border-blue-500/20 text-blue-600 dark:text-blue-400"
+                              tx.direction === "Credit" &&
+                                "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400",
+                              tx.direction === "Debit" &&
+                                "bg-accent border-border text-foreground",
+                              tx.direction === "InternalTransfer" &&
+                                "bg-blue-500/10 border-blue-500/20 text-blue-600 dark:text-blue-400",
                             )}
                           >
-                            {tx.direction === "InternalTransfer" ? "Transfer" : tx.direction}
+                            {tx.direction === "InternalTransfer"
+                              ? "Transfer"
+                              : tx.direction}
                           </span>
                         )}
                       </td>
@@ -569,21 +782,29 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
                           <div className="w-[130px]">
                             <Select
                               value={editForm.accountId}
-                              onValueChange={(val) => setEditForm({ ...editForm, accountId: val })}
+                              onValueChange={(val) =>
+                                setEditForm({ ...editForm, accountId: val })
+                              }
                             >
                               <SelectTrigger className="h-8 text-xs py-0.5">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="none">None / External</SelectItem>
+                                <SelectItem value="none">
+                                  None / External
+                                </SelectItem>
                                 {data.accounts.map((a) => (
-                                  <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                                  <SelectItem key={a.id} value={a.id}>
+                                    {a.name}
+                                  </SelectItem>
                                 ))}
                               </SelectContent>
                             </Select>
                           </div>
                         ) : tx.direction === "InternalTransfer" ? (
-                          <span>{tx.accountName} &rarr; {tx.destinationAccountName}</span>
+                          <span>
+                            {tx.accountName} &rarr; {tx.destinationAccountName}
+                          </span>
                         ) : (
                           tx.accountName
                         )}
@@ -597,14 +818,21 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
                               <div className="w-[130px]">
                                 <Select
                                   value={editForm.categoryId || undefined}
-                                  onValueChange={(val) => setEditForm({ ...editForm, categoryId: val })}
+                                  onValueChange={(val) =>
+                                    setEditForm({
+                                      ...editForm,
+                                      categoryId: val,
+                                    })
+                                  }
                                 >
                                   <SelectTrigger className="h-8 text-xs py-0.5">
                                     <SelectValue placeholder="Category" />
                                   </SelectTrigger>
                                   <SelectContent>
                                     {data.categories.map((c) => (
-                                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                                      <SelectItem key={c.id} value={c.id}>
+                                        {c.name}
+                                      </SelectItem>
                                     ))}
                                   </SelectContent>
                                 </Select>
@@ -614,22 +842,35 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
                               <div className="w-[130px]">
                                 <Select
                                   value={editForm.destinationAccountId || ""}
-                                  onValueChange={(val) => setEditForm({ ...editForm, destinationAccountId: val })}
+                                  onValueChange={(val) =>
+                                    setEditForm({
+                                      ...editForm,
+                                      destinationAccountId: val,
+                                    })
+                                  }
                                 >
                                   <SelectTrigger className="h-8 text-xs py-0.5">
                                     <SelectValue placeholder="Destination" />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    {data.accounts.filter(a => a.id !== editForm.accountId).map((a) => (
-                                      <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
-                                    ))}
+                                    {data.accounts
+                                      .filter(
+                                        (a) => a.id !== editForm.accountId,
+                                      )
+                                      .map((a) => (
+                                        <SelectItem key={a.id} value={a.id}>
+                                          {a.name}
+                                        </SelectItem>
+                                      ))}
                                   </SelectContent>
                                 </Select>
                               </div>
                             )}
                           </div>
                         ) : (
-                          <span style={{ color: tx.categoryColor }}>{tx.categoryName}</span>
+                          <span style={{ color: tx.categoryColor }}>
+                            {tx.categoryName}
+                          </span>
                         )}
                       </td>
 
@@ -639,16 +880,24 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
                           <Input
                             type="text"
                             value={editForm.tags || ""}
-                            onChange={(e) => setEditForm({ ...editForm, tags: e.target.value })}
+                            onChange={(e) =>
+                              setEditForm({ ...editForm, tags: e.target.value })
+                            }
                             className="h-8 py-0.5 px-2 text-xs w-[120px]"
                           />
                         ) : (
                           <div className="flex flex-wrap gap-1">
-                            {tx.tags.split(",").filter(Boolean).map((tg: string) => (
-                              <span key={tg} className="text-[10px] bg-accent/50 border border-border text-muted-foreground px-1.5 py-0.5 rounded">
-                                {tg}
-                              </span>
-                            ))}
+                            {tx.tags
+                              .split(",")
+                              .filter(Boolean)
+                              .map((tg: string) => (
+                                <span
+                                  key={tg}
+                                  className="text-[10px] bg-accent/50 border border-border text-muted-foreground px-1.5 py-0.5 rounded"
+                                >
+                                  {tg}
+                                </span>
+                              ))}
                           </div>
                         )}
                       </td>
@@ -660,15 +909,26 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
                             type="number"
                             step="0.01"
                             value={editForm.amount || ""}
-                            onChange={(e) => setEditForm({ ...editForm, amount: Number(e.target.value) })}
+                            onChange={(e) =>
+                              setEditForm({
+                                ...editForm,
+                                amount: Number(e.target.value),
+                              })
+                            }
                             className="h-8 py-0.5 px-2 text-xs text-right font-mono w-[100px]"
                           />
                         ) : (
                           (() => {
-                            const p = getTransactionPerspective(tx, accountFilter);
+                            const p = getTransactionPerspective(
+                              tx,
+                              accountFilter,
+                            );
                             return (
-                              <span className={cn("font-bold text-[11px]", p.color)}>
-                                {p.sign}{formatCurrency(Math.abs(tx.amount))}
+                              <span
+                                className={cn("font-bold text-[11px]", p.color)}
+                              >
+                                {p.sign}
+                                {formatCurrency(Math.abs(tx.amount))}
                               </span>
                             );
                           })()
@@ -715,7 +975,10 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
 
                 {paginated.length === 0 && (
                   <tr>
-                    <td colSpan={9} className="p-8 text-center text-muted-foreground text-xs">
+                    <td
+                      colSpan={9}
+                      className="p-8 text-center text-muted-foreground text-xs"
+                    >
                       No records matched the filter query.
                     </td>
                   </tr>
@@ -728,13 +991,16 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
           {pageCount > 1 && (
             <div className="p-4 border-t border-border flex items-center justify-between">
               <span className="text-xs text-muted-foreground font-medium">
-                Page {currentPage} of {pageCount} ({filtered.length} entries total)
+                Page {currentPage} of {pageCount} ({filtered.length} entries
+                total)
               </span>
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.max(1, prev - 1))
+                  }
                   disabled={currentPage === 1}
                   className="h-8 px-2"
                 >
@@ -743,7 +1009,9 @@ export function TransactionsClient({ data }: TransactionsClientProps) {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setCurrentPage(prev => Math.min(pageCount, prev + 1))}
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.min(pageCount, prev + 1))
+                  }
                   disabled={currentPage === pageCount}
                   className="h-8 px-2"
                 >

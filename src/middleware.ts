@@ -3,13 +3,13 @@ import { updateSession } from "./lib/auth";
 
 export async function middleware(request: NextRequest) {
   // Update session expiration on every request
-  const response = await updateSession(request) || NextResponse.next();
+  const response = (await updateSession(request)) || NextResponse.next();
 
   const { pathname } = request.nextUrl;
 
   // Paths that do not require authentication
   const publicPaths = ["/login", "/register"];
-  if (publicPaths.some(p => pathname.startsWith(p))) {
+  if (publicPaths.some((p) => pathname.startsWith(p))) {
     return response;
   }
 
@@ -19,13 +19,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-
-
   return response;
 }
 
 export const config = {
-  matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
-  ],
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
 };

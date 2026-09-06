@@ -2,7 +2,10 @@ import { expect, test, describe } from "vitest";
 import { parseBrokerNumberStrict } from "../../broker-import/number-parser";
 import { parseBrokerDatetimeStrict } from "../../broker-import/date-parser";
 import { normalizeEventType } from "../../broker-import/event-type-normalization";
-import { isValidISIN, normalizeIdentifier } from "../../broker-import/identifier-normalization";
+import {
+  isValidISIN,
+  normalizeIdentifier,
+} from "../../broker-import/identifier-normalization";
 import { inferValueShape } from "../../broker-import/shape-inference";
 
 describe("broker-import number-parser", () => {
@@ -15,21 +18,21 @@ describe("broker-import number-parser", () => {
   test("parses negative amounts", () => {
     const res = parseBrokerNumberStrict("-150.50");
     expect(res.valid).toBe(true);
-    expect(res.value).toBe(-150.50);
+    expect(res.value).toBe(-150.5);
     expect(res.explicitSign).toBe("negative");
   });
 
   test("parses positive explicit amounts", () => {
     const res = parseBrokerNumberStrict("+150.50");
     expect(res.valid).toBe(true);
-    expect(res.value).toBe(150.50);
+    expect(res.value).toBe(150.5);
     expect(res.explicitSign).toBe("positive");
   });
 
   test("parses European amounts", () => {
     const res = parseBrokerNumberStrict("-1.657,60");
     expect(res.valid).toBe(true);
-    expect(res.value).toBe(-1657.60);
+    expect(res.value).toBe(-1657.6);
   });
 
   test("parses exactly 3 decimals", () => {

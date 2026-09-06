@@ -20,7 +20,11 @@ describe("Balance Synchronization Phase", () => {
     await db.user.deleteMany();
   });
 
-  const setupData = async (userId: string = "user-1", connStatus: string = "CONNECTED", providerSessionId: string | null = "sess-1") => {
+  const setupData = async (
+    userId: string = "user-1",
+    connStatus: string = "CONNECTED",
+    providerSessionId: string | null = "sess-1",
+  ) => {
     await db.user.create({
       data: { id: userId, email: `${userId}@test.com`, passwordHash: "hash" },
     });
@@ -36,15 +40,22 @@ describe("Balance Synchronization Phase", () => {
       },
     });
     const account = await db.account.create({
-      data: { id: "acc-1", userId, name: "Existing", type: "Bank", balance: 10, currency: "EUR" }
+      data: {
+        id: "acc-1",
+        userId,
+        name: "Existing",
+        type: "Bank",
+        balance: 10,
+        currency: "EUR",
+      },
     });
     const mapping = await db.externalAccountMapping.create({
       data: {
         bankConnectionId: connection.id,
         accountId: account.id,
         providerAccountUid: "uid-1",
-        identificationHash: "hash-1"
-      }
+        identificationHash: "hash-1",
+      },
     });
     return { connection, account, mapping };
   };
@@ -53,15 +64,19 @@ describe("Balance Synchronization Phase", () => {
     vi.mocked(auth.getUserId).mockResolvedValue("user-1");
     await setupData();
 
-    const mockGetBalances = vi.spyOn(EnableBankingClient.prototype, "getBalances").mockResolvedValue([
-      { amount: 50.5, currency: "EUR", type: "ITBD" }
-    ]);
-    const mockNormalizeBalance = vi.spyOn(EnableBankingClient.prototype, "normalizeBalance").mockReturnValue({ amount: 50.5, currency: "EUR", type: "ITBD" });
+    const mockGetBalances = vi
+      .spyOn(EnableBankingClient.prototype, "getBalances")
+      .mockResolvedValue([{ amount: 50.5, currency: "EUR", type: "ITBD" }]);
+    const mockNormalizeBalance = vi
+      .spyOn(EnableBankingClient.prototype, "normalizeBalance")
+      .mockReturnValue({ amount: 50.5, currency: "EUR", type: "ITBD" });
 
     const res = await syncBalance({ accountId: "acc-1" });
     expect(res?.data?.success).toBe(true);
 
-    const updatedAccount = await db.account.findUnique({ where: { id: "acc-1" }});
+    const updatedAccount = await db.account.findUnique({
+      where: { id: "acc-1" },
+    });
     expect(updatedAccount?.balance).toBe(50.5);
 
     const updatedMapping = await db.externalAccountMapping.findFirst();
@@ -96,13 +111,21 @@ describe("Balance Synchronization Phase", () => {
     vi.mocked(auth.getUserId).mockResolvedValue("user-1");
     await setupData();
 
-    vi.spyOn(EnableBankingClient.prototype, "getBalances").mockResolvedValue([{ amount: 100, currency: "USD", type: "ITBD" }]);
-    vi.spyOn(EnableBankingClient.prototype, "normalizeBalance").mockReturnValue({ amount: 100, currency: "USD", type: "ITBD" });
+    vi.spyOn(EnableBankingClient.prototype, "getBalances").mockResolvedValue([
+      { amount: 100, currency: "USD", type: "ITBD" },
+    ]);
+    vi.spyOn(EnableBankingClient.prototype, "normalizeBalance").mockReturnValue(
+      { amount: 100, currency: "USD", type: "ITBD" },
+    );
 
     const res = await syncBalance({ accountId: "acc-1" });
-    expect(res?.serverError).toBe("Currency mismatch between provider and account");
+    expect(res?.serverError).toBe(
+      "Currency mismatch between provider and account",
+    );
 
-    const updatedAccount = await db.account.findUnique({ where: { id: "acc-1" }});
+    const updatedAccount = await db.account.findUnique({
+      where: { id: "acc-1" },
+    });
     expect(updatedAccount?.balance).toBe(10); // Unchanged
   });
 
@@ -110,13 +133,19 @@ describe("Balance Synchronization Phase", () => {
     vi.mocked(auth.getUserId).mockResolvedValue("user-1");
     await setupData();
 
-    vi.spyOn(EnableBankingClient.prototype, "getBalances").mockResolvedValue([{ amount: 100, currency: "EUR", type: "WEIRD" }]);
-    vi.spyOn(EnableBankingClient.prototype, "normalizeBalance").mockReturnValue(null);
+    vi.spyOn(EnableBankingClient.prototype, "getBalances").mockResolvedValue([
+      { amount: 100, currency: "EUR", type: "WEIRD" },
+    ]);
+    vi.spyOn(EnableBankingClient.prototype, "normalizeBalance").mockReturnValue(
+      null,
+    );
 
     const res = await syncBalance({ accountId: "acc-1" });
     expect(res?.serverError).toBe("No supported balance type available");
 
-    const updatedAccount = await db.account.findUnique({ where: { id: "acc-1" }});
+    const updatedAccount = await db.account.findUnique({
+      where: { id: "acc-1" },
+    });
     expect(updatedAccount?.balance).toBe(10); // Unchanged
   });
 
@@ -124,19 +153,25 @@ describe("Balance Synchronization Phase", () => {
     vi.mocked(auth.getUserId).mockResolvedValue("user-1");
     await setupData();
 
-    vi.spyOn(EnableBankingClient.prototype, "getBalances").mockRejectedValue(new Error("API Down"));
-    vi.spyOn(EnableBankingClient.prototype, "normalizeBalance").mockReturnValue(null);
+    vi.spyOn(EnableBankingClient.prototype, "getBalances").mockRejectedValue(
+      new Error("API Down"),
+    );
+    vi.spyOn(EnableBankingClient.prototype, "normalizeBalance").mockReturnValue(
+      null,
+    );
 
     const res = await syncBalance({ accountId: "acc-1" });
     expect(res?.serverError).toBe("Provider synchronization failed");
 
-    const updatedAccount = await db.account.findUnique({ where: { id: "acc-1" }});
+    const updatedAccount = await db.account.findUnique({
+      where: { id: "acc-1" },
+    });
     expect(updatedAccount?.balance).toBe(10); // Unchanged
   });
 
   it("missing providerAccountUid rejected in tests?", async () => {
-     // Just making sure we don't pass providerSessionId
-     // We verified the signature statically.
+    // Just making sure we don't pass providerSessionId
+    // We verified the signature statically.
   });
 
   it("EXPIRED_SESSION revokes session and requests reauth", async () => {
@@ -146,11 +181,15 @@ describe("Balance Synchronization Phase", () => {
     error.name = "EnableBankingProviderError";
     error.body = { error: "EXPIRED_SESSION" };
 
-    vi.spyOn(EnableBankingClient.prototype, "getBalances").mockRejectedValue(error);
+    vi.spyOn(EnableBankingClient.prototype, "getBalances").mockRejectedValue(
+      error,
+    );
     const res = await syncBalance({ accountId: "acc-1" });
-    
+
     expect(res?.data?.reauthRequired).toBe(true);
-    const updatedConnection = await db.bankConnection.findUnique({ where: { id: "conn-1" }});
+    const updatedConnection = await db.bankConnection.findUnique({
+      where: { id: "conn-1" },
+    });
     expect(updatedConnection?.status).toBe("EXPIRED");
   });
 
@@ -161,11 +200,15 @@ describe("Balance Synchronization Phase", () => {
     error.name = "EnableBankingProviderError";
     error.body = { error: "REVOKED_SESSION" };
 
-    vi.spyOn(EnableBankingClient.prototype, "getBalances").mockRejectedValue(error);
+    vi.spyOn(EnableBankingClient.prototype, "getBalances").mockRejectedValue(
+      error,
+    );
     const res = await syncBalance({ accountId: "acc-1" });
-    
+
     expect(res?.data?.reauthRequired).toBe(true);
-    const updatedConnection = await db.bankConnection.findUnique({ where: { id: "conn-1" }});
+    const updatedConnection = await db.bankConnection.findUnique({
+      where: { id: "conn-1" },
+    });
     expect(updatedConnection?.status).toBe("REVOKED");
   });
 
@@ -177,11 +220,15 @@ describe("Balance Synchronization Phase", () => {
     error.status = 401;
     error.body = { error: "SOME_OTHER_ERROR" };
 
-    vi.spyOn(EnableBankingClient.prototype, "getBalances").mockRejectedValue(error);
+    vi.spyOn(EnableBankingClient.prototype, "getBalances").mockRejectedValue(
+      error,
+    );
     const res = await syncBalance({ accountId: "acc-1" });
-    
+
     expect(res?.serverError).toBe("Provider synchronization failed");
-    const updatedConnection = await db.bankConnection.findUnique({ where: { id: "conn-1" }});
+    const updatedConnection = await db.bankConnection.findUnique({
+      where: { id: "conn-1" },
+    });
     expect(updatedConnection?.status).toBe("CONNECTED");
   });
 
@@ -191,7 +238,7 @@ describe("Balance Synchronization Phase", () => {
       const res = client.normalizeBalance([
         { amount: 10, type: "CLBD", currency: "EUR" },
         { amount: 20, type: "ITBD", currency: "EUR" },
-        { amount: 30, type: "ITAV", currency: "EUR" }
+        { amount: 30, type: "ITAV", currency: "EUR" },
       ]);
       expect(res?.type).toBe("ITBD");
     });
@@ -201,16 +248,16 @@ describe("Balance Synchronization Phase", () => {
       const res = client.normalizeBalance([
         { amount: 10, type: "CLAV", currency: "EUR" },
         { amount: 20, type: "CLBD", currency: "EUR" },
-        { amount: 30, type: "ITAV", currency: "EUR" }
+        { amount: 30, type: "ITAV", currency: "EUR" },
       ]);
       expect(res?.type).toBe("CLBD");
     });
-    
+
     it("returns ITAV as fallback", () => {
       const client = new EnableBankingClient();
       const res = client.normalizeBalance([
         { amount: 10, type: "CLAV", currency: "EUR" },
-        { amount: 30, type: "ITAV", currency: "EUR" }
+        { amount: 30, type: "ITAV", currency: "EUR" },
       ]);
       expect(res?.type).toBe("ITAV");
     });
@@ -219,7 +266,7 @@ describe("Balance Synchronization Phase", () => {
       const client = new EnableBankingClient();
       const res = client.normalizeBalance([
         { amount: 10, type: "CLAV", currency: "EUR" },
-        { amount: 30, type: "WEIRD", currency: "EUR" }
+        { amount: 30, type: "WEIRD", currency: "EUR" },
       ]);
       expect(res?.type).toBe("CLAV");
     });

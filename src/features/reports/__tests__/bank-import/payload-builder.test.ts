@@ -4,7 +4,10 @@ import { ParsedBankTransaction } from "../../bank-import/types";
 
 describe("payload-builder", () => {
   it("builds the correct payload and wires currency", () => {
-    const transactions: (ParsedBankTransaction & { import?: boolean, categoryId?: string })[] = [
+    const transactions: (ParsedBankTransaction & {
+      import?: boolean;
+      categoryId?: string;
+    })[] = [
       {
         bookingDate: "2026-08-12",
         description: "Test Transaction 1",
@@ -16,7 +19,7 @@ describe("payload-builder", () => {
         warnings: [],
         currencyConflict: false,
         currency: "EUR",
-        sourceRow: 1
+        sourceRow: 1,
       },
       {
         bookingDate: "2026-08-13",
@@ -29,7 +32,7 @@ describe("payload-builder", () => {
         warnings: ["Missing description"],
         currencyConflict: false,
         currency: "USD",
-        sourceRow: 2
+        sourceRow: 2,
       },
       {
         bookingDate: "2026-08-14",
@@ -42,8 +45,8 @@ describe("payload-builder", () => {
         warnings: [],
         currencyConflict: false,
         currency: "EUR",
-        sourceRow: 3
-      }
+        sourceRow: 3,
+      },
     ];
 
     const payload = buildImportPayload("acc_1", true, 1000, transactions);
@@ -60,7 +63,7 @@ describe("payload-builder", () => {
       direction: "Credit",
       categoryId: undefined,
       forceImportDuplicate: false,
-      currency: "EUR"
+      currency: "EUR",
     });
   });
 });

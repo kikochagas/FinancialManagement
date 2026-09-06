@@ -1,6 +1,6 @@
 import { PrismaClient } from "@prisma/client";
-import bcrypt from 'bcryptjs';
-import { ensureDefaultCategories } from '../src/features/categories/default-categories';
+import bcrypt from "bcryptjs";
+import { ensureDefaultCategories } from "../src/features/categories/default-categories";
 
 const prisma = new PrismaClient();
 
@@ -19,16 +19,15 @@ async function main() {
   await prisma.category.deleteMany().catch(() => {});
   await prisma.account.deleteMany().catch(() => {});
 
-  
   // 1.5 Create User
   const user = await prisma.user.upsert({
-    where: { email: 'demo@example.com' },
+    where: { email: "demo@example.com" },
     update: {},
     create: {
-      email: 'demo@example.com',
-      passwordHash: await bcrypt.hash('password123', 10),
-      name: 'Demo User'
-    }
+      email: "demo@example.com",
+      passwordHash: await bcrypt.hash("password123", 10),
+      name: "Demo User",
+    },
   });
 
   // 2. Create Settings
@@ -57,7 +56,7 @@ async function main() {
     data: {
       userId: user.id,
       name: "Trade Republic",
-        type: "Broker",
+      type: "Broker",
       balance: 0.0,
       currency: "EUR",
     },
@@ -116,10 +115,12 @@ async function main() {
   console.log("Accounts seeded.");
 
   // 4. Create Categories
-  console.log('Creating categories...');
+  console.log("Creating categories...");
   await ensureDefaultCategories(user.id);
-  const existingCategories = await prisma.category.findMany({ where: { userId: user.id } });
-  
+  const existingCategories = await prisma.category.findMany({
+    where: { userId: user.id },
+  });
+
   const categoryNames = [
     { name: "Phone", directionHint: "Debit", color: "#3B82F6" },
     { name: "DECO", directionHint: "Debit", color: "#6366F1" },
@@ -174,7 +175,7 @@ async function main() {
   for (const exp of expensesList) {
     await prisma.transaction.create({
       data: {
-      userId: user.id,
+        userId: user.id,
         date: new Date(2026, 5, 10), // June 10, 2026
         description: `Monthly ${exp.name} payment`,
         direction: "Debit",
@@ -204,7 +205,7 @@ async function main() {
   for (const exp of expensesList.slice(0, 7)) {
     await prisma.transaction.create({
       data: {
-      userId: user.id,
+        userId: user.id,
         date: new Date(2026, 6, 2), // July 2, 2026
         description: `Monthly ${exp.name} payment`,
         direction: "Debit",
@@ -315,13 +316,13 @@ async function main() {
       year: 2026,
       estimatedTaxLiability: 11000.0,
       taxWithheld: 8500.0,
-      notes: "Calculated based on average monthly income and Portuguese IRS rates.",
+      notes:
+        "Calculated based on average monthly income and Portuguese IRS rates.",
     },
   });
 
   // 9. Asset Allocation
   const assetTypes = [
-    
     { type: "Stocks", target: 30, current: 2.1 },
     { type: "Bitcoin", target: 10, current: 2.5 },
     { type: "Other Crypto", target: 5, current: 2.3 },
@@ -331,7 +332,7 @@ async function main() {
   for (const asset of assetTypes) {
     await prisma.assetAllocation.create({
       data: {
-      userId: user.id,
+        userId: user.id,
         assetType: asset.type,
         targetPercentage: asset.target,
         currentPercentage: asset.current,
@@ -341,12 +342,54 @@ async function main() {
 
   // 10. Monthly Snapshots (last 6 months evolution)
   const snapshots = [
-    { year: 2026, month: 1, netWorth: 34000, liquidAssets: 32000, investmentsValue: 2000, savingsRate: 35 },
-    { year: 2026, month: 2, netWorth: 35100, liquidAssets: 32800, investmentsValue: 2300, savingsRate: 40 },
-    { year: 2026, month: 3, netWorth: 36500, liquidAssets: 34000, investmentsValue: 2500, savingsRate: 38 },
-    { year: 2026, month: 4, netWorth: 37900, liquidAssets: 35200, investmentsValue: 2700, savingsRate: 45 },
-    { year: 2026, month: 5, netWorth: 39500, liquidAssets: 36700, investmentsValue: 2800, savingsRate: 42 },
-    { year: 2026, month: 6, netWorth: 40251.96, liquidAssets: 37476.96, investmentsValue: 2775, savingsRate: 44 }, // Bank(2000) + TR(35326.96) + Cash(150) + Stocks(850) + BTC(1000) + OtherCrypto(925) = 40251.96
+    {
+      year: 2026,
+      month: 1,
+      netWorth: 34000,
+      liquidAssets: 32000,
+      investmentsValue: 2000,
+      savingsRate: 35,
+    },
+    {
+      year: 2026,
+      month: 2,
+      netWorth: 35100,
+      liquidAssets: 32800,
+      investmentsValue: 2300,
+      savingsRate: 40,
+    },
+    {
+      year: 2026,
+      month: 3,
+      netWorth: 36500,
+      liquidAssets: 34000,
+      investmentsValue: 2500,
+      savingsRate: 38,
+    },
+    {
+      year: 2026,
+      month: 4,
+      netWorth: 37900,
+      liquidAssets: 35200,
+      investmentsValue: 2700,
+      savingsRate: 45,
+    },
+    {
+      year: 2026,
+      month: 5,
+      netWorth: 39500,
+      liquidAssets: 36700,
+      investmentsValue: 2800,
+      savingsRate: 42,
+    },
+    {
+      year: 2026,
+      month: 6,
+      netWorth: 40251.96,
+      liquidAssets: 37476.96,
+      investmentsValue: 2775,
+      savingsRate: 44,
+    }, // Bank(2000) + TR(35326.96) + Cash(150) + Stocks(850) + BTC(1000) + OtherCrypto(925) = 40251.96
   ];
 
   for (const snap of snapshots) {

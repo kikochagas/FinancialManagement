@@ -1,15 +1,46 @@
 "use client";
 
 import React, { useState, useTransition } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
 import { createGoal, updateGoal, deleteGoal } from "./actions";
 import { formatCurrency, formatPercentage, cn } from "@/lib/utils";
-import { Target, Plus, Shield, Home, Calendar, Award, Trash2, Edit2, Coins } from "lucide-react";
+import {
+  Target,
+  Plus,
+  Shield,
+  Home,
+  Calendar,
+  Award,
+  Trash2,
+  Edit2,
+  Coins,
+} from "lucide-react";
 
 interface Goal {
   id: string;
@@ -68,7 +99,13 @@ export function GoalsClient({ data }: GoalsClientProps) {
       });
       if (res?.data?.success) {
         setIsAddOpen(false);
-        setNewGoal({ name: "", type: "Custom", targetAmount: "", currentAmount: "", estimatedCompletion: "" });
+        setNewGoal({
+          name: "",
+          type: "Custom",
+          targetAmount: "",
+          currentAmount: "",
+          estimatedCompletion: "",
+        });
       }
     });
   };
@@ -163,7 +200,9 @@ export function GoalsClient({ data }: GoalsClientProps) {
       {/* Header Panel */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <p className="text-xs text-muted-foreground font-medium">Track long-term reserve allocations and savings milestones.</p>
+          <p className="text-xs text-muted-foreground font-medium">
+            Track long-term reserve allocations and savings milestones.
+          </p>
         </div>
 
         <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
@@ -177,30 +216,45 @@ export function GoalsClient({ data }: GoalsClientProps) {
             <form onSubmit={handleCreate}>
               <DialogHeader>
                 <DialogTitle>Add Wealth Goal</DialogTitle>
-                <DialogDescription>Initiate a new financial aspiration or budget target.</DialogDescription>
+                <DialogDescription>
+                  Initiate a new financial aspiration or budget target.
+                </DialogDescription>
               </DialogHeader>
 
               <div className="space-y-4 py-4">
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-semibold text-muted-foreground uppercase">Goal Name</label>
+                  <label className="text-[11px] font-semibold text-muted-foreground uppercase">
+                    Goal Name
+                  </label>
                   <Input
                     type="text"
                     placeholder="e.g. Down Payment for Apartment"
                     value={newGoal.name}
-                    onChange={(e) => setNewGoal({ ...newGoal, name: e.target.value })}
+                    onChange={(e) =>
+                      setNewGoal({ ...newGoal, name: e.target.value })
+                    }
                     required
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-[11px] font-semibold text-muted-foreground uppercase">Goal Type</label>
-                    <Select value={newGoal.type} onValueChange={(val) => setNewGoal({ ...newGoal, type: val })}>
+                    <label className="text-[11px] font-semibold text-muted-foreground uppercase">
+                      Goal Type
+                    </label>
+                    <Select
+                      value={newGoal.type}
+                      onValueChange={(val) =>
+                        setNewGoal({ ...newGoal, type: val })
+                      }
+                    >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Emergency Fund">Emergency Fund</SelectItem>
+                        <SelectItem value="Emergency Fund">
+                          Emergency Fund
+                        </SelectItem>
                         <SelectItem value="House">House</SelectItem>
                         <SelectItem value="IRS">IRS Tax Fund</SelectItem>
                         <SelectItem value="Custom">Custom Goal</SelectItem>
@@ -209,35 +263,53 @@ export function GoalsClient({ data }: GoalsClientProps) {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-[11px] font-semibold text-muted-foreground uppercase">Estimated Completion</label>
+                    <label className="text-[11px] font-semibold text-muted-foreground uppercase">
+                      Estimated Completion
+                    </label>
                     <Input
                       type="text"
                       placeholder="e.g. Dec 2028"
                       value={newGoal.estimatedCompletion}
-                      onChange={(e) => setNewGoal({ ...newGoal, estimatedCompletion: e.target.value })}
+                      onChange={(e) =>
+                        setNewGoal({
+                          ...newGoal,
+                          estimatedCompletion: e.target.value,
+                        })
+                      }
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-[11px] font-semibold text-muted-foreground uppercase">Target Amount (€)</label>
+                    <label className="text-[11px] font-semibold text-muted-foreground uppercase">
+                      Target Amount (€)
+                    </label>
                     <Input
                       type="number"
                       placeholder="0"
                       value={newGoal.targetAmount}
-                      onChange={(e) => setNewGoal({ ...newGoal, targetAmount: e.target.value })}
+                      onChange={(e) =>
+                        setNewGoal({ ...newGoal, targetAmount: e.target.value })
+                      }
                       required
                     />
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-[11px] font-semibold text-muted-foreground uppercase">Current Seed Amount (€)</label>
+                    <label className="text-[11px] font-semibold text-muted-foreground uppercase">
+                      Current Seed Amount (€)
+                    </label>
                     <Input
                       type="number"
                       placeholder="0"
                       value={newGoal.currentAmount}
-                      onChange={(e) => setNewGoal({ ...newGoal, currentAmount: e.target.value })}
+                      onChange={(e) =>
+                        setNewGoal({
+                          ...newGoal,
+                          currentAmount: e.target.value,
+                        })
+                      }
                     />
                   </div>
                 </div>
@@ -245,7 +317,9 @@ export function GoalsClient({ data }: GoalsClientProps) {
 
               <DialogFooter>
                 <DialogClose asChild>
-                  <Button type="button" variant="outline" size="sm">Cancel</Button>
+                  <Button type="button" variant="outline" size="sm">
+                    Cancel
+                  </Button>
                 </DialogClose>
                 <Button type="submit" size="sm" disabled={isPending}>
                   {isPending ? "Creating..." : "Create"}
@@ -261,12 +335,22 @@ export function GoalsClient({ data }: GoalsClientProps) {
         {data.goals.map((goal) => {
           const Icon = getGoalIcon(goal.type);
           return (
-            <Card key={goal.id} className="border-border bg-card/50 shadow-sm flex flex-col justify-between">
+            <Card
+              key={goal.id}
+              className="border-border bg-card/50 shadow-sm flex flex-col justify-between"
+            >
               <div>
                 <CardHeader className="flex flex-row items-start justify-between pb-3">
                   <div className="space-y-1">
-                    <CardTitle className="text-sm font-semibold text-foreground">{goal.name}</CardTitle>
-                    <span className={cn("inline-block text-[9px] px-2 py-0.5 rounded-full border uppercase font-bold", getGoalBadgeColor(goal.type))}>
+                    <CardTitle className="text-sm font-semibold text-foreground">
+                      {goal.name}
+                    </CardTitle>
+                    <span
+                      className={cn(
+                        "inline-block text-[9px] px-2 py-0.5 rounded-full border uppercase font-bold",
+                        getGoalBadgeColor(goal.type),
+                      )}
+                    >
                       {goal.type}
                     </span>
                   </div>
@@ -279,43 +363,78 @@ export function GoalsClient({ data }: GoalsClientProps) {
                   {/* Progress info */}
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground font-medium">Accumulation Progress</span>
-                      <span className="font-bold text-violet-400 dark:text-violet-500">{goal.progress.toFixed(1)}%</span>
+                      <span className="text-muted-foreground font-medium">
+                        Accumulation Progress
+                      </span>
+                      <span className="font-bold text-violet-400 dark:text-violet-500">
+                        {goal.progress.toFixed(1)}%
+                      </span>
                     </div>
-                    <Progress value={goal.progress} className="h-2 bg-muted border border-border" />
+                    <Progress
+                      value={goal.progress}
+                      className="h-2 bg-muted border border-border"
+                    />
                   </div>
 
                   {/* Pricing details */}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Current balance</span>
-                      <div className="text-base font-extrabold text-foreground mt-0.5">{formatCurrency(goal.currentAmount)}</div>
+                      <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">
+                        Current balance
+                      </span>
+                      <div className="text-base font-extrabold text-foreground mt-0.5">
+                        {formatCurrency(goal.currentAmount)}
+                      </div>
                     </div>
                     <div>
-                      <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Target amount</span>
-                      <div className="text-base font-extrabold text-muted-foreground mt-0.5">{formatCurrency(goal.targetAmount)}</div>
+                      <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">
+                        Target amount
+                      </span>
+                      <div className="text-base font-extrabold text-muted-foreground mt-0.5">
+                        {formatCurrency(goal.targetAmount)}
+                      </div>
                     </div>
                   </div>
 
                   {/* Completion Date */}
                   <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 p-2.5 rounded-lg border border-border">
                     <Calendar className="h-3.5 w-3.5 text-violet-400 dark:text-violet-500" />
-                    <span>Completion target: <strong className="text-foreground">{goal.estimatedCompletion}</strong></span>
+                    <span>
+                      Completion target:{" "}
+                      <strong className="text-foreground">
+                        {goal.estimatedCompletion}
+                      </strong>
+                    </span>
                   </div>
                 </CardContent>
               </div>
 
               {/* Card Footer Actions */}
               <div className="p-4 border-t border-border bg-muted/20 flex items-center justify-between">
-                <Button variant="outline" size="sm" className="h-7 px-2.5 text-xs text-emerald-600 hover:text-emerald-500 hover:bg-emerald-500/10 dark:text-emerald-400 dark:hover:text-emerald-300" onClick={() => handleQuickTrigger(goal)}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2.5 text-xs text-emerald-600 hover:text-emerald-500 hover:bg-emerald-500/10 dark:text-emerald-400 dark:hover:text-emerald-300"
+                  onClick={() => handleQuickTrigger(goal)}
+                >
                   <Coins className="h-3.5 w-3.5 mr-1" /> Contribute
                 </Button>
 
                 <div className="flex items-center gap-2">
-                  <Button variant="outline" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={() => handleEditTrigger(goal)}>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                    onClick={() => handleEditTrigger(goal)}
+                  >
                     <Edit2 className="h-3.5 w-3.5" />
                   </Button>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => handleDeleteTrigger(goal.id)}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                    onClick={() => handleDeleteTrigger(goal.id)}
+                  >
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </div>
@@ -331,29 +450,44 @@ export function GoalsClient({ data }: GoalsClientProps) {
           <form onSubmit={handleUpdate}>
             <DialogHeader>
               <DialogTitle>Edit Goal settings</DialogTitle>
-              <DialogDescription>Modify variables for {selectedGoal?.name}.</DialogDescription>
+              <DialogDescription>
+                Modify variables for {selectedGoal?.name}.
+              </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4 py-4">
               <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-muted-foreground uppercase">Goal Name</label>
+                <label className="text-[11px] font-semibold text-muted-foreground uppercase">
+                  Goal Name
+                </label>
                 <Input
                   type="text"
                   value={editGoalForm.name}
-                  onChange={(e) => setEditGoalForm({ ...editGoalForm, name: e.target.value })}
+                  onChange={(e) =>
+                    setEditGoalForm({ ...editGoalForm, name: e.target.value })
+                  }
                   required
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-semibold text-muted-foreground uppercase">Goal Type</label>
-                  <Select value={editGoalForm.type} onValueChange={(val) => setEditGoalForm({ ...editGoalForm, type: val })}>
+                  <label className="text-[11px] font-semibold text-muted-foreground uppercase">
+                    Goal Type
+                  </label>
+                  <Select
+                    value={editGoalForm.type}
+                    onValueChange={(val) =>
+                      setEditGoalForm({ ...editGoalForm, type: val })
+                    }
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Emergency Fund">Emergency Fund</SelectItem>
+                      <SelectItem value="Emergency Fund">
+                        Emergency Fund
+                      </SelectItem>
                       <SelectItem value="House">House</SelectItem>
                       <SelectItem value="IRS">IRS Tax Fund</SelectItem>
                       <SelectItem value="Custom">Custom Goal</SelectItem>
@@ -362,32 +496,53 @@ export function GoalsClient({ data }: GoalsClientProps) {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-semibold text-muted-foreground uppercase">Estimated Completion</label>
+                  <label className="text-[11px] font-semibold text-muted-foreground uppercase">
+                    Estimated Completion
+                  </label>
                   <Input
                     type="text"
                     value={editGoalForm.estimatedCompletion}
-                    onChange={(e) => setEditGoalForm({ ...editGoalForm, estimatedCompletion: e.target.value })}
+                    onChange={(e) =>
+                      setEditGoalForm({
+                        ...editGoalForm,
+                        estimatedCompletion: e.target.value,
+                      })
+                    }
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-semibold text-muted-foreground uppercase">Target Amount (€)</label>
+                  <label className="text-[11px] font-semibold text-muted-foreground uppercase">
+                    Target Amount (€)
+                  </label>
                   <Input
                     type="number"
                     value={editGoalForm.targetAmount}
-                    onChange={(e) => setEditGoalForm({ ...editGoalForm, targetAmount: e.target.value })}
+                    onChange={(e) =>
+                      setEditGoalForm({
+                        ...editGoalForm,
+                        targetAmount: e.target.value,
+                      })
+                    }
                     required
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-semibold text-muted-foreground uppercase">Current Amount (€)</label>
+                  <label className="text-[11px] font-semibold text-muted-foreground uppercase">
+                    Current Amount (€)
+                  </label>
                   <Input
                     type="number"
                     value={editGoalForm.currentAmount}
-                    onChange={(e) => setEditGoalForm({ ...editGoalForm, currentAmount: e.target.value })}
+                    onChange={(e) =>
+                      setEditGoalForm({
+                        ...editGoalForm,
+                        currentAmount: e.target.value,
+                      })
+                    }
                     required
                   />
                 </div>
@@ -396,7 +551,9 @@ export function GoalsClient({ data }: GoalsClientProps) {
 
             <DialogFooter>
               <DialogClose asChild>
-                <Button type="button" variant="outline" size="sm">Cancel</Button>
+                <Button type="button" variant="outline" size="sm">
+                  Cancel
+                </Button>
               </DialogClose>
               <Button type="submit" size="sm" disabled={isPending}>
                 {isPending ? "Saving..." : "Save Changes"}
@@ -412,12 +569,16 @@ export function GoalsClient({ data }: GoalsClientProps) {
           <form onSubmit={handleQuickDeposit}>
             <DialogHeader>
               <DialogTitle>Contribute to Goal</DialogTitle>
-              <DialogDescription>Quickly inject savings into {selectedGoal?.name}.</DialogDescription>
+              <DialogDescription>
+                Quickly inject savings into {selectedGoal?.name}.
+              </DialogDescription>
             </DialogHeader>
 
             <div className="py-4 space-y-3">
               <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-muted-foreground uppercase">Contribution Amount (€)</label>
+                <label className="text-[11px] font-semibold text-muted-foreground uppercase">
+                  Contribution Amount (€)
+                </label>
                 <Input
                   type="number"
                   placeholder="e.g. 500"
@@ -431,7 +592,9 @@ export function GoalsClient({ data }: GoalsClientProps) {
 
             <DialogFooter>
               <DialogClose asChild>
-                <Button type="button" variant="outline" size="sm">Cancel</Button>
+                <Button type="button" variant="outline" size="sm">
+                  Cancel
+                </Button>
               </DialogClose>
               <Button type="submit" size="sm" disabled={isPending}>
                 {isPending ? "Injecting..." : "Confirm Deposit"}

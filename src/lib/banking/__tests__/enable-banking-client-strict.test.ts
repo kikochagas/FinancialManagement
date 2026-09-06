@@ -6,9 +6,12 @@ describe("EnableBankingClient strict balance parsing", () => {
     const client = new EnableBankingClient();
     (client as any).request = async () => ({
       balances: [
-        { balance_amount: { amount: "123.45", currency: "EUR" }, reference_date: "2024-01-01" },
-        { balance_amount: { amount: "0.00", currency: "USD" } }
-      ]
+        {
+          balance_amount: { amount: "123.45", currency: "EUR" },
+          reference_date: "2024-01-01",
+        },
+        { balance_amount: { amount: "0.00", currency: "USD" } },
+      ],
     });
     const res = await client.getBalances("uid");
     expect(res).toHaveLength(2);
@@ -24,8 +27,8 @@ describe("EnableBankingClient strict balance parsing", () => {
       balances: [
         { balance_amount: { amount: "123abc", currency: "EUR" } },
         { balance_amount: { amount: "Infinity", currency: "EUR" } },
-        { balance_amount: { currency: "EUR" } } // missing amount
-      ]
+        { balance_amount: { currency: "EUR" } }, // missing amount
+      ],
     });
     const res = await client.getBalances("uid");
     expect(res).toHaveLength(0);
@@ -35,8 +38,11 @@ describe("EnableBankingClient strict balance parsing", () => {
     const client = new EnableBankingClient();
     (client as any).request = async () => ({
       balances: [
-        { balance_amount: { amount: "100", currency: "EUR" }, reference_date: "invalid-date" }
-      ]
+        {
+          balance_amount: { amount: "100", currency: "EUR" },
+          reference_date: "invalid-date",
+        },
+      ],
     });
     const res = await client.getBalances("uid");
     expect(res).toHaveLength(1);

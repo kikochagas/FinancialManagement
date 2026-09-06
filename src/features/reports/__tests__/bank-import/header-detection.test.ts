@@ -9,7 +9,14 @@ describe("header-detection", () => {
       ["Metadata info here", "", ""],
       ["Bank Report", "Date: 2026", ""],
       [],
-      ["Data Movimento", "Data Valor", "Descrição", "Valor", "Saldo Após Movimento", "Tipo"]
+      [
+        "Data Movimento",
+        "Data Valor",
+        "Descrição",
+        "Valor",
+        "Saldo Após Movimento",
+        "Tipo",
+      ],
     ];
 
     const result = detectHeaderRow(rows);
@@ -21,7 +28,7 @@ describe("header-detection", () => {
     const rows = [
       ["Hello", "World"],
       [123, 456],
-      ["Random", "Data", "Here"]
+      ["Random", "Data", "Here"],
     ];
 
     const result = detectHeaderRow(rows);
@@ -33,7 +40,9 @@ describe("column-mapping", () => {
   it("normalizes headers correctly", () => {
     expect(normalizeHeader("Data Movimento")).toBe("data movimento");
     expect(normalizeHeader("Descrição")).toBe("descricao");
-    expect(normalizeHeader("Saldo após movimento")).toBe("saldo apos movimento");
+    expect(normalizeHeader("Saldo após movimento")).toBe(
+      "saldo apos movimento",
+    );
     expect(normalizeHeader("  Valor (€) ")).toBe("valor"); // punctuation removed
   });
 
@@ -49,7 +58,7 @@ describe("column-mapping", () => {
     // Dictionary has "data valor" mapping to VALUE_DATE and "data" mapping to BOOKING_DATE (0.8).
     const res = getDeterministicSemantic("data");
     expect(res).toEqual({ semantic: "BOOKING_DATE", confidence: 0.8 });
-    
+
     // "montante" -> AMOUNT 1.0
     // "montante eur" -> partial match on "montante" -> 0.8
     const res3 = getDeterministicSemantic("montante eur");

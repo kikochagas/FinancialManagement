@@ -1,65 +1,72 @@
 import { db } from "@/lib/db";
 import { ensureDefaultCategories } from "@/features/categories/default-categories";
 
-
 export async function classifyTransactions(
   userId: string,
-  transactions: { candidateIndex: number; description: string; direction: "Debit" | "Credit" }[]
+  transactions: {
+    candidateIndex: number;
+    description: string;
+    direction: "Debit" | "Credit";
+  }[],
 ): Promise<Record<number, string | null>> {
   // 1. Fetch user's categories
   const categories = await ensureDefaultCategories(userId);
-  
+
   // System fallback mapping
   const systemKeywords: Record<string, string> = {
     // Keywords -> systemKey of default categories
-    "ordenado": "salary",
-    "ordenados": "salary",
-    "salário": "salary",
-    "salario": "salary",
-    "salary": "salary",
-    "payroll": "salary",
+    ordenado: "salary",
+    ordenados: "salary",
+    salário: "salary",
+    salario: "salary",
+    salary: "salary",
+    payroll: "salary",
 
-    "levantamento": "withdrawal",
-    "atm": "withdrawal",
-    "withdrawal": "withdrawal",
+    levantamento: "withdrawal",
+    atm: "withdrawal",
+    withdrawal: "withdrawal",
 
-    "transfer": "transfer",
-    "transferência": "transfer",
-    "transferencia": "transfer",
-    "transf": "transfer",
-    "sepa": "transfer",
+    transfer: "transfer",
+    transferência: "transfer",
+    transferencia: "transfer",
+    transf: "transfer",
+    sepa: "transfer",
 
-    "comissão": "fees",
-    "comissao": "fees",
-    "commission": "fees",
-    "fee": "fees",
-    "fees": "fees",
+    comissão: "fees",
+    comissao: "fees",
+    commission: "fees",
+    fee: "fees",
+    fees: "fees",
 
-    "tax": "tax",
-    "imposto": "tax",
-    "irs": "tax",
+    tax: "tax",
+    imposto: "tax",
+    irs: "tax",
 
-    "interest": "interest",
-    "juros": "interest",
+    interest: "interest",
+    juros: "interest",
 
-    "investment": "investment",
-    "investimento": "investment",
-    "broker": "investment",
-    "securities": "investment",
+    investment: "investment",
+    investimento: "investment",
+    broker: "investment",
+    securities: "investment",
 
-    "compra": "purchase",
-    "purchase": "purchase",
+    compra: "purchase",
+    purchase: "purchase",
     "card payment": "purchase",
   };
 
   const results: Record<number, string | null> = {};
 
-  const normalizeStr = (str: string) => 
-    str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+  const normalizeStr = (str: string) =>
+    str
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim();
 
   for (const tx of transactions) {
     const desc = normalizeStr(tx.description);
-    
+
     // 2. System keyword match
     let matchedSystemKey = null;
     const shortKeywords = ["fee", "fees", "tax", "irs", "atm"];
@@ -68,7 +75,7 @@ export async function classifyTransactions(
       const normalizedKw = normalizeStr(kw);
       if (shortKeywords.includes(kw)) {
         // Use word boundary for short keywords to prevent substrings ("coffee" -> "fee")
-        const regex = new RegExp(`\\b${normalizedKw}\\b`, 'i');
+        const regex = new RegExp(`\\b${normalizedKw}\\b`, "i");
         if (regex.test(desc)) {
           matchedSystemKey = sysKey;
           break;
@@ -83,7 +90,7 @@ export async function classifyTransactions(
 
     if (matchedSystemKey) {
       // Find the user's category that has this systemKey
-      const cat = categories.find(c => c.systemKey === matchedSystemKey);
+      const cat = categories.find((c) => c.systemKey === matchedSystemKey);
       if (cat) {
         results[tx.candidateIndex] = cat.id;
         continue;
@@ -91,7 +98,9 @@ export async function classifyTransactions(
     }
 
     // 3. Uncategorized fallback
-    const uncategorized = categories.find(c => c.systemKey === "uncategorized");
+    const uncategorized = categories.find(
+      (c) => c.systemKey === "uncategorized",
+    );
     results[tx.candidateIndex] = uncategorized ? uncategorized.id : null;
   }
 

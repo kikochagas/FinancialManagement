@@ -35,7 +35,7 @@ export function determineBestSheet(wb: XLSX.WorkBook): string | null {
   for (const sheetName of wb.SheetNames) {
     const ws = wb.Sheets[sheetName];
     const data = getSheetData(ws);
-    
+
     // Quick heuristic: number of rows with more than 3 columns filled
     let score = 0;
     for (let i = 0; i < Math.min(data.length, 100); i++) {
@@ -43,7 +43,7 @@ export function determineBestSheet(wb: XLSX.WorkBook): string | null {
         score++;
       }
     }
-    
+
     if (score > maxScore && score > 0) {
       maxScore = score;
       bestSheet = sheetName;

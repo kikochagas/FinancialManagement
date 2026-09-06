@@ -16,9 +16,13 @@ export class OpenAIAdapter implements AIProvider {
     }
   }
 
-  async generateStructured<T>(request: StructuredGenerationRequest<T>): Promise<T> {
+  async generateStructured<T>(
+    request: StructuredGenerationRequest<T>,
+  ): Promise<T> {
     if (!this.client || !this.model) {
-      throw new Error("AI_MAPPING_UNAVAILABLE: OpenAI configuration is missing.");
+      throw new Error(
+        "AI_MAPPING_UNAVAILABLE: OpenAI configuration is missing.",
+      );
     }
 
     try {
@@ -43,7 +47,7 @@ export class OpenAIAdapter implements AIProvider {
       console.error("OpenAIAdapter Error:", {
         status: error?.status,
         code: error?.code,
-        name: error?.name
+        name: error?.name,
       });
       throw new Error("AI_MAPPING_UNAVAILABLE");
     }

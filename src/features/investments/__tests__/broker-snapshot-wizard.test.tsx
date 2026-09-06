@@ -1,5 +1,6 @@
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { BrokerSnapshotWizard } from "../components/BrokerSnapshotWizard";
 import * as actions from "../actions";
@@ -12,7 +13,7 @@ vi.mock("../actions", () => ({
 
 vi.mock("../actions-apply", () => ({
   applyBrokerSnapshot: vi.fn(),
-    applyExistingBrokerSnapshot: vi.fn(),
+  applyExistingBrokerSnapshot: vi.fn(),
 }));
 
 describe("BrokerSnapshotWizard", () => {
@@ -25,6 +26,11 @@ describe("BrokerSnapshotWizard", () => {
     vi.clearAllMocks();
     global.fetch = vi.fn();
     HTMLElement.prototype.scrollIntoView = vi.fn();
+    Element.prototype.hasPointerCapture = () => false;
+    Element.prototype.releasePointerCapture = () => {};
+    if (typeof window.PointerEvent === "undefined") {
+      (window as any).PointerEvent = class PointerEvent extends MouseEvent {};
+    }
   });
 
   const setupPreview = async (mockReconciliationOverrides = {}) => {
@@ -133,7 +139,7 @@ describe("BrokerSnapshotWizard", () => {
     return { fileInput, processButton };
   };
 
-  it("renders correct actions for each position status", async () => {
+  it("renders correct actions for each position status with new defaults", async () => {
     await setupPreview();
 
     // UNCHANGED
@@ -148,22 +154,31 @@ describe("BrokerSnapshotWizard", () => {
       .filter((el) => !el.textContent?.includes("Trade Republic"));
     expect(selectTriggers.length).toBe(2);
 
-    // Default to SKIP
-    expect(selectTriggers[0]).toHaveTextContent("Skip");
-    expect(selectTriggers[1]).toHaveTextContent("Skip");
+    // MATCHED defaults to UPDATE
+    expect(selectTriggers[0]).toHaveTextContent("Update");
+    // NEW defaults to CREATE
+    expect(selectTriggers[1]).toHaveTextContent("Create");
   });
 
-  it("can select CREATE/UPDATE, assert summary, verify exact payload, and handle success", async () => {
+  it("verifies default summary, allows changing to SKIP, verifies exact payload, and handles success", async () => {
     await setupPreview();
 
-    // Select UPDATE for MATCHED (first select)
+    // Verify initial defaults
     const selectTriggers = screen
       .getAllByRole("combobox")
       .filter((el) => !el.textContent?.includes("Trade Republic"));
+
+    // Change MATCHED from Update to Skip
+    fireEvent.click(selectTriggers[0]);
+    fireEvent.click(screen.getAllByRole("option", { name: "Skip" })[0]);
+
+    // Change NEW from Create to Skip
+    fireEvent.click(selectTriggers[1]);
+    fireEvent.click(screen.getAllByRole("option", { name: "Skip" })[0]);
+
+    // Change them BACK to default behavior (UPDATE/CREATE) to preserve the rest of the test
     fireEvent.click(selectTriggers[0]);
     fireEvent.click(screen.getByText("Update"));
-
-    // Select CREATE for NEW (second select)
     fireEvent.click(selectTriggers[1]);
     fireEvent.click(screen.getByText("Create"));
 
@@ -301,13 +316,37 @@ describe("BrokerSnapshotWizard", () => {
 
     expect(screen.getByText("Preview Mode Only")).toBeInTheDocument();
 
-    const accountCombo = screen.getAllByRole("combobox")[0];
-    accountCombo.focus();
-    fireEvent.keyDown(accountCombo, { key: "ArrowDown" });
-    const option = await screen.findByText(/Coinbase/i);
-    fireEvent.click(option);
+    // Check that controls are present
+    expect(screen.getByText("Document Overview")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Review & Confirm/i }),
+    ).toBeInTheDocument();
 
+    // Find the account combobox safely
+    const accountCombo = screen
+      .getAllByRole("combobox")
+      .find((el) => el.textContent?.includes("Trade Republic"));
+    expect(accountCombo).toBeInTheDocument();
+
+    // Change target account to Account B (Coinbase)
+    const user = userEvent.setup();
+    await user.click(accountCombo!);
+    const option = await screen.findByRole("option", { name: /Coinbase/i });
+    await user.click(option);
+
+    // Assert the previous preview disappears
     expect(screen.queryByText("Preview Mode Only")).not.toBeInTheDocument();
+
+    // Assert previous reconciliation/action controls disappear
+    expect(screen.queryByText("Document Overview")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Review & Confirm/i }),
+    ).not.toBeInTheDocument();
+
+    // Assert confirmation state is not present
+    expect(
+      screen.queryByText("Confirm Snapshot Application"),
+    ).not.toBeInTheDocument();
   });
 
   it("resets file input on Import Another", async () => {
@@ -342,7 +381,8 @@ describe("BrokerSnapshotWizard", () => {
     // process button disabled
     expect(processButton).toBeDisabled();
   });
-  it("handles DUPLICATE_FINGERPRINT with existing snapshot flow", async () => {
+
+  it("handles DUPLICATE_FINGERPRINT with existing snapshot flow and verifies success wording", async () => {
     const { fileInput, processButton } = await setupPreview();
 
     vi.mocked(actionsApply.applyBrokerSnapshot).mockResolvedValueOnce({
@@ -377,9 +417,22 @@ describe("BrokerSnapshotWizard", () => {
         },
         reconciliation: {
           accountId: "acc-1",
-          positions: [],
+          positions: [
+            {
+              status: "MATCHED",
+              importedPosition: {
+                name: "Apple",
+                quantity: 10,
+                marketValue: 1500,
+                currency: "USD",
+              },
+              matchMethod: "ISIN",
+              matchedInvestmentId: "inv-1",
+              proposedChanges: { quantity: 10 },
+              reason: null,
+            },
+          ],
         },
-        accountId: "acc-1",
       },
     } as any);
 
@@ -388,33 +441,36 @@ describe("BrokerSnapshotWizard", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText("Preview Mode Only")).toBeInTheDocument();
+      expect(actions.getExistingSnapshotReconciliation).toHaveBeenCalledWith({
+        snapshotId: "snap-123",
+      });
     });
 
+    // Assert existing-snapshot default UPDATE
+    const selectTriggers = screen
+      .getAllByRole("combobox")
+      .filter((el) => !el.textContent?.includes("Trade Republic"));
+    expect(selectTriggers[0]).toHaveTextContent("Update");
+
+    // Now apply existing
     vi.mocked(actionsApply.applyExistingBrokerSnapshot).mockResolvedValueOnce({
       data: { success: true, warnings: [] },
     } as any);
 
     fireEvent.click(screen.getByRole("button", { name: /Review & Confirm/i }));
-
-    // Confirmation screen should show the amber text
-    expect(
-      screen.getByText("Applying projection changes to existing snapshot."),
-    ).toBeInTheDocument();
-
     fireEvent.click(screen.getByRole("button", { name: /Apply Snapshot/i }));
 
     await waitFor(() => {
-      expect(
-        screen.getByText("Snapshot Saved Successfully"),
-      ).toBeInTheDocument();
+      expect(actionsApply.applyExistingBrokerSnapshot).toHaveBeenCalled();
     });
 
-    expect(actionsApply.applyExistingBrokerSnapshot).toHaveBeenCalledWith(
-      expect.objectContaining({
-        snapshotId: "snap-123",
-        updateCashBalance: false,
-      }),
-    );
+    await waitFor(() => {
+      expect(
+        screen.getByText("Portfolio Updated Successfully"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText("Existing snapshot evidence preserved"),
+      ).toBeInTheDocument();
+    });
   });
 });

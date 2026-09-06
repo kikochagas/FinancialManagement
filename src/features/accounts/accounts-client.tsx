@@ -2,15 +2,59 @@
 
 import React, { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
-import { Landmark, CreditCard, Wallet, Coins, Plus, Building, MoreVertical, Link2, RefreshCw, Unlink, Trash2, ShieldCheck, HelpCircle, Edit2, ArrowRightLeft } from "lucide-react";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
+import {
+  Landmark,
+  CreditCard,
+  Wallet,
+  Coins,
+  Plus,
+  Building,
+  MoreVertical,
+  Link2,
+  RefreshCw,
+  Unlink,
+  Trash2,
+  ShieldCheck,
+  HelpCircle,
+  Edit2,
+  ArrowRightLeft,
+} from "lucide-react";
 import { formatCurrency, cn } from "@/lib/utils";
 import { AccountType } from "@/lib/constants";
-import { createAccount, updateAccount, deleteAccount, deleteAccountWithFinancialData, syncBankAccount, disconnectBank } from "./actions";
+import {
+  createAccount,
+  updateAccount,
+  deleteAccount,
+  deleteAccountWithFinancialData,
+  syncBankAccount,
+  disconnectBank,
+} from "./actions";
 
 interface Account {
   id: string;
@@ -92,9 +136,9 @@ export function AccountsClient({ data }: AccountsClientProps) {
   };
 
   const handleEditTrigger = (acc: Account) => {
-  setEditError(null);
-  setSelectedAccount(acc);
-  setEditAcc({
+    setEditError(null);
+    setSelectedAccount(acc);
+    setEditAcc({
       id: acc.id,
       name: acc.name,
       type: acc.type,
@@ -172,9 +216,13 @@ export function AccountsClient({ data }: AccountsClientProps) {
     const errorParam = params.get("error");
     if (errorParam) {
       if (errorParam === "authorization_failed") {
-        setErrorToast("Bank connection was cancelled or could not be authorized.");
+        setErrorToast(
+          "Bank connection was cancelled or could not be authorized.",
+        );
       } else if (errorParam === "session_creation_failed") {
-        setErrorToast("We could not complete the bank connection. Please try again.");
+        setErrorToast(
+          "We could not complete the bank connection. Please try again.",
+        );
       } else {
         setErrorToast("An unexpected error occurred during bank connection.");
       }
@@ -193,14 +241,22 @@ export function AccountsClient({ data }: AccountsClientProps) {
       try {
         const res = await syncBankAccount({ accountId: id });
         setSyncingAccountId(null);
-        if (res?.data && "reauthRequired" in res.data && res.data.reauthRequired) {
-          setErrorToast(`Your bank connection needs to be renewed (${(res.data as any).institutionName}).`);
+        if (
+          res?.data &&
+          "reauthRequired" in res.data &&
+          res.data.reauthRequired
+        ) {
+          setErrorToast(
+            `Your bank connection needs to be renewed (${(res.data as any).institutionName}).`,
+          );
         } else if (res?.serverError) {
           setErrorToast(`Sync failed: ${res.serverError}`);
         } else if (res?.data && "success" in res.data && res.data.success) {
           const imported = (res.data as any).imported || 0;
           if (imported > 0) {
-            setSuccessToast(`Bank synced. Balance updated and ${imported} new transactions imported.`);
+            setSuccessToast(
+              `Bank synced. Balance updated and ${imported} new transactions imported.`,
+            );
           } else {
             setSuccessToast("Everything is already up to date.");
           }
@@ -213,7 +269,11 @@ export function AccountsClient({ data }: AccountsClientProps) {
   };
 
   const handleDisconnectTrigger = (acc: Account) => {
-    if (confirm(`Disconnect ${acc.institutionName || "bank"}?\n\nAutomatic bank synchronization will stop.\nYour existing account and imported transaction history will be kept.`)) {
+    if (
+      confirm(
+        `Disconnect ${acc.institutionName || "bank"}?\n\nAutomatic bank synchronization will stop.\nYour existing account and imported transaction history will be kept.`,
+      )
+    ) {
       startTransition(async () => {
         const res = await disconnectBank({ accountId: acc.id });
         if (res?.data?.success) {
@@ -229,7 +289,6 @@ export function AccountsClient({ data }: AccountsClientProps) {
     switch (type) {
       case AccountType.BANK:
         return Landmark;
-      
 
       case AccountType.BENEFITS:
         return CreditCard;
@@ -244,7 +303,6 @@ export function AccountsClient({ data }: AccountsClientProps) {
     switch (type) {
       case AccountType.BANK:
         return "bg-blue-500/10 border-blue-500/20 text-blue-400";
-      
 
       case AccountType.BENEFITS:
         return "bg-pink-500/10 border-pink-500/20 text-pink-400";
@@ -273,7 +331,10 @@ export function AccountsClient({ data }: AccountsClientProps) {
       {/* Header section */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <p className="text-xs text-muted-foreground font-medium">Create and oversee your financial entities, wallets, and benefits cards.</p>
+          <p className="text-xs text-muted-foreground font-medium">
+            Create and oversee your financial entities, wallets, and benefits
+            cards.
+          </p>
         </div>
 
         <Dialog open={isAddOptionsOpen} onOpenChange={setIsAddOptionsOpen}>
@@ -286,10 +347,12 @@ export function AccountsClient({ data }: AccountsClientProps) {
           <DialogContent className="border-border bg-background sm:max-w-md">
             <DialogHeader>
               <DialogTitle>Add Account</DialogTitle>
-              <DialogDescription>Choose how you want to add your account.</DialogDescription>
+              <DialogDescription>
+                Choose how you want to add your account.
+              </DialogDescription>
             </DialogHeader>
             <div className="grid grid-cols-1 gap-4 py-4">
-              <div 
+              <div
                 className="p-4 border rounded-lg hover:bg-muted/50 cursor-pointer flex gap-4 items-center transition-colors"
                 onClick={() => {
                   setIsAddOptionsOpen(false);
@@ -301,11 +364,14 @@ export function AccountsClient({ data }: AccountsClientProps) {
                 </div>
                 <div>
                   <h4 className="font-semibold text-sm">Create manually</h4>
-                  <p className="text-xs text-muted-foreground mt-1">Add cash, broker, investment or other manually managed account.</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Add cash, broker, investment or other manually managed
+                    account.
+                  </p>
                 </div>
               </div>
-              
-              <div 
+
+              <div
                 className="p-4 border rounded-lg hover:bg-muted/50 cursor-pointer flex gap-4 items-center transition-colors"
                 onClick={() => {
                   window.location.assign("/accounts/connect");
@@ -316,7 +382,9 @@ export function AccountsClient({ data }: AccountsClientProps) {
                 </div>
                 <div>
                   <h4 className="font-semibold text-sm">Connect bank</h4>
-                  <p className="text-xs text-muted-foreground mt-1">Securely connect a supported Portuguese bank.</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Securely connect a supported Portuguese bank.
+                  </p>
                 </div>
               </div>
             </div>
@@ -328,46 +396,69 @@ export function AccountsClient({ data }: AccountsClientProps) {
             <form onSubmit={handleCreate}>
               <DialogHeader>
                 <DialogTitle>Create Financial Account</DialogTitle>
-                <DialogDescription>Define a new asset account, bank connection, or crypto wallet.</DialogDescription>
+                <DialogDescription>
+                  Define a new asset account, bank connection, or crypto wallet.
+                </DialogDescription>
               </DialogHeader>
 
               <div className="space-y-4 py-4">
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-semibold text-muted-foreground uppercase">Account Name</label>
+                  <label className="text-[11px] font-semibold text-muted-foreground uppercase">
+                    Account Name
+                  </label>
                   <Input
                     type="text"
                     placeholder="e.g. Millennium BCP"
                     value={newAcc.name}
-                    onChange={(e) => setNewAcc({ ...newAcc, name: e.target.value })}
+                    onChange={(e) =>
+                      setNewAcc({ ...newAcc, name: e.target.value })
+                    }
                     required
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-[11px] font-semibold text-muted-foreground uppercase">Account Type</label>
-                    <Select value={newAcc.type} onValueChange={(val) => setNewAcc({ ...newAcc, type: val })}>
+                    <label className="text-[11px] font-semibold text-muted-foreground uppercase">
+                      Account Type
+                    </label>
+                    <Select
+                      value={newAcc.type}
+                      onValueChange={(val) =>
+                        setNewAcc({ ...newAcc, type: val })
+                      }
+                    >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="Bank">Bank</SelectItem>
-                        <SelectItem value={AccountType.BENEFITS}>Benefits (Meal, Flex, etc.)</SelectItem>
+                        <SelectItem value={AccountType.BENEFITS}>
+                          Benefits (Meal, Flex, etc.)
+                        </SelectItem>
                         <SelectItem value="Cash">Cash</SelectItem>
-                        <SelectItem value="Crypto Wallet">Crypto Wallet</SelectItem>
-                        <SelectItem value="Broker">Broker / Investment</SelectItem>
+                        <SelectItem value="Crypto Wallet">
+                          Crypto Wallet
+                        </SelectItem>
+                        <SelectItem value="Broker">
+                          Broker / Investment
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-[11px] font-semibold text-muted-foreground uppercase">Opening Balance (€)</label>
+                    <label className="text-[11px] font-semibold text-muted-foreground uppercase">
+                      Opening Balance (€)
+                    </label>
                     <Input
                       type="number"
                       step="0.01"
                       placeholder="0.00"
                       value={newAcc.balance}
-                      onChange={(e) => setNewAcc({ ...newAcc, balance: e.target.value })}
+                      onChange={(e) =>
+                        setNewAcc({ ...newAcc, balance: e.target.value })
+                      }
                     />
                   </div>
                 </div>
@@ -375,7 +466,9 @@ export function AccountsClient({ data }: AccountsClientProps) {
 
               <DialogFooter>
                 <DialogClose asChild>
-                  <Button type="button" variant="outline" size="sm">Cancel</Button>
+                  <Button type="button" variant="outline" size="sm">
+                    Cancel
+                  </Button>
                 </DialogClose>
                 <Button type="submit" size="sm" disabled={isPending}>
                   {isPending ? "Creating..." : "Create"}
@@ -391,30 +484,40 @@ export function AccountsClient({ data }: AccountsClientProps) {
         {data.accounts.map((acc) => {
           const Icon = getAccountIcon(acc.type);
           return (
-            <Card key={acc.id} className="border-border bg-card/50 shadow-sm flex flex-col justify-between">
+            <Card
+              key={acc.id}
+              className="border-border bg-card/50 shadow-sm flex flex-col justify-between"
+            >
               <div>
                 <CardHeader className="flex flex-row items-start justify-between pb-3">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <CardTitle className="text-sm font-semibold text-foreground">{acc.name}</CardTitle>
+                      <CardTitle className="text-sm font-semibold text-foreground">
+                        {acc.name}
+                      </CardTitle>
                       {(() => {
                         if (acc.isBankConnected) {
-                           const isExpired = acc.validUntil && new Date(acc.validUntil) <= new Date();
-                           const needsReconnect = isExpired || acc.connectionStatus === "EXPIRED" || acc.connectionStatus === "REVOKED";
-                           
-                           if (needsReconnect) {
-                             return (
-                               <span className="inline-block text-[9px] px-2 py-0.5 rounded-full border bg-destructive/10 border-destructive/20 text-destructive uppercase font-bold">
-                                 Reconnect Required
-                               </span>
-                             );
-                           } else {
-                             return (
-                               <span className="inline-block text-[9px] px-2 py-0.5 rounded-full border bg-emerald-500/10 border-emerald-500/20 text-emerald-500 uppercase font-bold">
-                                 Bank Connected
-                               </span>
-                             );
-                           }
+                          const isExpired =
+                            acc.validUntil &&
+                            new Date(acc.validUntil) <= new Date();
+                          const needsReconnect =
+                            isExpired ||
+                            acc.connectionStatus === "EXPIRED" ||
+                            acc.connectionStatus === "REVOKED";
+
+                          if (needsReconnect) {
+                            return (
+                              <span className="inline-block text-[9px] px-2 py-0.5 rounded-full border bg-destructive/10 border-destructive/20 text-destructive uppercase font-bold">
+                                Reconnect Required
+                              </span>
+                            );
+                          } else {
+                            return (
+                              <span className="inline-block text-[9px] px-2 py-0.5 rounded-full border bg-emerald-500/10 border-emerald-500/20 text-emerald-500 uppercase font-bold">
+                                Bank Connected
+                              </span>
+                            );
+                          }
                         }
                         if (acc.hasBankHistory) {
                           return (
@@ -427,7 +530,12 @@ export function AccountsClient({ data }: AccountsClientProps) {
                       })()}
                     </div>
                     <div className="flex gap-2 items-center">
-                      <span className={cn("inline-block text-[9px] px-2 py-0.5 rounded-full border uppercase font-bold", getAccountBadgeColor(acc.type))}>
+                      <span
+                        className={cn(
+                          "inline-block text-[9px] px-2 py-0.5 rounded-full border uppercase font-bold",
+                          getAccountBadgeColor(acc.type),
+                        )}
+                      >
                         {acc.type}
                       </span>
                       {acc.isBankConnected && acc.institutionName && (
@@ -447,7 +555,12 @@ export function AccountsClient({ data }: AccountsClientProps) {
                     <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider flex items-center justify-between">
                       Current Balance
                       {acc.isBankConnected && acc.lastBalanceSyncedAt && (
-                        <span className="text-[9px] lowercase font-normal opacity-80">Synced {new Date(acc.lastBalanceSyncedAt).toLocaleDateString()}</span>
+                        <span className="text-[9px] lowercase font-normal opacity-80">
+                          Synced{" "}
+                          {new Date(
+                            acc.lastBalanceSyncedAt,
+                          ).toLocaleDateString()}
+                        </span>
                       )}
                     </span>
                     <div className="text-2xl font-extrabold text-foreground tracking-tight mt-0.5">
@@ -462,40 +575,55 @@ export function AccountsClient({ data }: AccountsClientProps) {
                     </span>
                     <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1">
                       {acc.recentTransactions.map((tx) => (
-                        <div key={tx.id} className="flex items-center justify-between text-xs py-1.5 border-b border-border last:border-0">
+                        <div
+                          key={tx.id}
+                          className="flex items-center justify-between text-xs py-1.5 border-b border-border last:border-0"
+                        >
                           <div className="flex flex-col">
-                            <span className="font-semibold text-card-foreground truncate max-w-[140px]">{tx.description}</span>
-                            <span className="text-[9px] text-muted-foreground mt-0.5 font-mono">{tx.date}</span>
+                            <span className="font-semibold text-card-foreground truncate max-w-[140px]">
+                              {tx.description}
+                            </span>
+                            <span className="text-[9px] text-muted-foreground mt-0.5 font-mono">
+                              {tx.date}
+                            </span>
                           </div>
                           {(() => {
-                             let sign = "-";
-                             let color = "text-foreground";
-                             if (tx.direction === "Credit") {
-                               sign = "+"; color = "text-emerald-500 dark:text-emerald-400";
-                             } else if (tx.direction === "InternalTransfer") {
-                               if (tx.destinationAccountId === acc.id) {
-                                 sign = "+"; color = "text-emerald-500 dark:text-emerald-400";
-                               } else {
-                                 sign = "-"; color = "text-foreground";
-                               }
-                             }
-                             return (
-                               <span className={cn("font-bold text-[11px]", color)}>
-                                 {tx.direction === "InternalTransfer" ? "⇄ " : ""}{sign}{formatCurrency(Math.abs(tx.amount))}
-                               </span>
-                             );
+                            let sign = "-";
+                            let color = "text-foreground";
+                            if (tx.direction === "Credit") {
+                              sign = "+";
+                              color = "text-emerald-500 dark:text-emerald-400";
+                            } else if (tx.direction === "InternalTransfer") {
+                              if (tx.destinationAccountId === acc.id) {
+                                sign = "+";
+                                color =
+                                  "text-emerald-500 dark:text-emerald-400";
+                              } else {
+                                sign = "-";
+                                color = "text-foreground";
+                              }
+                            }
+                            return (
+                              <span
+                                className={cn("font-bold text-[11px]", color)}
+                              >
+                                {tx.direction === "InternalTransfer"
+                                  ? "⇄ "
+                                  : ""}
+                                {sign}
+                                {formatCurrency(Math.abs(tx.amount))}
+                              </span>
+                            );
                           })()}
                         </div>
                       ))}
                       {acc.recentTransactions.length === 0 && (
                         <p className="text-[11px] text-muted-foreground italic py-2">
-                          {acc.type === "Broker" ? (
-                            (acc.investmentEventsCount ?? 0) > 0 
-                              ? `${acc.investmentEventsCount} activities. View in Investments -> Activity.` 
+                          {acc.type === "Broker"
+                            ? (acc.investmentEventsCount ?? 0) > 0
+                              ? `${acc.investmentEventsCount} activities. View in Investments -> Activity.`
                               : "No transaction history found."
-                          ) : (
-                            "No transaction history found."
-                          )}
+                            : "No transaction history found."}
                         </p>
                       )}
                     </div>
@@ -506,50 +634,94 @@ export function AccountsClient({ data }: AccountsClientProps) {
               {/* Card Actions */}
               <div className="p-4 border-t border-border bg-muted/20 flex items-center justify-end gap-2 flex-wrap">
                 {(() => {
-                   if (!acc.isBankConnected) return null;
-                   const isExpired = acc.validUntil && new Date(acc.validUntil) <= new Date();
-                   const needsReconnect = isExpired || acc.connectionStatus === "EXPIRED" || acc.connectionStatus === "REVOKED";
+                  if (!acc.isBankConnected) return null;
+                  const isExpired =
+                    acc.validUntil && new Date(acc.validUntil) <= new Date();
+                  const needsReconnect =
+                    isExpired ||
+                    acc.connectionStatus === "EXPIRED" ||
+                    acc.connectionStatus === "REVOKED";
 
-                   if (needsReconnect) {
-                     return (
-                       <Button variant="outline" size="sm" className="h-7 px-2.5 text-xs text-muted-foreground hover:text-foreground" onClick={() => window.location.assign(`/accounts/connect?institution=${encodeURIComponent(acc.institutionName || "")}&reconnectAccountId=${acc.id}`)}>
-                         Reconnect bank
-                       </Button>
-                     );
-                   } else {
-                     return (
-                       <Button variant="outline" size="sm" className="h-7 px-2.5 text-xs text-muted-foreground hover:text-foreground" onClick={() => handleSyncBank(acc.id)} disabled={syncingAccountId === acc.id}>
-                         <RefreshCw className={cn("h-3.5 w-3.5 mr-1", syncingAccountId === acc.id && "animate-spin")} /> Sync bank
-                       </Button>
-
-                     );
-                   }
+                  if (needsReconnect) {
+                    return (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 px-2.5 text-xs text-muted-foreground hover:text-foreground"
+                        onClick={() =>
+                          window.location.assign(
+                            `/accounts/connect?institution=${encodeURIComponent(acc.institutionName || "")}&reconnectAccountId=${acc.id}`,
+                          )
+                        }
+                      >
+                        Reconnect bank
+                      </Button>
+                    );
+                  } else {
+                    return (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 px-2.5 text-xs text-muted-foreground hover:text-foreground"
+                        onClick={() => handleSyncBank(acc.id)}
+                        disabled={syncingAccountId === acc.id}
+                      >
+                        <RefreshCw
+                          className={cn(
+                            "h-3.5 w-3.5 mr-1",
+                            syncingAccountId === acc.id && "animate-spin",
+                          )}
+                        />{" "}
+                        Sync bank
+                      </Button>
+                    );
+                  }
                 })()}
-                
-                <Button variant="outline" size="sm" className="h-7 px-2.5 text-xs text-muted-foreground hover:text-foreground" onClick={() => handleEditTrigger(acc)}>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2.5 text-xs text-muted-foreground hover:text-foreground"
+                  onClick={() => handleEditTrigger(acc)}
+                >
                   <Edit2 className="h-3.5 w-3.5 mr-1" /> Edit
                 </Button>
-                
+
                 {(() => {
                   if (!acc.isBankConnected) {
                     return (
-                      <Button variant="ghost" size="sm" className="h-7 px-2.5 text-xs text-muted-foreground hover:text-destructive" onClick={() => handleDeleteTrigger(acc)}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2.5 text-xs text-muted-foreground hover:text-destructive"
+                        onClick={() => handleDeleteTrigger(acc)}
+                      >
                         <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
                       </Button>
                     );
                   }
-                  
-                  const isExpired = acc.validUntil && new Date(acc.validUntil) <= new Date();
-                  const needsReconnect = isExpired || acc.connectionStatus === "EXPIRED" || acc.connectionStatus === "REVOKED";
-                  
+
+                  const isExpired =
+                    acc.validUntil && new Date(acc.validUntil) <= new Date();
+                  const needsReconnect =
+                    isExpired ||
+                    acc.connectionStatus === "EXPIRED" ||
+                    acc.connectionStatus === "REVOKED";
+
                   if (!needsReconnect) {
                     return (
-                      <Button variant="ghost" size="sm" className="h-7 px-2.5 text-xs text-muted-foreground hover:text-destructive" onClick={() => handleDisconnectTrigger(acc)} disabled={isPending || syncingAccountId === acc.id}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2.5 text-xs text-muted-foreground hover:text-destructive"
+                        onClick={() => handleDisconnectTrigger(acc)}
+                        disabled={isPending || syncingAccountId === acc.id}
+                      >
                         Disconnect
                       </Button>
                     );
                   }
-                  
+
                   return null;
                 })()}
               </div>
@@ -573,8 +745,8 @@ export function AccountsClient({ data }: AccountsClientProps) {
             <DialogTitle>Delete {accountToDelete?.name}?</DialogTitle>
 
             <DialogDescription>
-              This action permanently deletes this account and the financial data
-              associated with it. It cannot be undone.
+              This action permanently deletes this account and the financial
+              data associated with it. It cannot be undone.
             </DialogDescription>
           </DialogHeader>
 
@@ -591,12 +763,14 @@ export function AccountsClient({ data }: AccountsClientProps) {
 
                     <ul className="space-y-1 text-sm text-muted-foreground">
                       <li>
-                        • {accountToDelete.transactionsCount ?? 0} transaction(s)
+                        • {accountToDelete.transactionsCount ?? 0}{" "}
+                        transaction(s)
                       </li>
 
                       <li>
-                        • {accountToDelete.investmentEventsCount ?? 0} investment
-                        activit{(accountToDelete.investmentEventsCount ?? 0) === 1
+                        • {accountToDelete.investmentEventsCount ?? 0}{" "}
+                        investment activit
+                        {(accountToDelete.investmentEventsCount ?? 0) === 1
                           ? "y"
                           : "ies"}
                       </li>
@@ -607,7 +781,8 @@ export function AccountsClient({ data }: AccountsClientProps) {
                       </li>
 
                       <li>
-                        • {accountToDelete.snapshotsCount ?? 0} broker snapshot(s)
+                        • {accountToDelete.snapshotsCount ?? 0} broker
+                        snapshot(s)
                       </li>
                     </ul>
                   </div>
@@ -615,8 +790,8 @@ export function AccountsClient({ data }: AccountsClientProps) {
               </div>
 
               <p className="text-xs text-muted-foreground">
-                Imported broker activity and historical broker snapshots cannot be
-                recovered after deletion.
+                Imported broker activity and historical broker snapshots cannot
+                be recovered after deletion.
               </p>
             </div>
           )}
@@ -647,7 +822,9 @@ export function AccountsClient({ data }: AccountsClientProps) {
           <form onSubmit={handleUpdate}>
             <DialogHeader>
               <DialogTitle>Edit Account details</DialogTitle>
-              <DialogDescription>Modify parameters for {selectedAccount?.name}.</DialogDescription>
+              <DialogDescription>
+                Modify parameters for {selectedAccount?.name}.
+              </DialogDescription>
             </DialogHeader>
             {editError && (
               <div className="mt-4 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
@@ -659,53 +836,85 @@ export function AccountsClient({ data }: AccountsClientProps) {
                 <div className="bg-muted/50 p-3 rounded-md text-sm text-muted-foreground border border-border flex items-start gap-2">
                   <Landmark className="h-4 w-4 mt-0.5 text-emerald-500" />
                   <div>
-                    <span className="font-semibold text-foreground block">Balance is synchronized from your bank.</span>
+                    <span className="font-semibold text-foreground block">
+                      Balance is synchronized from your bank.
+                    </span>
                     Type, currency, and balance cannot be manually changed.
                   </div>
                 </div>
               )}
               <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-muted-foreground uppercase">Account Name</label>
+                <label className="text-[11px] font-semibold text-muted-foreground uppercase">
+                  Account Name
+                </label>
                 <Input
                   type="text"
                   value={editAcc.name}
-                  onChange={(e) => setEditAcc({ ...editAcc, name: e.target.value })}
+                  onChange={(e) =>
+                    setEditAcc({ ...editAcc, name: e.target.value })
+                  }
                   required
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-semibold text-muted-foreground uppercase">Account Type</label>
-                  <Select value={editAcc.type} onValueChange={(val) => setEditAcc({ ...editAcc, type: val })} disabled={selectedAccount?.isBankConnected}>
+                  <label className="text-[11px] font-semibold text-muted-foreground uppercase">
+                    Account Type
+                  </label>
+                  <Select
+                    value={editAcc.type}
+                    onValueChange={(val) =>
+                      setEditAcc({ ...editAcc, type: val })
+                    }
+                    disabled={selectedAccount?.isBankConnected}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Bank">Bank</SelectItem>
-                      <SelectItem value={AccountType.BENEFITS}>Benefits (Meal, Flex, etc.)</SelectItem>
+                      <SelectItem value={AccountType.BENEFITS}>
+                        Benefits (Meal, Flex, etc.)
+                      </SelectItem>
                       <SelectItem value="Cash">Cash</SelectItem>
-                      <SelectItem value="Crypto Wallet">Crypto Wallet</SelectItem>
-                      <SelectItem value="Broker">Broker / Investment</SelectItem>
+                      <SelectItem value="Crypto Wallet">
+                        Crypto Wallet
+                      </SelectItem>
+                      <SelectItem value="Broker">
+                        Broker / Investment
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-semibold text-muted-foreground uppercase">Balance (€)</label>
+                  <label className="text-[11px] font-semibold text-muted-foreground uppercase">
+                    Balance (€)
+                  </label>
                   <Input
                     type="number"
                     step="0.01"
                     value={editAcc.balance}
-                    onChange={(e) => setEditAcc({ ...editAcc, balance: e.target.value })}
+                    onChange={(e) =>
+                      setEditAcc({ ...editAcc, balance: e.target.value })
+                    }
                     required
                     disabled={selectedAccount?.isBankConnected}
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-semibold text-muted-foreground uppercase">Currency</label>
-                  <Select value={editAcc.currency} onValueChange={(val) => setEditAcc({ ...editAcc, currency: val })} disabled={selectedAccount?.isBankConnected}>
+                  <label className="text-[11px] font-semibold text-muted-foreground uppercase">
+                    Currency
+                  </label>
+                  <Select
+                    value={editAcc.currency}
+                    onValueChange={(val) =>
+                      setEditAcc({ ...editAcc, currency: val })
+                    }
+                    disabled={selectedAccount?.isBankConnected}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -721,7 +930,9 @@ export function AccountsClient({ data }: AccountsClientProps) {
 
             <DialogFooter>
               <DialogClose asChild>
-                <Button type="button" variant="outline" size="sm">Cancel</Button>
+                <Button type="button" variant="outline" size="sm">
+                  Cancel
+                </Button>
               </DialogClose>
               <Button type="submit" size="sm" disabled={isPending}>
                 {isPending ? "Saving..." : "Save"}

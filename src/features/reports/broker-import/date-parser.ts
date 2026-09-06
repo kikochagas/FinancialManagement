@@ -20,9 +20,10 @@ export function parseBrokerDatetimeStrict(input: any): ParseResult<string> {
   const str = String(input).trim();
 
   // Try ISO datetime string e.g., "2024-01-01T12:00:00Z" or "2024-01-01T12:00:00"
-  const isoRegex = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(Z|[+-]\d{2}:?\d{2})?$/;
+  const isoRegex =
+    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(Z|[+-]\d{2}:?\d{2})?$/;
   const isoMatch = str.match(isoRegex);
-  
+
   if (isoMatch) {
     const y = parseInt(isoMatch[1], 10);
     const m = parseInt(isoMatch[2], 10);
@@ -34,25 +35,37 @@ export function parseBrokerDatetimeStrict(input: any): ParseResult<string> {
 
     // Reject out of bounds (strict calendar logic)
     if (m < 1 || m > 12 || d < 1 || h > 23 || min > 59 || s > 59) {
-       return { valid: false, value: null, warning: `Invalid ISO datetime (out of bounds): ${str}` };
+      return {
+        valid: false,
+        value: null,
+        warning: `Invalid ISO datetime (out of bounds): ${str}`,
+      };
     }
     const daysInMonth = new Date(Date.UTC(y, m, 0)).getUTCDate();
     if (d > daysInMonth) {
-       return { valid: false, value: null, warning: `Invalid ISO datetime (invalid day for month): ${str}` };
+      return {
+        valid: false,
+        value: null,
+        warning: `Invalid ISO datetime (invalid day for month): ${str}`,
+      };
     }
 
     // Determine deterministic timestamp
     let dateObj: Date;
     if (tz) {
-       // It has an explicit timezone, safely rely on Date to parse the offset
-       dateObj = new Date(str);
+      // It has an explicit timezone, safely rely on Date to parse the offset
+      dateObj = new Date(str);
     } else {
-       // Timezone-less ISO datetime, treat as UTC deterministically
-       dateObj = new Date(Date.UTC(y, m - 1, d, h, min, s));
+      // Timezone-less ISO datetime, treat as UTC deterministically
+      dateObj = new Date(Date.UTC(y, m - 1, d, h, min, s));
     }
 
     if (isNaN(dateObj.getTime())) {
-       return { valid: false, value: null, warning: `Invalid ISO datetime: ${str}` };
+      return {
+        valid: false,
+        value: null,
+        warning: `Invalid ISO datetime: ${str}`,
+      };
     }
     return { valid: true, value: dateObj.toISOString() };
   }
@@ -63,19 +76,31 @@ export function parseBrokerDatetimeStrict(input: any): ParseResult<string> {
     const y = parseInt(ymdMatch[1], 10);
     const m = parseInt(ymdMatch[2], 10);
     const d = parseInt(ymdMatch[3], 10);
-    
-    if (m < 1 || m > 12 || d < 1) return { valid: false, value: null, warning: `Invalid calendar date: ${str}` };
+
+    if (m < 1 || m > 12 || d < 1)
+      return {
+        valid: false,
+        value: null,
+        warning: `Invalid calendar date: ${str}`,
+      };
     const daysInMonth = new Date(Date.UTC(y, m, 0)).getUTCDate();
-    if (d > daysInMonth) return { valid: false, value: null, warning: `Invalid calendar date (day): ${str}` };
+    if (d > daysInMonth)
+      return {
+        valid: false,
+        value: null,
+        warning: `Invalid calendar date (day): ${str}`,
+      };
 
     const dateObj = new Date(Date.UTC(y, m - 1, d));
     return { valid: true, value: dateObj.toISOString() };
   }
 
   // Try YYYY-MM-DD HH:mm:ss
-  const ymdhmsMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2}):(\d{2})$/);
+  const ymdhmsMatch = str.match(
+    /^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2}):(\d{2})$/,
+  );
   if (ymdhmsMatch) {
-    const isoStr = str.replace(/\s+/, 'T'); // No 'Z' added, recursive fallthrough to isoMatch equivalent
+    const isoStr = str.replace(/\s+/, "T"); // No 'Z' added, recursive fallthrough to isoMatch equivalent
     return parseBrokerDatetimeStrict(isoStr);
   }
 
@@ -86,9 +111,19 @@ export function parseBrokerDatetimeStrict(input: any): ParseResult<string> {
     const month = parseInt(dmyMatch[2], 10);
     const year = parseInt(dmyMatch[3], 10);
 
-    if (month < 1 || month > 12 || day < 1) return { valid: false, value: null, warning: `Invalid calendar date: ${str}` };
+    if (month < 1 || month > 12 || day < 1)
+      return {
+        valid: false,
+        value: null,
+        warning: `Invalid calendar date: ${str}`,
+      };
     const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
-    if (day > daysInMonth) return { valid: false, value: null, warning: `Invalid calendar date (day): ${str}` };
+    if (day > daysInMonth)
+      return {
+        valid: false,
+        value: null,
+        warning: `Invalid calendar date (day): ${str}`,
+      };
 
     const dateObj = new Date(Date.UTC(year, month - 1, day));
     return { valid: true, value: dateObj.toISOString() };

@@ -29,7 +29,8 @@ const deleteGoalSchema = z.object({
 export const createGoal = authActionClient
   .schema(createGoalSchema)
   .action(async ({ parsedInput, ctx: { userId } }) => {
-    const progress = (parsedInput.currentAmount / parsedInput.targetAmount) * 100;
+    const progress =
+      (parsedInput.currentAmount / parsedInput.targetAmount) * 100;
     const goal = await db.goal.create({
       data: {
         ...parsedInput,
@@ -48,10 +49,17 @@ export const updateGoal = authActionClient
     const { id, ...data } = parsedInput;
 
     const original = await db.goal.findUnique({ where: { id } });
-    if (!original || original.userId !== userId) throw new Error("Goal not found");
+    if (!original || original.userId !== userId)
+      throw new Error("Goal not found");
 
-    const targetAmount = data.targetAmount !== undefined ? data.targetAmount : original.targetAmount;
-    const currentAmount = data.currentAmount !== undefined ? data.currentAmount : original.currentAmount;
+    const targetAmount =
+      data.targetAmount !== undefined
+        ? data.targetAmount
+        : original.targetAmount;
+    const currentAmount =
+      data.currentAmount !== undefined
+        ? data.currentAmount
+        : original.currentAmount;
     const progress = (currentAmount / targetAmount) * 100;
 
     const updated = await db.goal.update({
@@ -70,8 +78,11 @@ export const updateGoal = authActionClient
 export const deleteGoal = authActionClient
   .schema(deleteGoalSchema)
   .action(async ({ parsedInput, ctx: { userId } }) => {
-    const original = await db.goal.findUnique({ where: { id: parsedInput.id } });
-    if (!original || original.userId !== userId) throw new Error("Goal not found");
+    const original = await db.goal.findUnique({
+      where: { id: parsedInput.id },
+    });
+    if (!original || original.userId !== userId)
+      throw new Error("Goal not found");
 
     await db.goal.delete({ where: { id: parsedInput.id } });
     revalidatePath("/");

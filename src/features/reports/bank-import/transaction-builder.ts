@@ -1,5 +1,9 @@
 import { ColumnMapping, ParsedBankTransaction } from "./types";
-import { resolveAmount, normalizeTransactionDescription, deriveTransactionDirection } from "./normalization";
+import {
+  resolveAmount,
+  normalizeTransactionDescription,
+  deriveTransactionDirection,
+} from "./normalization";
 import { validateTransaction } from "./validation";
 import { parseDateStrict } from "./date-parser";
 import { parseMoneyStrict } from "./money-parser";
@@ -7,18 +11,25 @@ import { parseMoneyStrict } from "./money-parser";
 function normalizeCurrency(c: any): string | null {
   if (!c) return null;
   const s = String(c).trim().toLowerCase();
-  if (s === '€' || s === 'eur') return 'EUR';
-  if (s === 'usd') return 'USD';
-  if (s === '£' || s === 'gbp') return 'GBP';
-  if (s === '$') return null;
+  if (s === "€" || s === "eur") return "EUR";
+  if (s === "usd") return "USD";
+  if (s === "£" || s === "gbp") return "GBP";
+  if (s === "$") return null;
   return String(c).trim().toUpperCase();
 }
 
 export function buildTransactions(
   dataRows: any[][],
   headerRowIdx: number,
-  mapping: Record<number, ColumnMapping>
-): { transactions: ParsedBankTransaction[], endingBalance: number | null, footerRowsSkipped: number, blankRowsIgnored: number, statementCurrencyStatus: "detected" | "unknown" | "ambiguous", statementCurrency: string | null } {
+  mapping: Record<number, ColumnMapping>,
+): {
+  transactions: ParsedBankTransaction[];
+  endingBalance: number | null;
+  footerRowsSkipped: number;
+  blankRowsIgnored: number;
+  statementCurrencyStatus: "detected" | "unknown" | "ambiguous";
+  statementCurrency: string | null;
+} {
   const txs: ParsedBankTransaction[] = [];
   let detectedEndingBalance: number | null = null;
   let skippedRows = 0;
@@ -26,7 +37,11 @@ export function buildTransactions(
 
   for (let i = headerRowIdx + 1; i < dataRows.length; i++) {
     const row = dataRows[i];
-    if (!row || row.length === 0 || row.every(c => c === "" || c === null || c === undefined)) {
+    if (
+      !row ||
+      row.length === 0 ||
+      row.every((c) => c === "" || c === null || c === undefined)
+    ) {
       blankRowsIgnored++;
       continue;
     }
@@ -46,8 +61,9 @@ export function buildTransactions(
     let currencyRaw: any = null;
     let referenceRaw: any = null;
 
-    Object.values(mapping).forEach(m => {
-      if (!m.semantic || m.semantic === "IGNORE" || m.semantic === "UNMAPPED") return;
+    Object.values(mapping).forEach((m) => {
+      if (!m.semantic || m.semantic === "IGNORE" || m.semantic === "UNMAPPED")
+        return;
       const val = row[m.columnIndex];
       if (m.semantic === "BOOKING_DATE") bookingDateRaw = val;
       if (m.semantic === "VALUE_DATE") valueDateRaw = val;
@@ -67,16 +83,33 @@ export function buildTransactions(
 
     const bookingDateRes = parseDateStrict(bookingDateRaw);
     const valueDateRes = valueDateRaw ? parseDateStrict(valueDateRaw) : null;
-    
-    const { amount, direction: inferredDirection, explicitSign, warnings, currency: extractedCurrency } = resolveAmount(amtRaw, debitRaw, creditRaw);
+
+    const {
+      amount,
+      direction: inferredDirection,
+      explicitSign,
+      warnings,
+      currency: extractedCurrency,
+    } = resolveAmount(amtRaw, debitRaw, creditRaw);
 
     const hasValidDate = bookingDateRes.valid;
     const hasValidAmount = amount !== null;
-    const hasMeaningfulDescription = descRaw != null && String(descRaw).trim() !== "";
-    const hasAnyTypeOrRef = (typeRaw !== undefined && typeRaw !== null && String(typeRaw).trim() !== "") || 
-                            (referenceRaw !== undefined && referenceRaw !== null && String(referenceRaw).trim() !== "");
+    const hasMeaningfulDescription =
+      descRaw != null && String(descRaw).trim() !== "";
+    const hasAnyTypeOrRef =
+      (typeRaw !== undefined &&
+        typeRaw !== null &&
+        String(typeRaw).trim() !== "") ||
+      (referenceRaw !== undefined &&
+        referenceRaw !== null &&
+        String(referenceRaw).trim() !== "");
 
-    if (!hasValidDate && !hasValidAmount && !hasMeaningfulDescription && !hasAnyTypeOrRef) {
+    if (
+      !hasValidDate &&
+      !hasValidAmount &&
+      !hasMeaningfulDescription &&
+      !hasAnyTypeOrRef
+    ) {
       skippedRows++;
       continue;
     }
@@ -84,15 +117,22 @@ export function buildTransactions(
     // Resolve TYPE conflict
     let finalDirection = inferredDirection;
     if (typeRaw) {
-      const explicit = deriveTransactionDirection(null, String(typeRaw), null, null);
+      const explicit = deriveTransactionDirection(
+        null,
+        String(typeRaw),
+        null,
+        null,
+      );
       if (explicit) {
         if (finalDirection && explicit !== finalDirection) {
           if (explicitSign) {
-            warnings.push(`Sign and Type column conflict: Amount suggests ${finalDirection}, but Type column says ${explicit}.`);
+            warnings.push(
+              `Sign and Type column conflict: Amount suggests ${finalDirection}, but Type column says ${explicit}.`,
+            );
             finalDirection = null; // Unresolved conflict forces manual review
           } else {
-             // Yield to explicit TYPE
-             finalDirection = explicit;
+            // Yield to explicit TYPE
+            finalDirection = explicit;
           }
         } else {
           finalDirection = explicit;
@@ -100,16 +140,21 @@ export function buildTransactions(
       }
     }
 
-    if (!bookingDateRes.valid) warnings.push(bookingDateRes.warning || "Invalid Date");
+    if (!bookingDateRes.valid)
+      warnings.push(bookingDateRes.warning || "Invalid Date");
 
     let finalCurrency = null;
     let currencyConflict = false;
     const mappedCurrency = currencyRaw ? normalizeCurrency(currencyRaw) : null;
-    const extractedCurrNorm = extractedCurrency ? normalizeCurrency(extractedCurrency) : null;
-    
+    const extractedCurrNorm = extractedCurrency
+      ? normalizeCurrency(extractedCurrency)
+      : null;
+
     if (mappedCurrency && extractedCurrNorm) {
       if (mappedCurrency !== extractedCurrNorm) {
-        warnings.push(`Currency conflict: Amount suggests ${extractedCurrNorm}, but Currency column says ${mappedCurrency}.`);
+        warnings.push(
+          `Currency conflict: Amount suggests ${extractedCurrNorm}, but Currency column says ${mappedCurrency}.`,
+        );
         currencyConflict = true;
       } else {
         finalCurrency = mappedCurrency;
@@ -125,7 +170,10 @@ export function buildTransactions(
       description: normalizeTransactionDescription(descRaw),
       amount: amount ?? null,
       direction: finalDirection ?? null,
-      balanceAfter: balanceRaw !== undefined && balanceRaw !== null && balanceRaw !== "" ? parseMoneyStrict(balanceRaw).value : null,
+      balanceAfter:
+        balanceRaw !== undefined && balanceRaw !== null && balanceRaw !== ""
+          ? parseMoneyStrict(balanceRaw).value
+          : null,
       counterparty: counterpartyRaw ? String(counterpartyRaw).trim() : null,
       payer: payerRaw ? String(payerRaw).trim() : null,
       beneficiary: beneficiaryRaw ? String(beneficiaryRaw).trim() : null,
@@ -134,7 +182,7 @@ export function buildTransactions(
       reference: referenceRaw ? String(referenceRaw).trim() : null,
       valid: false,
       warnings,
-      currencyConflict
+      currencyConflict,
     };
 
     tx = validateTransaction(tx);
@@ -142,13 +190,16 @@ export function buildTransactions(
   }
 
   // Track ending balance logic natively by direction
-  const validTxs = txs.filter(t => t.valid && t.balanceAfter !== null);
+  const validTxs = txs.filter((t) => t.valid && t.balanceAfter !== null);
   if (validTxs.length >= 2) {
     const firstDate = new Date(validTxs[0].bookingDate!).getTime();
-    const lastDate = new Date(validTxs[validTxs.length - 1].bookingDate!).getTime();
+    const lastDate = new Date(
+      validTxs[validTxs.length - 1].bookingDate!,
+    ).getTime();
     if (lastDate > firstDate) {
       // Oldest to newest
-      detectedEndingBalance = validTxs[validTxs.length - 1].balanceAfter ?? null;
+      detectedEndingBalance =
+        validTxs[validTxs.length - 1].balanceAfter ?? null;
     } else if (firstDate > lastDate) {
       // Newest to oldest
       detectedEndingBalance = validTxs[0].balanceAfter ?? null;
@@ -163,7 +214,7 @@ export function buildTransactions(
   // Detect statement currency safely across all rows
   let statementCurrencyStatus: "detected" | "unknown" | "ambiguous" = "unknown";
   let detectedStatementCurrency: string | null = null;
-  
+
   const validCurrencies = new Set<string>();
   let hasConflicts = false;
 
@@ -184,5 +235,12 @@ export function buildTransactions(
     detectedStatementCurrency = Array.from(validCurrencies)[0];
   }
 
-  return { transactions: txs, endingBalance: detectedEndingBalance, footerRowsSkipped: skippedRows, blankRowsIgnored, statementCurrencyStatus, statementCurrency: detectedStatementCurrency };
+  return {
+    transactions: txs,
+    endingBalance: detectedEndingBalance,
+    footerRowsSkipped: skippedRows,
+    blankRowsIgnored,
+    statementCurrencyStatus,
+    statementCurrency: detectedStatementCurrency,
+  };
 }

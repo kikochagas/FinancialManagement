@@ -1,22 +1,22 @@
-import { defineConfig } from 'vitest/config'
-import react from '@vitejs/plugin-react'
-import path from 'path'
+import { defineConfig } from "vitest/config";
+import react from "@vitejs/plugin-react";
+import path from "path";
 
 export default defineConfig({
   plugins: [react()],
   test: {
-    environment: 'jsdom',
+    environment: "jsdom",
     globals: true,
-    globalSetup: ['./vitest.global-setup.ts'],
-    setupFiles: ['./setupTests.ts'],
+    globalSetup: ["./vitest.global-setup.ts"],
+    setupFiles: ["./setupTests.ts"],
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      "@": path.resolve(__dirname, "./src"),
     },
     env: {
-      DATABASE_URL: 'file:../test.db',
-      TURSO_DATABASE_URL: '',
-      TURSO_AUTH_TOKEN: '',
-      RENDER: ''
-    }
+      DATABASE_URL: "file:../test.db",
+      TURSO_DATABASE_URL: "",
+      TURSO_AUTH_TOKEN: "",
+      RENDER: "",
+    },
   },
-})
+});

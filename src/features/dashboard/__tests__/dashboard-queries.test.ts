@@ -15,8 +15,8 @@ describe("Dashboard queries", () => {
         id: testUserId,
         email: "dashboard@test.com",
         name: "Dashboard Test",
-        passwordHash: "dummy"
-      }
+        passwordHash: "dummy",
+      },
     });
 
     await db.account.create({
@@ -26,8 +26,8 @@ describe("Dashboard queries", () => {
         name: "Test Bank",
         type: "Bank",
         balance: 1000,
-        currency: "EUR"
-      }
+        currency: "EUR",
+      },
     });
   });
 
@@ -46,17 +46,20 @@ describe("Dashboard queries", () => {
         name: "Apple Inc.",
         type: "Stock",
         quantity: 10,
-        costBasis: 1000, isin: null, instrumentIdentifier: null, instrumentIdentifierType: null,
+        costBasis: 1000,
+        isin: null,
+        instrumentIdentifier: null,
+        instrumentIdentifierType: null,
         marketValue: 1500,
         profit: 500,
-        allocation: 0
-      }
+        allocation: 0,
+      },
     });
 
     vi.spyOn(auth, "getUserId").mockResolvedValue(testUserId);
 
     const data = await getDashboardData();
-    
+
     vi.restoreAllMocks();
   });
 
@@ -70,8 +73,8 @@ describe("Dashboard queries", () => {
         name: "Any Broker",
         type: "Broker",
         balance: 500, // Broker cash
-        currency: "EUR"
-      }
+        currency: "EUR",
+      },
     });
 
     await db.investment.create({
@@ -80,17 +83,20 @@ describe("Dashboard queries", () => {
         name: "Apple Inc.",
         type: "Stock",
         quantity: 10,
-        costBasis: 1000, isin: null, instrumentIdentifier: null, instrumentIdentifierType: null,
+        costBasis: 1000,
+        isin: null,
+        instrumentIdentifier: null,
+        instrumentIdentifierType: null,
         marketValue: 1500,
         profit: 500,
-        allocation: 0
-      }
+        allocation: 0,
+      },
     });
 
     vi.spyOn(auth, "getUserId").mockResolvedValue(testUserId);
 
     const data = await getDashboardData();
-    
+
     // total account balance = 1500 (1000 bank + 500 broker cash)
     // investments = 1500 (1500 stock market value)
     // net worth = 3000

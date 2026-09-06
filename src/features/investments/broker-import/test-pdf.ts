@@ -1,18 +1,20 @@
-import * as fs from 'fs';
-import { parseBrokerPdf } from './pdf-parser';
+import * as fs from "fs";
+import { parseBrokerPdf } from "./pdf-parser";
 
 async function run() {
-  if (process.env.NODE_ENV === 'production') {
-    console.error('This script cannot be run in production.');
+  if (process.env.NODE_ENV === "production") {
+    console.error("This script cannot be run in production.");
     process.exit(1);
   }
 
   const args = process.argv.slice(2);
   const filePath = args[0];
-  const isRaw = args.includes('--raw');
+  const isRaw = args.includes("--raw");
 
   if (!filePath) {
-    console.error('Usage: npx tsx src/features/investments/broker-import/test-pdf.ts <path-to-pdf> [--raw]');
+    console.error(
+      "Usage: npx tsx src/features/investments/broker-import/test-pdf.ts <path-to-pdf> [--raw]",
+    );
     process.exit(1);
   }
 
@@ -20,21 +22,21 @@ async function run() {
     const buffer = fs.readFileSync(filePath);
     const result = await parseBrokerPdf(buffer);
 
-    console.log('--- PDF EXTRACTION SPIKE RESULTS ---');
+    console.log("--- PDF EXTRACTION SPIKE RESULTS ---");
     console.log(`Pages: ${result.pages}`);
     console.log(`Fingerprint (SHA-256): ${result.fingerprint}`);
-    console.log('------------------------------------');
-    const { extractDeterministic } = require('./deterministic-extractor');
+    console.log("------------------------------------");
+    const { extractDeterministic } = require("./deterministic-extractor");
     const snapshot = extractDeterministic(result.rawText);
-    
+
     if (isRaw) {
-      console.log('RAW TEXT (First 1000 chars):');
+      console.log("RAW TEXT (First 1000 chars):");
       console.log(result.rawText.substring(0, 1000));
     }
-    console.log('BROKER SNAPSHOT:');
+    console.log("BROKER SNAPSHOT:");
     console.log(JSON.stringify(snapshot, null, 2));
   } catch (error: any) {
-    console.error('Error during extraction spike:', error.message);
+    console.error("Error during extraction spike:", error.message);
   }
 }
 

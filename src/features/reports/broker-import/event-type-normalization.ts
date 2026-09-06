@@ -1,9 +1,14 @@
 import { CanonicalEventType } from "./types";
 
-export function normalizeEventType(rawType: string): CanonicalEventType | "IGNORE" | null {
+export function normalizeEventType(
+  rawType: string,
+): CanonicalEventType | "IGNORE" | null {
   if (!rawType) return null;
 
-  const normalized = rawType.toUpperCase().trim().replace(/[\s_-]+/g, "_");
+  const normalized = rawType
+    .toUpperCase()
+    .trim()
+    .replace(/[\s_-]+/g, "_");
 
   switch (normalized) {
     case "BUY":

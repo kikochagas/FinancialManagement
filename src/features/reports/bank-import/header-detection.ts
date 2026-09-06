@@ -9,7 +9,10 @@ const HEADER_SEARCH_WINDOW = 50;
  * Looks at the first 50 rows.
  * Scores rows based on known semantic vocabulary.
  */
-export function detectHeaderRow(rows: any[][]): { headerRowIndex: number | null, score: number } {
+export function detectHeaderRow(rows: any[][]): {
+  headerRowIndex: number | null;
+  score: number;
+} {
   let bestRow = -1;
   let bestScore = 0;
 
@@ -18,13 +21,13 @@ export function detectHeaderRow(rows: any[][]): { headerRowIndex: number | null,
     if (!Array.isArray(row) || row.length === 0) continue;
 
     let score = 0;
-    
+
     for (const cell of row) {
       if (typeof cell !== "string") continue;
-      
+
       const normalized = normalizeHeader(cell);
       if (!normalized) continue;
-      
+
       const semanticInfo = getDeterministicSemantic(normalized);
       if (semanticInfo && semanticInfo.semantic) {
         score += semanticInfo.confidence;

@@ -7,7 +7,7 @@ import { ParseResult } from "./types";
  * - YYYY-MM-DD
  * - Excel serial dates
  * - ISO strings
- * 
+ *
  * Will return valid: false with a warning instead of today's date on failure.
  */
 export function parseDateStrict(input: any): ParseResult<string> {
@@ -22,7 +22,7 @@ export function parseDateStrict(input: any): ParseResult<string> {
     const unixTimestamp = (input - 25569) * 86400 * 1000;
     const date = new Date(unixTimestamp);
     if (!isNaN(date.getTime())) {
-      return { valid: true, value: date.toISOString().split('T')[0] };
+      return { valid: true, value: date.toISOString().split("T")[0] };
     }
   }
 
@@ -30,15 +30,24 @@ export function parseDateStrict(input: any): ParseResult<string> {
 
   // Try YYYY-MM-DD
   if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
-    const parts = str.substring(0, 10).split('-');
+    const parts = str.substring(0, 10).split("-");
     const y = parseInt(parts[0], 10);
     const m = parseInt(parts[1], 10);
     const d = parseInt(parts[2], 10);
     const dateObj = new Date(Date.UTC(y, m - 1, d));
-    if (!isNaN(dateObj.getTime()) && dateObj.getUTCFullYear() === y && dateObj.getUTCMonth() === m - 1 && dateObj.getUTCDate() === d) {
-      return { valid: true, value: dateObj.toISOString().split('T')[0] };
+    if (
+      !isNaN(dateObj.getTime()) &&
+      dateObj.getUTCFullYear() === y &&
+      dateObj.getUTCMonth() === m - 1 &&
+      dateObj.getUTCDate() === d
+    ) {
+      return { valid: true, value: dateObj.toISOString().split("T")[0] };
     }
-    return { valid: false, value: null, warning: `Invalid calendar date: ${str}` };
+    return {
+      valid: false,
+      value: null,
+      warning: `Invalid calendar date: ${str}`,
+    };
   }
 
   // Try DD/MM/YYYY or DD-MM-YYYY
@@ -53,10 +62,19 @@ export function parseDateStrict(input: any): ParseResult<string> {
       if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
         // month is 0-indexed in JS Date
         const dateObj = new Date(Date.UTC(year, month - 1, day));
-        if (!isNaN(dateObj.getTime()) && dateObj.getUTCFullYear() === year && dateObj.getUTCMonth() === month - 1 && dateObj.getUTCDate() === day) {
-          return { valid: true, value: dateObj.toISOString().split('T')[0] };
+        if (
+          !isNaN(dateObj.getTime()) &&
+          dateObj.getUTCFullYear() === year &&
+          dateObj.getUTCMonth() === month - 1 &&
+          dateObj.getUTCDate() === day
+        ) {
+          return { valid: true, value: dateObj.toISOString().split("T")[0] };
         }
-        return { valid: false, value: null, warning: `Invalid calendar date: ${str}` };
+        return {
+          valid: false,
+          value: null,
+          warning: `Invalid calendar date: ${str}`,
+        };
       }
     }
   }

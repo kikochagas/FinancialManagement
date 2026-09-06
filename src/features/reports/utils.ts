@@ -5,7 +5,10 @@ export const parseNumber = (val: any) => {
   let clean = str.replace(/[^\d,\.-]/g, "");
   if (clean.includes(",")) {
     const lastCommaIndex = clean.lastIndexOf(",");
-    const withoutCommas = clean.substring(0, lastCommaIndex).replace(/[,\.]/g, "") + "." + clean.substring(lastCommaIndex + 1).replace(/[,\.]/g, "");
+    const withoutCommas =
+      clean.substring(0, lastCommaIndex).replace(/[,\.]/g, "") +
+      "." +
+      clean.substring(lastCommaIndex + 1).replace(/[,\.]/g, "");
     return Number(withoutCommas) || 0;
   }
   return Number(clean) || 0;
@@ -24,9 +27,19 @@ export const parseDate = (val: any) => {
 };
 
 export const parseLegacyTransactionType = (val: any) => {
-  const s = String(val || "").toLowerCase().trim();
-  if (s === "entrada" || s === "income" || s === "credit" || s === "crédito" || s === "credito") return "Income";
-  if (s === "transfer" || s === "transferência" || s === "transferencia") return "Transfer";
+  const s = String(val || "")
+    .toLowerCase()
+    .trim();
+  if (
+    s === "entrada" ||
+    s === "income" ||
+    s === "credit" ||
+    s === "crédito" ||
+    s === "credito"
+  )
+    return "Income";
+  if (s === "transfer" || s === "transferência" || s === "transferencia")
+    return "Transfer";
   if (s === "interest" || s === "juros") return "Interest";
   if (s === "tax" || s === "imposto") return "Tax";
   if (s === "investment" || s === "investimento") return "Investment";

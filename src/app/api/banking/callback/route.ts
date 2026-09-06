@@ -14,7 +14,9 @@ export async function GET(request: Request) {
     const errorDescription = url.searchParams.get("error_description");
 
     if (!state) {
-      return NextResponse.redirect(new URL("/accounts?error=missing_state", baseUrl));
+      return NextResponse.redirect(
+        new URL("/accounts?error=missing_state", baseUrl),
+      );
     }
 
     const userId = await getUserId();
@@ -27,37 +29,48 @@ export async function GET(request: Request) {
     // We can do it in a transaction:
     const authState = await prisma.$transaction(async (tx: any) => {
       const existing = await tx.bankAuthorizationState.findUnique({
-        where: { stateStr: state }
+        where: { stateStr: state },
       });
 
-      if (!existing || existing.userId !== userId || existing.usedAt !== null || existing.expiresAt < new Date()) {
+      if (
+        !existing ||
+        existing.userId !== userId ||
+        existing.usedAt !== null ||
+        existing.expiresAt < new Date()
+      ) {
         return null;
       }
 
       return await tx.bankAuthorizationState.update({
         where: { id: existing.id },
-        data: { usedAt: new Date() }
+        data: { usedAt: new Date() },
       });
     });
 
     if (!authState) {
-      return NextResponse.redirect(new URL("/accounts?error=invalid_state", baseUrl));
+      return NextResponse.redirect(
+        new URL("/accounts?error=invalid_state", baseUrl),
+      );
     }
 
     if (errorParam || !code) {
       // User cancelled or provider error
-      return NextResponse.redirect(new URL("/accounts?error=authorization_failed", baseUrl));
+      return NextResponse.redirect(
+        new URL("/accounts?error=authorization_failed", baseUrl),
+      );
     }
 
     const client = new EnableBankingClient();
     const redirectUri = `${baseUrl}/api/banking/callback`;
-    
+
     let connectionResult;
     try {
       connectionResult = await client.completeAuthorization(code, redirectUri);
     } catch (err: any) {
       console.error("Session creation failed.");
-      return NextResponse.redirect(new URL("/accounts?error=session_creation_failed", baseUrl));
+      return NextResponse.redirect(
+        new URL("/accounts?error=session_creation_failed", baseUrl),
+      );
     }
 
     // Re-authorization vs new connection:
@@ -68,7 +81,7 @@ export async function GET(request: Request) {
         institutionName: authState.institutionName,
         institutionCountry: authState.institutionCountry,
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: "desc" },
     });
 
     if (bankConnection) {
@@ -79,7 +92,7 @@ export async function GET(request: Request) {
           validUntil: connectionResult.validUntil,
           status: "CONNECTED",
           updatedAt: new Date(),
-        }
+        },
       });
     } else {
       bankConnection = await prisma.bankConnection.create({
@@ -91,35 +104,44 @@ export async function GET(request: Request) {
           institutionCountry: authState.institutionCountry,
           status: "CONNECTED",
           validUntil: connectionResult.validUntil,
-        }
+        },
       });
     }
 
     // Store the accounts data temporarily in the database via pending accounts to link later.
-    
+
     const bankConnectionId = bankConnection.id;
 
-    if (connectionResult.accountsData && connectionResult.accountsData.length > 0) {
+    if (
+      connectionResult.accountsData &&
+      connectionResult.accountsData.length > 0
+    ) {
       const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour expiration
-      const pendingAccountsData = connectionResult.accountsData.flatMap((acc: any) => {
-        const providerAccountUid = acc.uid;
-        const identificationHash = acc.identification_hash;
-        
-        if (!providerAccountUid || !identificationHash) {
-          return [];
-        }
+      const pendingAccountsData = connectionResult.accountsData.flatMap(
+        (acc: any) => {
+          const providerAccountUid = acc.uid;
+          const identificationHash = acc.identification_hash;
 
-        return [{
-          bankConnectionId,
-          providerAccountUid,
-          identificationHash,
-          displayName: acc.name || "Unknown Account",
-          currency: acc.currency || "EUR",
-          cashAccountType: acc.cash_account_type || null,
-          maskedIdentifier: acc.account_id?.iban ? `****${acc.account_id.iban.slice(-4)}` : null,
-          expiresAt
-        }];
-      });
+          if (!providerAccountUid || !identificationHash) {
+            return [];
+          }
+
+          return [
+            {
+              bankConnectionId,
+              providerAccountUid,
+              identificationHash,
+              displayName: acc.name || "Unknown Account",
+              currency: acc.currency || "EUR",
+              cashAccountType: acc.cash_account_type || null,
+              maskedIdentifier: acc.account_id?.iban
+                ? `****${acc.account_id.iban.slice(-4)}`
+                : null,
+              expiresAt,
+            },
+          ];
+        },
+      );
 
       // Reconcile and only insert pending accounts if they don't exist
       for (const pendingData of pendingAccountsData) {
@@ -128,20 +150,22 @@ export async function GET(request: Request) {
             bankConnectionId_identificationHash: {
               bankConnectionId: pendingData.bankConnectionId,
               identificationHash: pendingData.identificationHash,
-            }
-          }
+            },
+          },
         });
 
         if (existingMapping) {
           // It's already linked. Reconcile automatically.
-          const shouldReactivate = existingMapping.disconnectedAt !== null && authState.reconnectAccountId === existingMapping.accountId;
+          const shouldReactivate =
+            existingMapping.disconnectedAt !== null &&
+            authState.reconnectAccountId === existingMapping.accountId;
 
           await prisma.externalAccountMapping.update({
             where: { id: existingMapping.id },
-            data: { 
+            data: {
               providerAccountUid: pendingData.providerAccountUid,
-              ...(shouldReactivate ? { disconnectedAt: null } : {})
-            }
+              ...(shouldReactivate ? { disconnectedAt: null } : {}),
+            },
           });
           // Do NOT create a pending account.
         } else {
@@ -151,21 +175,24 @@ export async function GET(request: Request) {
               bankConnectionId_identificationHash: {
                 bankConnectionId: pendingData.bankConnectionId,
                 identificationHash: pendingData.identificationHash,
-              }
+              },
             },
             update: pendingData,
-            create: pendingData
+            create: pendingData,
           });
         }
       }
     }
 
-    const response = NextResponse.redirect(new URL(`/accounts/link?connectionId=${bankConnectionId}`, baseUrl));
-    
-    return response;
+    const response = NextResponse.redirect(
+      new URL(`/accounts/link?connectionId=${bankConnectionId}`, baseUrl),
+    );
 
+    return response;
   } catch (error: any) {
     console.error("Callback error occurred.");
-    return NextResponse.redirect(new URL("/accounts?error=internal_error", baseUrl));
+    return NextResponse.redirect(
+      new URL("/accounts?error=internal_error", baseUrl),
+    );
   }
 }

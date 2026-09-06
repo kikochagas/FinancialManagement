@@ -25,18 +25,22 @@ export const BankStatementAIMappingResultSchema = z.object({
         "IGNORE",
       ]),
       confidence: z.number(),
-    })
+    }),
   ),
   overallConfidence: z.number(),
   warnings: z.array(z.string()),
 });
 
-export type BankStatementAIMappingResult = z.infer<typeof BankStatementAIMappingResultSchema>;
+export type BankStatementAIMappingResult = z.infer<
+  typeof BankStatementAIMappingResultSchema
+>;
 
 export class BankStatementAIMapper {
   constructor(private provider: AIProvider) {}
 
-  async mapColumns(columns: AISanitizedColumnInfo[]): Promise<BankStatementAIMappingResult> {
+  async mapColumns(
+    columns: AISanitizedColumnInfo[],
+  ): Promise<BankStatementAIMappingResult> {
     const systemPrompt = `You are an expert at mapping unstructured bank statement exports to a strict vocabulary.
 You will be provided with a JSON array of columns. Each column has an index, a normalized header, and a list of observed value shapes from the data rows.
 Your job is to identify the semantic meaning of each column.

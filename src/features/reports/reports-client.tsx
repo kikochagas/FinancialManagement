@@ -2,13 +2,27 @@
 
 import React, { useState, useTransition } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { importDataAction } from "./actions";
 import { formatCurrency } from "@/lib/utils";
 import * as XLSX from "xlsx";
-import { FileDown, FileUp, Calculator, ShieldCheck, Printer, FileText, CheckCircle2 } from "lucide-react";
+import {
+  FileDown,
+  FileUp,
+  Calculator,
+  ShieldCheck,
+  Printer,
+  FileText,
+  CheckCircle2,
+} from "lucide-react";
 import { parseStructuredImport } from "./structured-import-parser";
 import { BankImportWizard } from "./bank-import/components/BankImportWizard";
 import { BrokerTransactionImportWizard } from "./broker-import/components/BrokerTransactionImportWizard";
@@ -51,8 +65,12 @@ export function ReportsClient({ data }: ReportsClientProps) {
 
   const queryTab = searchParams.get("tab");
   const validTabs = ["overview", "bank", "broker"];
-  const defaultTab = validTabs.includes(queryTab || "") ? queryTab as any : "overview";
-  const [activeTab, setActiveTab] = useState<"overview" | "bank" | "broker">(defaultTab);
+  const defaultTab = validTabs.includes(queryTab || "")
+    ? (queryTab as any)
+    : "overview";
+  const [activeTab, setActiveTab] = useState<"overview" | "bank" | "broker">(
+    defaultTab,
+  );
 
   const handleTabChange = (val: "overview" | "bank" | "broker") => {
     setActiveTab(val);
@@ -74,7 +92,9 @@ export function ReportsClient({ data }: ReportsClientProps) {
 
   // Portuguese IRS Calculator state
   const [salaryIncome, setSalaryIncome] = useState<number>(4500 * 14); // e.g. 4500 monthly salary * 14 months (standard Portuguese contract)
-  const [capitalGains, setCapitalGains] = useState<number>(850 - 800 + (1000 - 900)); // stocks + btc profit (150€)
+  const [capitalGains, setCapitalGains] = useState<number>(
+    850 - 800 + (1000 - 900),
+  ); // stocks + btc profit (150€)
   const [deductions, setDeductions] = useState<number>(4104); // standard deduction (dedução específica)
 
   // Parse Excel / CSV File
@@ -89,11 +109,19 @@ export function ReportsClient({ data }: ReportsClientProps) {
         const buffer = evt.target?.result as string;
         const result = parseStructuredImport({ buffer, fileName: file.name });
 
-        if (result.transactions || result.accounts || result.investments || result.goals || result.snapshots) {
+        if (
+          result.transactions ||
+          result.accounts ||
+          result.investments ||
+          result.goals ||
+          result.snapshots
+        ) {
           setImportedPreview(result);
           setImportStatus("Mapping completed. Preview loaded below.");
         } else {
-          setImportStatus("Failed to map sheets. Ensure headers contain amount/description (or valor/descrição) for transactions.");
+          setImportStatus(
+            "Failed to map sheets. Ensure headers contain amount/description (or valor/descrição) for transactions.",
+          );
         }
       } catch (err) {
         console.error(err);
@@ -120,7 +148,10 @@ export function ReportsClient({ data }: ReportsClientProps) {
         setImportStatus("Data imported successfully!");
       } else {
         console.error(res);
-        setImportStatus("Import failed: " + JSON.stringify(res?.serverError || res?.validationErrors || res));
+        setImportStatus(
+          "Import failed: " +
+            JSON.stringify(res?.serverError || res?.validationErrors || res),
+        );
       }
     });
   };
@@ -167,7 +198,17 @@ export function ReportsClient({ data }: ReportsClientProps) {
   // Export Transactions to CSV
   const handleExportCSV = () => {
     if (data.transactions.length === 0) return;
-    const headers = ["Date", "Description", "Direction", "Amount", "Account", "DestinationAccount", "Category", "Tags", "Notes"];
+    const headers = [
+      "Date",
+      "Description",
+      "Direction",
+      "Amount",
+      "Account",
+      "DestinationAccount",
+      "Category",
+      "Tags",
+      "Notes",
+    ];
     const csvContent = [
       headers.join(","),
       ...data.transactions.map((t) =>
@@ -181,7 +222,7 @@ export function ReportsClient({ data }: ReportsClientProps) {
           t.categoryName,
           `"${t.tags}"`,
           `"${(t.notes || "").replace(/"/g, '""')}"`,
-        ].join(",")
+        ].join(","),
       ),
     ].join("\n");
 
@@ -233,27 +274,46 @@ export function ReportsClient({ data }: ReportsClientProps) {
     <div className="space-y-8 pb-10 print:bg-white print:text-black">
       {/* Print PDF Style Wrapper */}
       <div className="hidden print:block mb-8">
-        <h1 className="text-3xl font-extrabold text-foreground border-b pb-4 border-border">Financial Cockpit Annual Report</h1>
-        <p className="text-sm text-muted-foreground mt-2">Generated by FinancialManagement Dashboard.</p>
+        <h1 className="text-3xl font-extrabold text-foreground border-b pb-4 border-border">
+          Financial Cockpit Annual Report
+        </h1>
+        <p className="text-sm text-muted-foreground mt-2">
+          Generated by FinancialManagement Dashboard.
+        </p>
       </div>
 
       {/* Tabs */}
       <div className="flex space-x-1 p-1 bg-muted rounded-lg w-max print:hidden">
-        <button 
-          className={cn("px-4 py-2 text-sm font-medium rounded-md transition-colors", activeTab === "overview" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:bg-muted-foreground/10")} 
-          onClick={() => handleTabChange('overview')}
+        <button
+          className={cn(
+            "px-4 py-2 text-sm font-medium rounded-md transition-colors",
+            activeTab === "overview"
+              ? "bg-background shadow-sm text-foreground"
+              : "text-muted-foreground hover:bg-muted-foreground/10",
+          )}
+          onClick={() => handleTabChange("overview")}
         >
           Overview & Export
         </button>
-        <button 
-          className={cn("px-4 py-2 text-sm font-medium rounded-md transition-colors", activeTab === "bank" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:bg-muted-foreground/10")} 
-          onClick={() => handleTabChange('bank')}
+        <button
+          className={cn(
+            "px-4 py-2 text-sm font-medium rounded-md transition-colors",
+            activeTab === "bank"
+              ? "bg-background shadow-sm text-foreground"
+              : "text-muted-foreground hover:bg-muted-foreground/10",
+          )}
+          onClick={() => handleTabChange("bank")}
         >
           Bank Statements
         </button>
-        <button 
-          className={cn("px-4 py-2 text-sm font-medium rounded-md transition-colors", activeTab === "broker" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:bg-muted-foreground/10")} 
-          onClick={() => handleTabChange('broker')}
+        <button
+          className={cn(
+            "px-4 py-2 text-sm font-medium rounded-md transition-colors",
+            activeTab === "broker"
+              ? "bg-background shadow-sm text-foreground"
+              : "text-muted-foreground hover:bg-muted-foreground/10",
+          )}
+          onClick={() => handleTabChange("broker")}
         >
           Broker Reports
         </button>
@@ -266,14 +326,20 @@ export function ReportsClient({ data }: ReportsClientProps) {
             <Card className="hidden border-border bg-card/50 shadow-sm print:border-none print:shadow-none">
               <CardHeader>
                 <CardTitle className="text-sm font-semibold text-card-foreground flex items-center gap-2">
-                  <Calculator className="h-4 w-4 text-violet-500 dark:text-violet-400" /> Portuguese IRS Simulation
+                  <Calculator className="h-4 w-4 text-violet-500 dark:text-violet-400" />{" "}
+                  Portuguese IRS Simulation
                 </CardTitle>
-                <CardDescription className="text-xs text-muted-foreground">Estimate tax liability using standard Portuguese progressive brackets and flat rates.</CardDescription>
+                <CardDescription className="text-xs text-muted-foreground">
+                  Estimate tax liability using standard Portuguese progressive
+                  brackets and flat rates.
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-[11px] font-semibold text-muted-foreground uppercase">Annual Salary Income (€)</label>
+                    <label className="text-[11px] font-semibold text-muted-foreground uppercase">
+                      Annual Salary Income (€)
+                    </label>
                     <Input
                       type="number"
                       value={salaryIncome}
@@ -281,7 +347,9 @@ export function ReportsClient({ data }: ReportsClientProps) {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-[11px] font-semibold text-muted-foreground uppercase">Capital Gains Profit (€)</label>
+                    <label className="text-[11px] font-semibold text-muted-foreground uppercase">
+                      Capital Gains Profit (€)
+                    </label>
                     <Input
                       type="number"
                       value={capitalGains}
@@ -292,11 +360,15 @@ export function ReportsClient({ data }: ReportsClientProps) {
 
                 <div className="bg-muted/50 p-4 rounded-lg border border-border space-y-3">
                   <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>Taxable Salary base (after €{deductions} deduction)</span>
+                    <span>
+                      Taxable Salary base (after €{deductions} deduction)
+                    </span>
                     <span>{formatCurrency(irsResult.taxableSalary)}</span>
                   </div>
                   <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>Salary progressive IRS liability (bracket estimate)</span>
+                    <span>
+                      Salary progressive IRS liability (bracket estimate)
+                    </span>
                     <span>{formatCurrency(irsResult.salaryTax)}</span>
                   </div>
                   <div className="flex justify-between text-xs text-muted-foreground">
@@ -318,7 +390,10 @@ export function ReportsClient({ data }: ReportsClientProps) {
                 </div>
                 <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-medium">
                   <ShieldCheck className="h-4 w-4 text-emerald-500" />
-                  <span>Flat tax of 28% applied to stocks and crypto profits. Income subject to Portuguese IRS declaration rules.</span>
+                  <span>
+                    Flat tax of 28% applied to stocks and crypto profits. Income
+                    subject to Portuguese IRS declaration rules.
+                  </span>
                 </div>
               </CardContent>
             </Card>
@@ -327,20 +402,36 @@ export function ReportsClient({ data }: ReportsClientProps) {
             <Card className="border-border bg-card/50 shadow-sm print:hidden">
               <CardHeader>
                 <CardTitle className="text-sm font-semibold text-card-foreground flex items-center gap-2">
-                  <FileDown className="h-4 w-4 text-violet-500 dark:text-violet-400" /> Excel / CSV Data Operations
+                  <FileDown className="h-4 w-4 text-violet-500 dark:text-violet-400" />{" "}
+                  Excel / CSV Data Operations
                 </CardTitle>
-                <CardDescription className="text-xs text-muted-foreground">Backup wealth sheets or restore database states from spreadsheets.</CardDescription>
+                <CardDescription className="text-xs text-muted-foreground">
+                  Backup wealth sheets or restore database states from
+                  spreadsheets.
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 {/* Export block */}
                 <div className="space-y-2">
-                  <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Export Backups</span>
+                  <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                    Export Backups
+                  </span>
                   <div className="grid grid-cols-2 gap-4">
-                    <Button variant="outline" size="sm" className="flex items-center gap-2" onClick={handleExportExcel}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex items-center gap-2"
+                      onClick={handleExportExcel}
+                    >
                       <FileText className="h-4 w-4 text-green-500" />
                       Excel Workbook
                     </Button>
-                    <Button variant="outline" size="sm" className="flex items-center gap-2" onClick={handleExportCSV}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex items-center gap-2"
+                      onClick={handleExportCSV}
+                    >
                       <FileText className="h-4 w-4 text-blue-500" />
                       Transactions CSV
                     </Button>
@@ -349,17 +440,26 @@ export function ReportsClient({ data }: ReportsClientProps) {
 
                 {/* Import block */}
                 <div className="space-y-3 pt-2 border-t border-border">
-                  <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block">Import spreadsheets (Excel / CSV)</span>
+                  <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block">
+                    Import spreadsheets (Excel / CSV)
+                  </span>
                   <div className="flex items-center justify-center border-2 border-dashed border-border rounded-lg p-6 bg-muted/20 hover:border-muted-foreground/50 transition-colors">
                     <div className="text-center space-y-2">
                       <FileUp className="h-8 w-8 text-muted-foreground mx-auto" />
                       <div className="text-xs">
                         <label className="cursor-pointer text-violet-500 hover:text-violet-600 dark:text-violet-400 dark:hover:underline">
                           Upload spreadsheet file
-                          <input type="file" className="hidden" accept=".xlsx, .xls, .csv" onChange={handleImportFile} />
+                          <input
+                            type="file"
+                            className="hidden"
+                            accept=".xlsx, .xls, .csv"
+                            onChange={handleImportFile}
+                          />
                         </label>
                       </div>
-                      <p className="text-[10px] text-muted-foreground">Excel multi-sheet mapping supported.</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        Excel multi-sheet mapping supported.
+                      </p>
                     </div>
                   </div>
 
@@ -373,8 +473,14 @@ export function ReportsClient({ data }: ReportsClientProps) {
 
                 {/* Print trigger */}
                 <div className="pt-2 border-t border-border flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground font-medium">Generate printable vector document</span>
-                  <Button size="sm" className="flex items-center gap-2" onClick={handlePrintPDF}>
+                  <span className="text-xs text-muted-foreground font-medium">
+                    Generate printable vector document
+                  </span>
+                  <Button
+                    size="sm"
+                    className="flex items-center gap-2"
+                    onClick={handlePrintPDF}
+                  >
                     <Printer className="h-4 w-4" /> Print Wealth Statement
                   </Button>
                 </div>
@@ -385,20 +491,28 @@ export function ReportsClient({ data }: ReportsClientProps) {
 
         {activeTab === "bank" && (
           <div className="space-y-2">
-            <h2 className="text-xl font-bold tracking-tight">Bank Statement Import</h2>
+            <h2 className="text-xl font-bold tracking-tight">
+              Bank Statement Import
+            </h2>
             <p className="text-sm text-muted-foreground">
               Extract transactions from unstructured bank statements.
             </p>
-            <BankImportWizard accounts={data.accounts} categories={data.categories} />
+            <BankImportWizard
+              accounts={data.accounts}
+              categories={data.categories}
+            />
           </div>
         )}
 
         {activeTab === "broker" && (
           <div className="space-y-6">
             <div className="space-y-2">
-              <h2 className="text-xl font-bold tracking-tight">Portfolio Snapshot</h2>
+              <h2 className="text-xl font-bold tracking-tight">
+                Portfolio Snapshot
+              </h2>
               <p className="text-sm text-muted-foreground">
-                Import current positions and cash from a broker PDF. Provides a point-in-time snapshot of what is currently held.
+                Import current positions and cash from a broker PDF. Provides a
+                point-in-time snapshot of what is currently held.
               </p>
               <BrokerSnapshotWizard
                 investmentAccounts={data.accounts.filter((a) =>
@@ -408,9 +522,12 @@ export function ReportsClient({ data }: ReportsClientProps) {
             </div>
 
             <div className="space-y-2 pt-6 border-t border-border">
-              <h2 className="text-xl font-bold tracking-tight">Broker Activity</h2>
+              <h2 className="text-xl font-bold tracking-tight">
+                Broker Activity
+              </h2>
               <p className="text-sm text-muted-foreground">
-                Import historical investment events (buys, sells, dividends) to update your ledger.
+                Import historical investment events (buys, sells, dividends) to
+                update your ledger.
               </p>
               <BrokerTransactionImportWizard accounts={data.accounts} />
             </div>
@@ -423,10 +540,19 @@ export function ReportsClient({ data }: ReportsClientProps) {
         <Card className="border-border bg-card/50 shadow-sm print:hidden animate-in fade-in-50">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
-              <CardTitle className="text-sm font-semibold text-card-foreground">Import mapping preview</CardTitle>
-              <CardDescription className="text-xs text-muted-foreground">Check parsed ledger rows before matching them in database.</CardDescription>
+              <CardTitle className="text-sm font-semibold text-card-foreground">
+                Import mapping preview
+              </CardTitle>
+              <CardDescription className="text-xs text-muted-foreground">
+                Check parsed ledger rows before matching them in database.
+              </CardDescription>
             </div>
-            <Button size="sm" className="flex items-center gap-1.5" onClick={triggerImportSave} disabled={isPending}>
+            <Button
+              size="sm"
+              className="flex items-center gap-1.5"
+              onClick={triggerImportSave}
+              disabled={isPending}
+            >
               <CheckCircle2 className="h-4 w-4 text-emerald-500 dark:text-emerald-400" />
               {isPending ? "Importing..." : "Confirm Import"}
             </Button>
@@ -434,7 +560,9 @@ export function ReportsClient({ data }: ReportsClientProps) {
           <CardContent className="space-y-4">
             {importedPreview.accounts && (
               <div className="space-y-1.5">
-                <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Mapped Accounts ({importedPreview.accounts.length})</span>
+                <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">
+                  Mapped Accounts ({importedPreview.accounts.length})
+                </span>
                 <div className="max-h-[140px] overflow-y-auto border border-border rounded-lg text-xs">
                   <table className="w-full text-left">
                     <thead>
@@ -447,9 +575,15 @@ export function ReportsClient({ data }: ReportsClientProps) {
                     <tbody className="divide-y divide-border">
                       {importedPreview.accounts.map((acc, index) => (
                         <tr key={index}>
-                          <td className="p-2 font-semibold text-foreground">{acc.name}</td>
-                          <td className="p-2 text-muted-foreground">{acc.type}</td>
-                          <td className="p-2 text-right font-mono font-bold text-foreground">{formatCurrency(acc.balance)}</td>
+                          <td className="p-2 font-semibold text-foreground">
+                            {acc.name}
+                          </td>
+                          <td className="p-2 text-muted-foreground">
+                            {acc.type}
+                          </td>
+                          <td className="p-2 text-right font-mono font-bold text-foreground">
+                            {formatCurrency(acc.balance)}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -460,7 +594,9 @@ export function ReportsClient({ data }: ReportsClientProps) {
 
             {importedPreview.transactions && (
               <div className="space-y-1.5">
-                <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Mapped Transactions ({importedPreview.transactions.length})</span>
+                <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">
+                  Mapped Transactions ({importedPreview.transactions.length})
+                </span>
                 <div className="max-h-[220px] overflow-y-auto border border-border rounded-lg text-xs">
                   <table className="w-full text-left">
                     <thead>
@@ -476,12 +612,24 @@ export function ReportsClient({ data }: ReportsClientProps) {
                     <tbody className="divide-y divide-border">
                       {importedPreview.transactions.map((tx, index) => (
                         <tr key={index}>
-                          <td className="p-2 font-mono text-[10px] text-muted-foreground">{tx.date}</td>
-                          <td className="p-2 font-semibold text-foreground">{tx.description}</td>
-                          <td className="p-2 text-muted-foreground">{tx.direction}</td>
-                          <td className="p-2 text-muted-foreground">{tx.accountName}</td>
-                          <td className="p-2 text-violet-600 dark:text-violet-400">{tx.categoryName}</td>
-                          <td className="p-2 text-right font-mono font-bold text-foreground">{formatCurrency(tx.amount)}</td>
+                          <td className="p-2 font-mono text-[10px] text-muted-foreground">
+                            {tx.date}
+                          </td>
+                          <td className="p-2 font-semibold text-foreground">
+                            {tx.description}
+                          </td>
+                          <td className="p-2 text-muted-foreground">
+                            {tx.direction}
+                          </td>
+                          <td className="p-2 text-muted-foreground">
+                            {tx.accountName}
+                          </td>
+                          <td className="p-2 text-violet-600 dark:text-violet-400">
+                            {tx.categoryName}
+                          </td>
+                          <td className="p-2 text-right font-mono font-bold text-foreground">
+                            {formatCurrency(tx.amount)}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -492,7 +640,9 @@ export function ReportsClient({ data }: ReportsClientProps) {
 
             {importedPreview.investments && (
               <div className="space-y-1.5">
-                <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Mapped Investments ({importedPreview.investments.length})</span>
+                <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">
+                  Mapped Investments ({importedPreview.investments.length})
+                </span>
                 <div className="max-h-[140px] overflow-y-auto border border-border rounded-lg text-xs">
                   <table className="w-full text-left">
                     <thead>
@@ -506,10 +656,20 @@ export function ReportsClient({ data }: ReportsClientProps) {
                     <tbody className="divide-y divide-border">
                       {importedPreview.investments.map((inv, index) => (
                         <tr key={index}>
-                          <td className="p-2 font-semibold text-foreground">{inv.name}</td>
-                          <td className="p-2 text-muted-foreground">{inv.type}</td>
-                          <td className="p-2 text-right font-mono text-foreground">{inv.costBasis != null ? formatCurrency(inv.costBasis) : '-'}</td>
-                          <td className="p-2 text-right font-mono font-bold text-foreground">{formatCurrency(inv.marketValue)}</td>
+                          <td className="p-2 font-semibold text-foreground">
+                            {inv.name}
+                          </td>
+                          <td className="p-2 text-muted-foreground">
+                            {inv.type}
+                          </td>
+                          <td className="p-2 text-right font-mono text-foreground">
+                            {inv.costBasis != null
+                              ? formatCurrency(inv.costBasis)
+                              : "-"}
+                          </td>
+                          <td className="p-2 text-right font-mono font-bold text-foreground">
+                            {formatCurrency(inv.marketValue)}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -520,7 +680,9 @@ export function ReportsClient({ data }: ReportsClientProps) {
 
             {importedPreview.goals && (
               <div className="space-y-1.5">
-                <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Mapped Goals ({importedPreview.goals.length})</span>
+                <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">
+                  Mapped Goals ({importedPreview.goals.length})
+                </span>
                 <div className="max-h-[140px] overflow-y-auto border border-border rounded-lg text-xs">
                   <table className="w-full text-left">
                     <thead>
@@ -534,10 +696,18 @@ export function ReportsClient({ data }: ReportsClientProps) {
                     <tbody className="divide-y divide-border">
                       {importedPreview.goals.map((g, index) => (
                         <tr key={index}>
-                          <td className="p-2 font-semibold text-foreground">{g.name}</td>
-                          <td className="p-2 text-muted-foreground">{g.type}</td>
-                          <td className="p-2 text-right font-mono text-foreground">{formatCurrency(g.targetAmount)}</td>
-                          <td className="p-2 text-right font-mono font-bold text-foreground">{formatCurrency(g.currentAmount)}</td>
+                          <td className="p-2 font-semibold text-foreground">
+                            {g.name}
+                          </td>
+                          <td className="p-2 text-muted-foreground">
+                            {g.type}
+                          </td>
+                          <td className="p-2 text-right font-mono text-foreground">
+                            {formatCurrency(g.targetAmount)}
+                          </td>
+                          <td className="p-2 text-right font-mono font-bold text-foreground">
+                            {formatCurrency(g.currentAmount)}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -548,7 +718,9 @@ export function ReportsClient({ data }: ReportsClientProps) {
 
             {importedPreview.snapshots && (
               <div className="space-y-1.5">
-                <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Mapped Snapshots ({importedPreview.snapshots.length})</span>
+                <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">
+                  Mapped Snapshots ({importedPreview.snapshots.length})
+                </span>
                 <div className="max-h-[140px] overflow-y-auto border border-border rounded-lg text-xs">
                   <table className="w-full text-left">
                     <thead>
@@ -563,11 +735,21 @@ export function ReportsClient({ data }: ReportsClientProps) {
                     <tbody className="divide-y divide-border">
                       {importedPreview.snapshots.map((s, index) => (
                         <tr key={index}>
-                          <td className="p-2 font-semibold text-foreground">{s.year}-{String(s.month).padStart(2, '0')}</td>
-                          <td className="p-2 text-right font-mono text-foreground">{formatCurrency(s.netWorth || 0)}</td>
-                          <td className="p-2 text-right font-mono text-foreground">{formatCurrency(s.liquidAssets || 0)}</td>
-                          <td className="p-2 text-right font-mono text-foreground">{formatCurrency(s.investmentsValue || 0)}</td>
-                          <td className="p-2 text-right font-bold text-emerald-600">{Number(s.savingsRate || 0).toFixed(1)}%</td>
+                          <td className="p-2 font-semibold text-foreground">
+                            {s.year}-{String(s.month).padStart(2, "0")}
+                          </td>
+                          <td className="p-2 text-right font-mono text-foreground">
+                            {formatCurrency(s.netWorth || 0)}
+                          </td>
+                          <td className="p-2 text-right font-mono text-foreground">
+                            {formatCurrency(s.liquidAssets || 0)}
+                          </td>
+                          <td className="p-2 text-right font-mono text-foreground">
+                            {formatCurrency(s.investmentsValue || 0)}
+                          </td>
+                          <td className="p-2 text-right font-bold text-emerald-600">
+                            {Number(s.savingsRate || 0).toFixed(1)}%
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -581,33 +763,55 @@ export function ReportsClient({ data }: ReportsClientProps) {
 
       {/* PDF Printable view - shown only on print */}
       <div className="hidden print:block space-y-6">
-        <h2 className="text-xl font-bold text-foreground border-b border-border pb-2">Financial Portfolio Breakdown</h2>
+        <h2 className="text-xl font-bold text-foreground border-b border-border pb-2">
+          Financial Portfolio Breakdown
+        </h2>
         <div className="grid grid-cols-2 gap-6 text-sm">
           <div>
-            <p className="font-semibold text-muted-foreground">Asset Accounts</p>
+            <p className="font-semibold text-muted-foreground">
+              Asset Accounts
+            </p>
             <ul className="mt-2 space-y-2">
               {data.accounts.map((a, i) => (
-                <li key={i} className="flex justify-between border-b border-border pb-1">
-                  <span>{a.name} ({a.type})</span>
-                  <strong className="text-foreground">{formatCurrency(a.balance)}</strong>
+                <li
+                  key={i}
+                  className="flex justify-between border-b border-border pb-1"
+                >
+                  <span>
+                    {a.name} ({a.type})
+                  </span>
+                  <strong className="text-foreground">
+                    {formatCurrency(a.balance)}
+                  </strong>
                 </li>
               ))}
             </ul>
           </div>
           <div>
-            <p className="font-semibold text-muted-foreground">Long-term Investments</p>
+            <p className="font-semibold text-muted-foreground">
+              Long-term Investments
+            </p>
             <ul className="mt-2 space-y-2">
               {data.investments.map((inv, i) => (
-                <li key={i} className="flex justify-between border-b border-border pb-1">
-                  <span>{inv.name} ({inv.type})</span>
-                  <strong className="text-foreground">{formatCurrency(inv.marketValue)}</strong>
+                <li
+                  key={i}
+                  className="flex justify-between border-b border-border pb-1"
+                >
+                  <span>
+                    {inv.name} ({inv.type})
+                  </span>
+                  <strong className="text-foreground">
+                    {formatCurrency(inv.marketValue)}
+                  </strong>
                 </li>
               ))}
             </ul>
           </div>
         </div>
 
-        <h2 className="text-xl font-bold text-foreground border-b border-border pb-2 pt-6">Aspirations & Goals</h2>
+        <h2 className="text-xl font-bold text-foreground border-b border-border pb-2 pt-6">
+          Aspirations & Goals
+        </h2>
         <table className="w-full text-left text-sm mt-2 border-collapse">
           <thead>
             <tr className="border-b border-border">
@@ -623,9 +827,15 @@ export function ReportsClient({ data }: ReportsClientProps) {
               <tr key={i} className="border-b border-border">
                 <td className="py-2">{g.name}</td>
                 <td className="py-2">{g.type}</td>
-                <td className="py-2 text-right">{formatCurrency(g.targetAmount)}</td>
-                <td className="py-2 text-right">{formatCurrency(g.currentAmount)}</td>
-                <td className="py-2 text-right font-bold text-foreground">{g.progress.toFixed(1)}%</td>
+                <td className="py-2 text-right">
+                  {formatCurrency(g.targetAmount)}
+                </td>
+                <td className="py-2 text-right">
+                  {formatCurrency(g.currentAmount)}
+                </td>
+                <td className="py-2 text-right font-bold text-foreground">
+                  {g.progress.toFixed(1)}%
+                </td>
               </tr>
             ))}
           </tbody>
@@ -634,4 +844,3 @@ export function ReportsClient({ data }: ReportsClientProps) {
     </div>
   );
 }
-

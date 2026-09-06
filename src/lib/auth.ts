@@ -5,12 +5,19 @@ import { NextRequest, NextResponse } from "next/server";
 function getSecretKey() {
   const rawSecret = process.env.JWT_SECRET;
   if (!rawSecret && process.env.NODE_ENV === "production") {
-    if (process.env.npm_lifecycle_event === 'build' || process.env.NEXT_PHASE === 'phase-production-build') {
-       return new TextEncoder().encode("build_time_dummy_secret_do_not_use");
+    if (
+      process.env.npm_lifecycle_event === "build" ||
+      process.env.NEXT_PHASE === "phase-production-build"
+    ) {
+      return new TextEncoder().encode("build_time_dummy_secret_do_not_use");
     }
-    throw new Error("JWT_SECRET environment variable is missing. A secure secret is required in production runtime.");
+    throw new Error(
+      "JWT_SECRET environment variable is missing. A secure secret is required in production runtime.",
+    );
   }
-  return new TextEncoder().encode(rawSecret || "default_super_secret_key_change_in_production");
+  return new TextEncoder().encode(
+    rawSecret || "default_super_secret_key_change_in_production",
+  );
 }
 
 export async function encrypt(payload: any) {
@@ -31,7 +38,7 @@ export async function decrypt(input: string): Promise<any> {
 export async function loginUser(userId: string) {
   const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
   const session = await encrypt({ userId, expires });
-  
+
   const cookieStore = await cookies();
   cookieStore.set("session", session, {
     expires,

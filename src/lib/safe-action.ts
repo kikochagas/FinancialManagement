@@ -4,7 +4,9 @@ import { getUserId } from "@/lib/auth";
 export const actionClient = createSafeActionClient({
   handleServerError(e) {
     console.error("Action error:", e);
-    return e instanceof Error ? e.message : "An unexpected server error occurred";
+    return e instanceof Error
+      ? e.message
+      : "An unexpected server error occurred";
   },
 });
 

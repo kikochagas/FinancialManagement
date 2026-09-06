@@ -1,5 +1,10 @@
 import * as XLSX from "xlsx";
-import { BrokerTransactionParseResult, ParsedBrokerTransaction, ColumnMapping, BrokerColumnSemantic } from "./types";
+import {
+  BrokerTransactionParseResult,
+  ParsedBrokerTransaction,
+  ColumnMapping,
+  BrokerColumnSemantic,
+} from "./types";
 import { detectHeaderRow, normalizeHeader } from "./header-detection";
 import { mapBrokerColumnsDeterministically } from "./column-mapping";
 import { evaluateBrokerMappingConfidence } from "./confidence";
@@ -14,20 +19,23 @@ export async function parseBrokerTransactions(
   rows: any[][],
   userMapping?: Record<number, ColumnMapping>,
   eventTypeOverrides?: Record<string, string>,
-  explicitHeaderRowIdx?: number
+  explicitHeaderRowIdx?: number,
 ): Promise<BrokerTransactionParseResult> {
   if (!rows || rows.length === 0) throw new Error("File is empty");
 
-  const headerRowIdx = explicitHeaderRowIdx !== undefined ? explicitHeaderRowIdx : detectHeaderRow(rows);
+  const headerRowIdx =
+    explicitHeaderRowIdx !== undefined
+      ? explicitHeaderRowIdx
+      : detectHeaderRow(rows);
   let headers: string[] = [];
   let normalizedHeaders: string[] = [];
   let mapping: Record<number, ColumnMapping> = userMapping || {};
   let deterministicConfidence = 0;
-  
+
   if (headerRowIdx !== null) {
-    headers = rows[headerRowIdx].map(h => String(h || "").trim());
+    headers = rows[headerRowIdx].map((h) => String(h || "").trim());
     normalizedHeaders = headers.map(normalizeHeader);
-    
+
     if (!userMapping) {
       mapping = mapBrokerColumnsDeterministically(headers, normalizedHeaders);
       deterministicConfidence = evaluateBrokerMappingConfidence(mapping);
@@ -40,7 +48,11 @@ export async function parseBrokerTransactions(
 
   for (let i = dataStart; i < rows.length; i++) {
     const row = rows[i];
-    if (!row || row.length === 0 || row.every(c => c === "" || c === undefined || c === null)) {
+    if (
+      !row ||
+      row.length === 0 ||
+      row.every((c) => c === "" || c === undefined || c === null)
+    ) {
       skippedRows++;
       continue;
     }
@@ -68,7 +80,7 @@ export async function parseBrokerTransactions(
       description: null,
       externalId: null,
       valid: false,
-      warnings: []
+      warnings: [],
     };
 
     let tempDate: string | null = null;
@@ -78,8 +90,9 @@ export async function parseBrokerTransactions(
     let explicitTicker: string | null = null;
     let rawIdentifier: string | null = null;
 
-    Object.values(mapping).forEach(m => {
-      if (!m.semantic || m.semantic === "IGNORE" || m.semantic === "UNMAPPED") return;
+    Object.values(mapping).forEach((m) => {
+      if (!m.semantic || m.semantic === "IGNORE" || m.semantic === "UNMAPPED")
+        return;
       const rawVal = row[m.columnIndex];
       if (rawVal === undefined || rawVal === null || rawVal === "") return;
 
@@ -103,8 +116,8 @@ export async function parseBrokerTransactions(
           tx.rawEventType = strVal;
           if (eventTypeOverrides && eventTypeOverrides[tx.rawEventType]) {
             tx.eventType = eventTypeOverrides[tx.rawEventType] as any;
-            if (tx.eventType === "IGNORE" as any) {
-               // Special case
+            if (tx.eventType === ("IGNORE" as any)) {
+              // Special case
             }
           } else {
             tx.eventType = normalizeEventType(tx.rawEventType);
@@ -190,7 +203,11 @@ export async function parseBrokerTransactions(
 
     tx.occurredAt = tempDatetime || tempDate;
 
-    const idNorm = normalizeIdentifier(rawIdentifier, explicitISIN, explicitTicker);
+    const idNorm = normalizeIdentifier(
+      rawIdentifier,
+      explicitISIN,
+      explicitTicker,
+    );
     tx.instrumentIdentifier = idNorm.instrumentIdentifier;
     tx.isin = idNorm.isin;
     tx.ticker = idNorm.ticker;
@@ -207,6 +224,6 @@ export async function parseBrokerTransactions(
     mapping,
     transactions,
     warnings: [],
-    skippedRows
+    skippedRows,
   };
 }
