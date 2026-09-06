@@ -1,8 +1,11 @@
 import { describe, test, expect } from "vitest";
 
 // Helper mirroring the logic inside InvestmentsClient
-export function parseTab(queryTab: string | null): "portfolio" | "activity" {
-  return queryTab === "activity" ? "activity" : "portfolio";
+export function parseTab (queryTab: string | null): "portfolio" | "activity" | "import" {
+  if (queryTab === "activity") return "activity";
+  if (queryTab === "import") return "import";
+
+  return "portfolio";
 }
 
 describe("Investments Tab Parsing", () => {
@@ -18,5 +21,9 @@ describe("Investments Tab Parsing", () => {
     expect(parseTab("invalid_tab")).toBe("portfolio");
     expect(parseTab("")).toBe("portfolio");
     expect(parseTab("PORTFOLIO")).toBe("portfolio");
+  });
+
+  test("returns import when explicitly requested", () => {
+    expect(parseTab("import")).toBe("import");
   });
 });

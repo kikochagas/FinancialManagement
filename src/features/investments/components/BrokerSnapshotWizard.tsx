@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useTransition } from "react";
+import React, { useState, useTransition, useRef } from "react";
 import {
   Card,
   CardContent,
@@ -32,9 +32,28 @@ import {
   PositionReconciliation,
 } from "../broker-import/reconciliation";
 import { getSnapshotReconciliation } from "../actions";
+import { applyBrokerSnapshot } from "../actions-apply";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 
 interface BrokerSnapshotWizardProps {
   investmentAccounts: { id: string; name: string; type: string }[];
+}
+
+type DuplicateFingerprintResult = {
+  success: false;
+  error: "DUPLICATE_FINGERPRINT";
+  warning?: string;
+};
+
+function isDuplicateFingerprintResult(
+  data: unknown,
+): data is DuplicateFingerprintResult {
+  if (!data || typeof data !== "object") return false;
+
+  const result = data as Record<string, unknown>;
+
+  return result.success === false && result.error === "DUPLICATE_FINGERPRINT";
 }
 
 export function BrokerSnapshotWizard({
@@ -50,11 +69,48 @@ export function BrokerSnapshotWizard({
     useState<SnapshotReconciliation | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  type IntentAction = "CREATE" | "UPDATE" | "SKIP";
+  const [positionIntents, setPositionIntents] = useState<
+    Record<number, IntentAction>
+  >({});
+  const [updateCashBalance, setUpdateCashBalance] = useState(false);
+  const [isConfirming, setIsConfirming] = useState(false);
+  const [isApplying, setIsApplying] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImportAnother = () => {
+    setFile(null);
+    setSnapshot(null);
+    setReconciliation(null);
+    setApplyResult(null);
+    setError(null);
+    setIsConfirming(false);
+    setPositionIntents({});
+    setUpdateCashBalance(false);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const [applyResult, setApplyResult] = useState<{
+    created: number;
+    updated: number;
+    skipped: number;
+    cashUpdated: boolean;
+    warnings: string[];
+  } | null>(null);
+
   const handleAccountChange = (accountId: string) => {
     setSelectedAccountId(accountId);
     setSnapshot(null);
     setReconciliation(null);
     setError(null);
+    setIsConfirming(false);
+    setApplyResult(null);
+    setPositionIntents({});
+    setUpdateCashBalance(false);
   };
 
   const handleFileChange = (newFile: File | null) => {
@@ -62,6 +118,10 @@ export function BrokerSnapshotWizard({
     setSnapshot(null);
     setReconciliation(null);
     setError(null);
+    setIsConfirming(false);
+    setApplyResult(null);
+    setPositionIntents({});
+    setUpdateCashBalance(false);
   };
 
   const handleUpload = async () => {
@@ -99,6 +159,11 @@ export function BrokerSnapshotWizard({
 
         if (result?.data) {
           setReconciliation(result.data);
+          const defaultIntents: Record<number, IntentAction> = {};
+          result.data.positions.forEach((p, idx) => {
+            defaultIntents[idx] = "SKIP";
+          });
+          setPositionIntents(defaultIntents);
         } else {
           setError(result?.serverError || "Reconciliation failed");
         }
@@ -107,6 +172,75 @@ export function BrokerSnapshotWizard({
       setError(err.message || "An error occurred");
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const handleApply = async () => {
+    if (!file || !selectedAccountId || !reconciliation) return;
+    setIsApplying(true);
+    setError(null);
+    try {
+      const getBase64 = (f: File): Promise<string> =>
+        new Promise((res, rej) => {
+          const reader = new FileReader();
+          reader.readAsDataURL(f);
+          reader.onload = () => {
+            const encoded = reader.result?.toString() || "";
+            const parts = encoded.split(",");
+            res(parts.length > 1 ? parts[1] : encoded);
+          };
+          reader.onerror = (e) => rej(e);
+        });
+
+      const base64 = await getBase64(file);
+      const intents = Object.entries(positionIntents).map(([idx, action]) => ({
+        candidateIndex: Number(idx),
+        action,
+      }));
+
+      const res = await applyBrokerSnapshot({
+        accountId: selectedAccountId,
+        fileBase64: base64,
+        positionIntents: intents,
+        updateCashBalance,
+      });
+
+      if (isDuplicateFingerprintResult(res?.data)) {
+        setError(
+          res.data.warning || "This snapshot has already been imported.",
+        );
+        setIsConfirming(false);
+      } else if (res?.data?.success) {
+        let created = 0;
+        let updated = 0;
+        let skipped = 0;
+        intents.forEach((intent) => {
+          if (intent.action === "CREATE") created++;
+          if (intent.action === "UPDATE") updated++;
+          if (intent.action === "SKIP") skipped++;
+        });
+
+        setApplyResult({
+          created,
+          updated,
+          skipped,
+          cashUpdated:
+            updateCashBalance &&
+            (res.data.warnings || []).filter((w) =>
+              w.includes("Cash balance untouched"),
+            ).length === 0,
+          warnings: res.data.warnings || [],
+        });
+        setIsConfirming(false);
+      } else {
+        setError(res?.serverError || "Failed to apply snapshot");
+        setIsConfirming(false);
+      }
+    } catch (e: any) {
+      setError(e.message || "An error occurred");
+      setIsConfirming(false);
+    } finally {
+      setIsApplying(false);
     }
   };
 
@@ -143,7 +277,7 @@ export function BrokerSnapshotWizard({
             <Select
               value={selectedAccountId}
               onValueChange={handleAccountChange}
-              disabled={isUploading || isPending}
+              disabled={isUploading || isPending || isApplying}
             >
               <SelectTrigger className="w-full md:w-[300px]">
                 <SelectValue placeholder="Select Broker or Crypto Wallet" />
@@ -164,16 +298,21 @@ export function BrokerSnapshotWizard({
             </label>
             <div className="flex items-center gap-3">
               <Input
+                ref={fileInputRef}
                 type="file"
                 accept="application/pdf"
                 className="w-full md:w-[400px]"
                 onChange={(e) => handleFileChange(e.target.files?.[0] || null)}
-                disabled={isUploading || isPending}
+                disabled={isUploading || isPending || isApplying}
               />
               <Button
                 onClick={handleUpload}
                 disabled={
-                  !file || !selectedAccountId || isUploading || isPending
+                  !file ||
+                  !selectedAccountId ||
+                  isUploading ||
+                  isPending ||
+                  isApplying
                 }
                 className="flex items-center gap-2"
               >
@@ -194,16 +333,18 @@ export function BrokerSnapshotWizard({
 
       {reconciliation && snapshot && (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className="p-4 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 flex items-start gap-3">
-            <Info className="h-5 w-5 mt-0.5 shrink-0" />
-            <div>
-              <p className="text-sm font-semibold">Preview Mode Only</p>
-              <p className="text-xs opacity-90">
-                This is a reconciliation preview. No data has been saved,
-                mutated, or applied to your database yet.
-              </p>
+          {!applyResult && (
+            <div className="p-4 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 flex items-start gap-3">
+              <Info className="h-5 w-5 mt-0.5 shrink-0" />
+              <div>
+                <p className="text-sm font-semibold">Preview Mode Only</p>
+                <p className="text-xs opacity-90">
+                  This is a reconciliation preview. No data has been saved,
+                  mutated, or applied to your database yet.
+                </p>
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card className="border-border shadow-sm bg-background">
@@ -333,6 +474,9 @@ export function BrokerSnapshotWizard({
                       <th className="p-3 font-semibold text-xs text-muted-foreground uppercase">
                         Proposed Updates
                       </th>
+                      <th className="p-3 font-semibold text-xs text-muted-foreground uppercase">
+                        Action
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border text-xs">
@@ -452,6 +596,50 @@ export function BrokerSnapshotWizard({
                                 </span>
                               )}
                             </td>
+                            <td className="p-3 align-top">
+                              {rec.status === "UNCHANGED" ? (
+                                <span className="text-xs text-muted-foreground italic">
+                                  No action needed
+                                </span>
+                              ) : rec.status === "AMBIGUOUS" ||
+                                rec.status === "CONFLICT" ? (
+                                <div className="text-xs text-destructive font-medium">
+                                  SKIP (Manual review req)
+                                </div>
+                              ) : (
+                                <Select
+                                  value={positionIntents[idx]}
+                                  onValueChange={(val: IntentAction) =>
+                                    setPositionIntents((prev) => ({
+                                      ...prev,
+                                      [idx]: val,
+                                    }))
+                                  }
+                                  disabled={
+                                    isConfirming ||
+                                    isApplying ||
+                                    applyResult !== null
+                                  }
+                                >
+                                  <SelectTrigger className="w-[120px] h-8 text-xs">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="SKIP">Skip</SelectItem>
+                                    {rec.status === "NEW" && (
+                                      <SelectItem value="CREATE">
+                                        Create
+                                      </SelectItem>
+                                    )}
+                                    {rec.status === "MATCHED" && (
+                                      <SelectItem value="UPDATE">
+                                        Update
+                                      </SelectItem>
+                                    )}
+                                  </SelectContent>
+                                </Select>
+                              )}
+                            </td>
                           </tr>
                         );
                       },
@@ -466,6 +654,129 @@ export function BrokerSnapshotWizard({
               )}
             </CardContent>
           </Card>
+
+          {applyResult === null && !isConfirming && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border border-border rounded-md bg-card">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="cash-toggle"
+                  checked={updateCashBalance}
+                  onCheckedChange={(checked) => setUpdateCashBalance(!!checked)}
+                />
+                <Label htmlFor="cash-toggle" className="text-sm cursor-pointer">
+                  Update account cash balance from this snapshot
+                </Label>
+              </div>
+              <Button onClick={() => setIsConfirming(true)}>
+                Review & Confirm
+              </Button>
+            </div>
+          )}
+
+          {isConfirming && (
+            <Card className="border-primary/50 shadow-sm bg-card mt-6">
+              <CardHeader>
+                <CardTitle>Confirm Snapshot Application</CardTitle>
+                <CardDescription>
+                  Please review the final actions before applying to your
+                  account.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4 text-sm">
+                <div className="grid grid-cols-2 gap-2 p-3 bg-muted/50 rounded-md">
+                  <div className="text-muted-foreground">Snapshot Account</div>
+                  <div className="font-semibold">{selectedAccountName}</div>
+                  <div className="text-muted-foreground">Statement Date</div>
+                  <div className="font-mono">{snapshot.statementDate}</div>
+                  <div className="text-muted-foreground">
+                    Positions to Create
+                  </div>
+                  <div className="font-semibold">
+                    {
+                      Object.values(positionIntents).filter(
+                        (v) => v === "CREATE",
+                      ).length
+                    }
+                  </div>
+                  <div className="text-muted-foreground">
+                    Positions to Update
+                  </div>
+                  <div className="font-semibold">
+                    {
+                      Object.values(positionIntents).filter(
+                        (v) => v === "UPDATE",
+                      ).length
+                    }
+                  </div>
+                  <div className="text-muted-foreground">Positions Skipped</div>
+                  <div className="font-semibold">
+                    {
+                      Object.values(positionIntents).filter((v) => v === "SKIP")
+                        .length
+                    }
+                  </div>
+                  <div className="text-muted-foreground">
+                    Update Cash Balance
+                  </div>
+                  <div className="font-semibold">
+                    {updateCashBalance ? "Yes" : "No"}
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 mt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsConfirming(false)}
+                    disabled={isApplying}
+                  >
+                    Back
+                  </Button>
+                  <Button onClick={handleApply} disabled={isApplying}>
+                    {isApplying ? "Applying..." : "Apply Snapshot"}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {applyResult && (
+            <Card className="border-emerald-500/50 bg-emerald-500/5 shadow-sm mt-6">
+              <CardHeader>
+                <CardTitle className="text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
+                  <CheckCircle2 className="h-5 w-5" />
+                  Snapshot Saved Successfully
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm">
+                <ul className="list-disc list-inside space-y-1">
+                  <li>Snapshot evidence persisted immutably</li>
+                  <li>{applyResult.created} investments created</li>
+                  <li>{applyResult.updated} investments updated</li>
+                  <li>{applyResult.skipped} positions skipped</li>
+                  <li>
+                    Account cash balance{" "}
+                    {applyResult.cashUpdated ? "updated" : "not updated"}
+                  </li>
+                </ul>
+                {applyResult.warnings && applyResult.warnings.length > 0 && (
+                  <div className="mt-4 p-3 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-md text-xs space-y-1">
+                    <div className="font-semibold uppercase mb-2 flex items-center gap-1">
+                      <AlertTriangle className="h-3 w-3" />
+                      Server Warnings
+                    </div>
+                    {applyResult.warnings.map((w, i) => (
+                      <div key={i}>• {w}</div>
+                    ))}
+                  </div>
+                )}
+                <div className="mt-4 pt-4 border-t border-border flex justify-end">
+                  <Button variant="outline" onClick={handleImportAnother}>
+                    Import Another
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       )}
     </div>

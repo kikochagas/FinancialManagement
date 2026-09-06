@@ -16,7 +16,7 @@ const PositionIntentSchema = z.object({
   action: z.enum(["CREATE", "UPDATE", "SKIP"]),
 });
 
-export const applySnapshotSchema = z.object({
+const applySnapshotSchema = z.object({
   accountId: z.string(),
   fileBase64: z.string(),
   positionIntents: z.array(PositionIntentSchema).superRefine((intents, ctx) => {
@@ -314,6 +314,7 @@ export const applyBrokerSnapshot = authActionClient
     });
 
     revalidatePath("/");
+    revalidatePath("/accounts");
     revalidatePath("/investments");
     revalidatePath("/reports");
 
