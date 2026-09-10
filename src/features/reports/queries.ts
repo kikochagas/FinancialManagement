@@ -83,3 +83,82 @@ export async function getReportsData() {
         },
   };
 }
+
+import { calculateSnapshotValuation } from "./utils";
+
+import { SubmittedReportHistoryItem } from "./types";
+
+export async function getSubmittedReportsHistory(): Promise<
+  SubmittedReportHistoryItem[]
+> {
+  const userId = await getUserId();
+  if (!userId) throw new Error("Unauthorized");
+
+  const snapshots = await db.investmentAccountSnapshot.findMany({
+    where: { userId },
+    include: {
+      account: true,
+      positions: true,
+      cashBalances: true,
+      totals: true,
+    },
+    orderBy: [{ importedAt: "desc" }, { id: "desc" }],
+  });
+
+  return snapshots.map((s) => {
+    const valuation = calculateSnapshotValuation(s);
+
+    return {
+      id: s.id,
+      reportType: "Portfolio Snapshot",
+      account: {
+        id: s.account.id,
+        name: s.account.name,
+        type: s.account.type,
+      },
+      statementDate: s.statementDate.toISOString().split("T")[0],
+      importedAt: s.importedAt.toISOString(),
+      completeness: s.completeness,
+      positionsCount: s.positions.length,
+      investedValue: valuation.investedValue,
+      cashValue: valuation.cashValue,
+      totalValue: valuation.totalValue,
+      totalCurrency: valuation.totalCurrency,
+      investedCurrency: valuation.investedCurrency,
+      cashCurrency: valuation.cashCurrency,
+
+      positions: s.positions.map((p) => ({
+        id: p.id,
+        name: p.name,
+        sourceSection: p.sourceSection,
+        assetClass: p.assetClass,
+        isin: p.isin,
+        ticker: p.ticker,
+        instrumentIdentifier: p.instrumentIdentifier,
+        instrumentIdentifierType: p.instrumentIdentifierType,
+        quantity: p.quantity,
+        unitPrice: p.unitPrice,
+        marketValue: p.marketValue,
+        currency: p.currency,
+        valuationDate: p.valuationDate
+          ? p.valuationDate.toISOString().split("T")[0]
+          : null,
+      })),
+      cashBalances: s.cashBalances.map((c) => ({
+        id: c.id,
+        type: c.type,
+        label: c.label,
+        amount: c.amount,
+        currency: c.currency,
+      })),
+      totals: s.totals.map((t) => ({
+        id: t.id,
+        type: t.type,
+        label: t.label,
+        amount: t.amount,
+        currency: t.currency,
+      })),
+      statementDateSource: s.statementDateSource,
+    };
+  });
+}

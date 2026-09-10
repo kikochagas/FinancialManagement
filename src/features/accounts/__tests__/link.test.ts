@@ -16,6 +16,9 @@ describe("Account Linking Phase", () => {
     await db.externalAccountMapping.deleteMany();
     await db.pendingExternalAccount.deleteMany();
     await db.bankConnection.deleteMany();
+    await db.investmentAccountSnapshot.deleteMany();
+    await db.investmentEvent.deleteMany();
+    await db.investment.deleteMany();
     await db.account.deleteMany();
     await db.user.deleteMany();
   });

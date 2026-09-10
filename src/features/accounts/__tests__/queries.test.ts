@@ -10,6 +10,9 @@ vi.mock("@/lib/auth", () => ({
 describe("Accounts Queries - getAccountsData", () => {
   beforeEach(async () => {
     await db.transaction.deleteMany();
+    await db.investmentAccountSnapshot.deleteMany();
+    await db.investmentEvent.deleteMany();
+    await db.investment.deleteMany();
     await db.account.deleteMany();
     await db.user.deleteMany();
 

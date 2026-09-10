@@ -21,10 +21,8 @@ describe("applyExistingBrokerSnapshot DB Engine", () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
-    await db.investmentSnapshotTotal.deleteMany();
-    await db.investmentCashSnapshot.deleteMany();
-    await db.investmentPositionSnapshot.deleteMany();
     await db.investmentAccountSnapshot.deleteMany();
+    await db.investmentEvent.deleteMany();
     await db.investment.deleteMany();
     await db.account.deleteMany();
     await db.user.deleteMany();
@@ -230,10 +228,8 @@ describe("applyExistingBrokerSnapshot DB Engine", () => {
   });
 
   afterAll(async () => {
-    await db.investmentPositionSnapshot.deleteMany();
-    await db.investmentCashSnapshot.deleteMany();
-    await db.investmentSnapshotTotal.deleteMany();
     await db.investmentAccountSnapshot.deleteMany();
+    await db.investmentEvent.deleteMany();
     await db.investment.deleteMany();
     await db.account.deleteMany();
     await db.user.deleteMany();

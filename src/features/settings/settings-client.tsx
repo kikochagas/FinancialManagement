@@ -87,7 +87,7 @@ export function SettingsClient({ data }: SettingsClientProps) {
   const handleResetDatabase = () => {
     if (
       confirm(
-        "WARNING: This will wipe out all custom modifications in the database and re-seed with the initial benchmark balances and configuration! Continue?",
+        "WARNING: This will replace all your current financial data with the initial benchmark data. Continue?",
       )
     ) {
       startResetTransition(async () => {
@@ -103,7 +103,7 @@ export function SettingsClient({ data }: SettingsClientProps) {
   const handleWipeData = () => {
     if (
       confirm(
-        "WARNING: This will permanently delete ALL your financial data (accounts, transactions, goals, investments, etc.). Your settings and account will remain. This action cannot be undone. Continue?",
+        "WARNING: This will permanently delete ALL your financial data (accounts, transactions, goals, investments, broker history, etc.). Your settings and account will remain. This action cannot be undone. Continue?",
       )
     ) {
       startWipeTransition(async () => {
@@ -224,8 +224,8 @@ export function SettingsClient({ data }: SettingsClientProps) {
                 Reset & Re-seed Database
               </span>
               <p className="text-[10px] text-muted-foreground max-w-sm">
-                Wipe all tables and re-populate millisecond-fresh seed
-                configurations representing the initial benchmark cash flows.
+                Reset all your financial data, including broker reports and
+                history, and restore the initial benchmark data.
               </p>
             </div>
             <Button
@@ -248,8 +248,9 @@ export function SettingsClient({ data }: SettingsClientProps) {
                 Wipe All Financial Data
               </span>
               <p className="text-[10px] text-muted-foreground max-w-sm">
-                Permanently delete all accounts, transactions, investments, and
-                goals. You will start fresh with zero balances.
+                Permanently delete all accounts, transactions, investments,
+                broker activity, broker report history, and goals. You will
+                start fresh with zero balances.
               </p>
             </div>
             <Button

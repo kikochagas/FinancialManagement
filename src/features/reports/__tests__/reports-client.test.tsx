@@ -63,7 +63,7 @@ describe("ReportsClient UX/Routing", () => {
   });
 
   test("Default state opens the Overview & Export tab", () => {
-    render(<ReportsClient data={mockData} />);
+    render(<ReportsClient data={mockData} snapshotHistory={[]} />);
 
     // Check tabs
     expect(screen.getByText("Overview & Export")).toBeInTheDocument();
@@ -83,7 +83,7 @@ describe("ReportsClient UX/Routing", () => {
 
   test("/reports?tab=bank opens Bank Statements and isolates its wizard", () => {
     mockSearchParams = new URLSearchParams("tab=bank");
-    render(<ReportsClient data={mockData} />);
+    render(<ReportsClient data={mockData} snapshotHistory={[]} />);
 
     expect(screen.getByTestId("bank-import-wizard")).toBeInTheDocument();
     expect(screen.getByText("Bank Statement Import")).toBeInTheDocument();
@@ -99,7 +99,7 @@ describe("ReportsClient UX/Routing", () => {
 
   test("/reports?tab=broker opens Broker Reports and mounts both wizards", () => {
     mockSearchParams = new URLSearchParams("tab=broker");
-    render(<ReportsClient data={mockData} />);
+    render(<ReportsClient data={mockData} snapshotHistory={[]} />);
 
     // Check headings
     expect(screen.getByText("Portfolio Snapshot")).toBeInTheDocument();

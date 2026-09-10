@@ -15,8 +15,10 @@ vi.mock("@/lib/auth", () => ({
 const mockDb = db as any;
 
 describe("Settings Actions", () => {
+  let deletionOrder: string[] = [];
   beforeEach(() => {
     mockReset(mockDb);
+    deletionOrder = [];
   });
 
   describe("updateSettings", () => {
@@ -50,16 +52,25 @@ describe("Settings Actions", () => {
   describe("resetAndSeedDatabase", () => {
     beforeEach(() => {
       const resolvedPromise = Promise.resolve();
-      mockDb.settings.deleteMany.mockReturnValue(resolvedPromise);
-      mockDb.assetAllocation.deleteMany.mockReturnValue(resolvedPromise);
-      mockDb.taxReservation.deleteMany.mockReturnValue(resolvedPromise);
-      mockDb.budget.deleteMany.mockReturnValue(resolvedPromise);
-      mockDb.monthlySnapshot.deleteMany.mockReturnValue(resolvedPromise);
-      mockDb.goal.deleteMany.mockReturnValue(resolvedPromise);
-      mockDb.investment.deleteMany.mockReturnValue(resolvedPromise);
-      mockDb.transaction.deleteMany.mockReturnValue(resolvedPromise);
-      mockDb.category.deleteMany.mockReturnValue(resolvedPromise);
-      mockDb.account.deleteMany.mockReturnValue(resolvedPromise);
+      const trackDeletion = (name: string) =>
+        vi.fn().mockImplementation(() => {
+          deletionOrder.push(name);
+          return resolvedPromise;
+        });
+      mockDb.settings.deleteMany = trackDeletion("settings");
+      mockDb.assetAllocation.deleteMany = trackDeletion("assetAllocation");
+      mockDb.taxReservation.deleteMany = trackDeletion("taxReservation");
+      mockDb.budget.deleteMany = trackDeletion("budget");
+      mockDb.monthlySnapshot.deleteMany = trackDeletion("monthlySnapshot");
+      mockDb.goal.deleteMany = trackDeletion("goal");
+      mockDb.investmentAccountSnapshot.deleteMany = trackDeletion(
+        "investmentAccountSnapshot",
+      );
+      mockDb.investmentEvent.deleteMany = trackDeletion("investmentEvent");
+      mockDb.investment.deleteMany = trackDeletion("investment");
+      mockDb.transaction.deleteMany = trackDeletion("transaction");
+      mockDb.category.deleteMany = trackDeletion("category");
+      mockDb.account.deleteMany = trackDeletion("account");
 
       mockDb.account.create.mockResolvedValue({ id: "a-1" });
       mockDb.category.create.mockResolvedValue({ id: "c-1" });
@@ -132,6 +143,79 @@ describe("Settings Actions", () => {
 
       // It should not create duplicate or fake "internal transfer" categories
       expect(createdKeys).not.toContain("internal transfer");
+    });
+
+    it("should delete snapshot history BEFORE deleting accounts to satisfy foreign key constraints", async () => {
+      const res = await resetAndSeedDatabase();
+      expect(res?.data?.success).toBe(true);
+
+      const snapIdx = deletionOrder.indexOf("investmentAccountSnapshot");
+      const eventIdx = deletionOrder.indexOf("investmentEvent");
+      const invIdx = deletionOrder.indexOf("investment");
+      const accIdx = deletionOrder.indexOf("account");
+
+      expect(snapIdx).toBeGreaterThan(-1);
+      expect(eventIdx).toBeGreaterThan(-1);
+      expect(invIdx).toBeGreaterThan(-1);
+      expect(accIdx).toBeGreaterThan(-1);
+
+      expect(snapIdx).toBeLessThan(accIdx);
+      expect(eventIdx).toBeLessThan(accIdx);
+      expect(invIdx).toBeLessThan(accIdx);
+    });
+  });
+
+  describe("wipeUserData", () => {
+    it("should abort action and NOT return success if a critical deletion fails", async () => {
+      mockDb.account.deleteMany.mockRejectedValue(new Error("DB Error"));
+
+      const { wipeUserData } = await import("../actions");
+      const res = await wipeUserData();
+
+      expect(res?.data?.success).toBeFalsy();
+    });
+    beforeEach(() => {
+      const resolvedPromise = Promise.resolve();
+      const trackDeletion = (name: string) =>
+        vi.fn().mockImplementation(() => {
+          deletionOrder.push(name);
+          return resolvedPromise;
+        });
+      mockDb.assetAllocation.deleteMany = trackDeletion("assetAllocation");
+      mockDb.taxReservation.deleteMany = trackDeletion("taxReservation");
+      mockDb.budget.deleteMany = trackDeletion("budget");
+      mockDb.monthlySnapshot.deleteMany = trackDeletion("monthlySnapshot");
+      mockDb.goal.deleteMany = trackDeletion("goal");
+      mockDb.investmentAccountSnapshot.deleteMany = trackDeletion(
+        "investmentAccountSnapshot",
+      );
+      mockDb.investmentEvent.deleteMany = trackDeletion("investmentEvent");
+      mockDb.investment.deleteMany = trackDeletion("investment");
+      mockDb.transaction.deleteMany = trackDeletion("transaction");
+      mockDb.category.deleteMany = trackDeletion("category");
+      mockDb.account.deleteMany = trackDeletion("account");
+    });
+
+    it("should wipe all user data in the correct order", async () => {
+      const { wipeUserData } = await import("../actions");
+      const res = await wipeUserData();
+      expect(res?.data?.success).toBe(true);
+
+      expect(mockDb.investmentAccountSnapshot.deleteMany).toHaveBeenCalledWith({
+        where: { userId: "test-user-id" },
+      });
+      expect(mockDb.investmentEvent.deleteMany).toHaveBeenCalledWith({
+        where: { userId: "test-user-id" },
+      });
+
+      const snapIdx = deletionOrder.indexOf("investmentAccountSnapshot");
+      const eventIdx = deletionOrder.indexOf("investmentEvent");
+      const invIdx = deletionOrder.indexOf("investment");
+      const accIdx = deletionOrder.indexOf("account");
+
+      expect(snapIdx).toBeLessThan(accIdx);
+      expect(eventIdx).toBeLessThan(accIdx);
+      expect(invIdx).toBeLessThan(accIdx);
     });
   });
 });

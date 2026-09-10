@@ -6,9 +6,7 @@ import { ParseResult } from "./types";
  * while preserving explicit signs (+ or -).
  * Never uses .toFixed(2) to truncate value.
  */
-export function parseBrokerNumberStrict(
-  input: any,
-): ParseResult<number> & {
+export function parseBrokerNumberStrict(input: any): ParseResult<number> & {
   currency?: string;
   explicitSign?: "positive" | "negative" | null;
 } {

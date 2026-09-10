@@ -27,8 +27,11 @@ import { parseStructuredImport } from "./structured-import-parser";
 import { BankImportWizard } from "./bank-import/components/BankImportWizard";
 import { BrokerTransactionImportWizard } from "./broker-import/components/BrokerTransactionImportWizard";
 import { BrokerSnapshotWizard } from "../investments/components/BrokerSnapshotWizard";
+import { SubmittedReportsHistory } from "./components/SubmittedReportsHistory";
 import { cn } from "@/lib/utils";
 import { canHoldInvestments } from "@/lib/constants";
+
+import { SubmittedReportHistoryItem } from "./types";
 
 interface ReportsClientProps {
   data: {
@@ -55,9 +58,10 @@ interface ReportsClientProps {
       notes: string;
     };
   };
+  snapshotHistory: SubmittedReportHistoryItem[];
 }
 
-export function ReportsClient({ data }: ReportsClientProps) {
+export function ReportsClient({ data, snapshotHistory }: ReportsClientProps) {
   const [isPending, startTransition] = useTransition();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -530,6 +534,19 @@ export function ReportsClient({ data }: ReportsClientProps) {
                 update your ledger.
               </p>
               <BrokerTransactionImportWizard accounts={data.accounts} />
+            </div>
+            <div className="pt-6 mt-6 border-t border-border">
+              <div className="space-y-2 mb-6">
+                <h2 className="text-xl font-bold tracking-tight">
+                  Submitted Reports History
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Browse evidence from previously submitted Portfolio Snapshots.
+                  (Broker Activity history is currently pending an import-batch
+                  data model).
+                </p>
+              </div>
+              <SubmittedReportsHistory snapshotHistory={snapshotHistory} />
             </div>
           </div>
         )}

@@ -10,9 +10,7 @@ import { ParseResult } from "./types";
  *
  * Never returns 0 for invalid input unless the input is genuinely zero.
  */
-export function parseMoneyStrict(
-  input: any,
-): ParseResult<number> & {
+export function parseMoneyStrict(input: any): ParseResult<number> & {
   currency?: string;
   explicitSign?: "positive" | "negative" | null;
 } {

@@ -39,20 +39,18 @@ export const resetAndSeedDatabase = authActionClient.action(
   async ({ ctx: { userId } }) => {
     try {
       // We only clean data for the current user
-      await db.settings.deleteMany({ where: { userId } }).catch(() => {});
-      await db.assetAllocation
-        .deleteMany({ where: { userId } })
-        .catch(() => {});
-      await db.taxReservation.deleteMany({ where: { userId } }).catch(() => {});
-      await db.budget.deleteMany({ where: { userId } }).catch(() => {});
-      await db.monthlySnapshot
-        .deleteMany({ where: { userId } })
-        .catch(() => {});
-      await db.goal.deleteMany({ where: { userId } }).catch(() => {});
-      await db.investment.deleteMany({ where: { userId } }).catch(() => {});
-      await db.transaction.deleteMany({ where: { userId } }).catch(() => {});
-      await db.category.deleteMany({ where: { userId } }).catch(() => {});
-      await db.account.deleteMany({ where: { userId } }).catch(() => {});
+      await db.settings.deleteMany({ where: { userId } });
+      await db.assetAllocation.deleteMany({ where: { userId } });
+      await db.taxReservation.deleteMany({ where: { userId } });
+      await db.budget.deleteMany({ where: { userId } });
+      await db.monthlySnapshot.deleteMany({ where: { userId } });
+      await db.goal.deleteMany({ where: { userId } });
+      await db.investmentAccountSnapshot.deleteMany({ where: { userId } });
+      await db.investmentEvent.deleteMany({ where: { userId } });
+      await db.investment.deleteMany({ where: { userId } });
+      await db.transaction.deleteMany({ where: { userId } });
+      await db.category.deleteMany({ where: { userId } });
+      await db.account.deleteMany({ where: { userId } });
 
       // 2. Create Settings
       await db.settings.create({
@@ -394,19 +392,17 @@ export const resetAndSeedDatabase = authActionClient.action(
 export const wipeUserData = authActionClient.action(
   async ({ ctx: { userId } }) => {
     try {
-      await db.assetAllocation
-        .deleteMany({ where: { userId } })
-        .catch(() => {});
-      await db.taxReservation.deleteMany({ where: { userId } }).catch(() => {});
-      await db.budget.deleteMany({ where: { userId } }).catch(() => {});
-      await db.monthlySnapshot
-        .deleteMany({ where: { userId } })
-        .catch(() => {});
-      await db.goal.deleteMany({ where: { userId } }).catch(() => {});
-      await db.investment.deleteMany({ where: { userId } }).catch(() => {});
-      await db.transaction.deleteMany({ where: { userId } }).catch(() => {});
-      await db.category.deleteMany({ where: { userId } }).catch(() => {});
-      await db.account.deleteMany({ where: { userId } }).catch(() => {});
+      await db.assetAllocation.deleteMany({ where: { userId } });
+      await db.taxReservation.deleteMany({ where: { userId } });
+      await db.budget.deleteMany({ where: { userId } });
+      await db.monthlySnapshot.deleteMany({ where: { userId } });
+      await db.goal.deleteMany({ where: { userId } });
+      await db.investmentAccountSnapshot.deleteMany({ where: { userId } });
+      await db.investmentEvent.deleteMany({ where: { userId } });
+      await db.investment.deleteMany({ where: { userId } });
+      await db.transaction.deleteMany({ where: { userId } });
+      await db.category.deleteMany({ where: { userId } });
+      await db.account.deleteMany({ where: { userId } });
 
       revalidatePath("/");
       revalidatePath("/transactions");

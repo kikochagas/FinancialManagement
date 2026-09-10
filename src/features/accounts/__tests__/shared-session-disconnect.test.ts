@@ -51,6 +51,9 @@ describe("Shared Session Disconnect", () => {
     await db.transaction.deleteMany();
     await db.externalAccountMapping.deleteMany();
     await db.pendingExternalAccount.deleteMany();
+    await db.investmentAccountSnapshot.deleteMany();
+    await db.investmentEvent.deleteMany();
+    await db.investment.deleteMany();
     await db.account.deleteMany();
     await db.bankConnection.deleteMany();
     await db.user.deleteMany();
